@@ -588,8 +588,8 @@ func show_tile_detail_modal(theme_key: String) -> void:
 	_add_tile_preview_row(detail["samples"], theme_key)
 	
 	_add_description(detail["desc"])
-	_add_tally("🎯 Tactical Advantage", detail["purpose"])
-	_add_tally("✨ Feel & Dissolution", detail["tactile"])
+	_add_feature_row("🎯 Tactical Purpose", detail["purpose"])
+	_add_feature_row("✨ Feel & Dissolution", detail["tactile"])
 	
 	_add_separator()
 	
@@ -668,9 +668,9 @@ func show_background_detail_modal(theme_id: String) -> void:
 	_add_palette_preview_card(detail["theme_data"])
 	
 	_add_description(detail["desc"])
-	_add_tally("🌊 Water Atmosphere", detail["mood"])
-	_add_tally("🐟 Swimming Koi", detail["koi"])
-	_add_tally("🪷 Living Flora", detail["flora"])
+	_add_feature_row("🌊 Water Atmosphere", detail["mood"])
+	_add_feature_row("🐟 Living Koi Species", detail["koi"])
+	_add_feature_row("🪷 Floating Aquatic Flora", detail["flora"])
 	
 	_add_separator()
 	
@@ -927,6 +927,23 @@ func _add_tally(key: String, val: String) -> void:
 	box.add_child(l_k)
 	box.add_child(l_v)
 	card_container.add_child(box)
+
+func _add_feature_row(key: String, val: String) -> void:
+	var v_box := VBoxContainer.new()
+	v_box.add_theme_constant_override("separation", 2)
+	
+	var l_k := Label.new()
+	l_k.text = key
+	UITheme.style_label(l_k, "ui", 22, UITheme.GOLD_CORE)
+	
+	var l_v := Label.new()
+	l_v.text = val
+	l_v.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	UITheme.style_label(l_v, "ui", 20, Color(0.82, 0.90, 0.86))
+	
+	v_box.add_child(l_k)
+	v_box.add_child(l_v)
+	card_container.add_child(v_box)
 
 func _add_tile_preview_row(samples: Array, theme_id: String) -> void:
 	var center_box := CenterContainer.new()
