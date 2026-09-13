@@ -1,0 +1,26 @@
+# Godot 4.x specific ignores
+.godot/
+*.translation
+
+# Build and export outputs
+build/
+*.apk
+*.aab
+*.exe
+*.zip
+*.pck
+
+# Android Gradle build outputs & cache (1.5GB+)
+android/build/
+.gradle/
+*.iml
+
+# Keystores and sensitive signing credentials
+*.keystore
+*.jks
+export_presets.cfg
+
+# OS and Editor metadata
+.DS_Store
+Thumbs.db
+*.tmp

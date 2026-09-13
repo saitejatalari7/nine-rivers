@@ -1,0 +1,445 @@
+extends Node
+
+## Nine Rivers (九河) — Monetization & In-App Economy Service
+## Manages Spirit Pearls, IAPs (No-Ads, Pearl Treasury, Cosmetic Themes),
+## Rewarded Offerings, Zen Interstitial Frequency Capping, and Tile/Banner Ads.
+## Tailored for Google Play Store with Indian Market (INR / UPI) & Global USD support.
+
+signal pearls_updated(new_balance: int)
+signal purchase_succeeded(product_id: String)
+signal purchase_failed(product_id: String, reason: String)
+signal rewarded_ad_rewarded(placement: String, reward_type: String, amount: int)
+signal interstitial_ad_shown(context: String)
+signal banner_visibility_changed(is_visible: bool)
+signal theme_unlocked(theme_id: String)
+signal theme_equipped(theme_id: String)
+
+const PRODUCTS: Dictionary = {
+	"no_ads": {
+		"id": "no_ads",
+		"name": "Serenity Blessing (Remove Ads)",
+		"desc": "Permanently removes all interstitial and banner offerings + 500 Spirit Pearls + 1 extra daily prop.",
+		"price_usd": "$2.99",
+		"price_inr": "₹199",
+		"price_str": "₹199 / $2.99",
+		"pearls_grant": 500,
+		"is_consumable": false
+	},
+	"pearls_small": {
+		"id": "pearls_small",
+		"name": "Pouch of Spirit Pearls",
+		"desc": "500 glistening Spirit Pearls from the river bed.",
+		"price_usd": "$0.99",
+		"price_inr": "₹49",
+		"price_str": "₹49 / $0.99",
+		"pearls_grant": 500,
+		"is_consumable": true
+	},
+	"pearls_medium": {
+		"id": "pearls_medium",
+		"name": "Chest of Spirit Pearls",
+		"desc": "2,500 Spirit Pearls (+25% bonus value).",
+		"price_usd": "$3.99",
+		"price_inr": "₹149",
+		"price_str": "₹149 / $3.99",
+		"pearls_grant": 2500,
+		"is_consumable": true
+	},
+	"pearls_large": {
+		"id": "pearls_large",
+		"name": "Dragon Hoard of Pearls",
+		"desc": "7,500 Spirit Pearls (+50% bonus value).",
+		"price_usd": "$9.99",
+		"price_inr": "₹399",
+		"price_str": "₹399 / $9.99",
+		"pearls_grant": 7500,
+		"is_consumable": true
+	},
+	"theme_imperial_gold": {
+		"id": "theme_imperial_gold",
+		"name": "Imperial Gold Tile Set",
+		"desc": "24k gold leaf filigree faces on imperial lacquer.",
+		"price_usd": "$1.99",
+		"price_inr": "₹99",
+		"price_str": "₹99 / $1.99 (or 1,500 🦪)",
+		"pearl_cost": 1500,
+		"is_consumable": false
+	},
+	"theme_obsidian_ink": {
+		"id": "theme_obsidian_ink",
+		"name": "Obsidian Ink Tile Set",
+		"desc": "Deep basalt stone tiles with luminous white-jade calligraphy.",
+		"price_usd": "$1.99",
+		"price_inr": "₹99",
+		"price_str": "₹99 / $1.99 (or 1,500 🦪)",
+		"pearl_cost": 1500,
+		"is_consumable": false
+	},
+	"theme_cherry_blossom": {
+		"id": "theme_cherry_blossom",
+		"name": "Cherry Blossom Porcelain Set",
+		"desc": "Delicate pale rose porcelain with vermilion engravings.",
+		"price_usd": "$1.99",
+		"price_inr": "₹99",
+		"price_str": "₹99 / $1.99 (or 1,500 🦪)",
+		"pearl_cost": 1500,
+		"is_consumable": false
+	}
+}
+
+const MAX_DAILY_REWARDED_ADS: int = 4
+
+# The Zen Ad Model Frequency Capping Rules:
+# 1. Zero ads during onboarding (Levels 1 to 3)
+# 2. Minimum 4 minutes (240s) real-time between full-screen ads
+# 3. Minimum 3 completed stages between full-screen ads
+# 4. Never interrupt active board gameplay
+const INTERSTITIAL_MIN_INTERVAL: float = 240.0
+const INTERSTITIAL_MIN_LEVELS: int = 3
+const INTERSTITIAL_START_LEVEL: int = 4
+
+var _last_interstitial_time: float = -240.0
+var _stages_cleared_since_ad: int = 0
+var _banner_visible: bool = false
+
+var _billing: Object = null
+var _admob: Object = null
+var _pending_callbacks: Dictionary = {}
+var _pending_ad_placement: String = ""
+var _pending_ad_callback: Callable = Callable()
+
+func _ready() -> void:
+	_check_daily_ad_reset()
+	_init_platform_billing()
+	_init_platform_ads()
+
+# ================= LOCALIZATION & PRICING =================
+func is_india_locale() -> bool:
+	var loc := OS.get_locale().to_upper()
+	return loc.ends_with("_IN") or loc.begins_with("HI_") or loc == "IN"
+
+func get_formatted_price(product_id: String) -> String:
+	if not PRODUCTS.has(product_id):
+		return ""
+	var p: Dictionary = PRODUCTS[product_id]
+	if is_india_locale():
+		return str(p.get("price_inr", p.get("price_str", "$0.99")))
+	return str(p.get("price_usd", p.get("price_str", "$0.99")))
+
+# ================= BILLING INITIALIZATION & HANDLING =================
+func _init_platform_billing() -> void:
+	if Engine.has_singleton("GodotGooglePlayBilling"):
+		_billing = Engine.get_singleton("GodotGooglePlayBilling")
+	elif Engine.has_singleton("GodotPlayBilling"):
+		_billing = Engine.get_singleton("GodotPlayBilling")
+		
+	if _billing != null:
+		if _billing.has_signal("connected"):
+			_billing.connected.connect(_on_billing_connected)
+		if _billing.has_signal("purchases_updated"):
+			_billing.purchases_updated.connect(_on_billing_purchases_updated)
+		elif _billing.has_signal("on_purchase_updated"):
+			_billing.on_purchase_updated.connect(_on_billing_purchases_updated)
+		if _billing.has_signal("purchase_error"):
+			_billing.purchase_error.connect(_on_billing_purchase_error)
+		elif _billing.has_signal("connect_error"):
+			_billing.connect_error.connect(func(code, msg): _on_billing_purchase_error(code, msg))
+		if _billing.has_signal("sku_details_query_completed"):
+			_billing.sku_details_query_completed.connect(_on_billing_sku_details_completed)
+		if _billing.has_method("startConnection"):
+			_billing.startConnection()
+		elif _billing.has_method("start_connection"):
+			_billing.start_connection()
+
+func _on_billing_connected() -> void:
+	if _billing and _billing.has_method("query_purchases"):
+		_billing.query_purchases("inapp")
+	elif _billing and _billing.has_method("queryPurchases"):
+		_billing.queryPurchases("inapp", false)
+
+func _on_billing_purchases_updated(purchases: Variant) -> void:
+	var purchase_list: Array = []
+	if purchases is Array:
+		purchase_list = purchases
+	elif purchases is Dictionary and purchases.has("purchases"):
+		purchase_list = purchases.get("purchases", [])
+		
+	for p in purchase_list:
+		var pid: String = ""
+		if p is Dictionary:
+			var pstate = int(p.get("purchase_state", 1))
+			if pstate != 1:
+				continue
+			pid = str(p.get("sku", p.get("product_id", "")))
+		if PRODUCTS.has(pid):
+			var prod: Dictionary = PRODUCTS[pid]
+			var token: String = str(p.get("purchase_token", ""))
+			if bool(prod.get("is_consumable", false)):
+				if _billing and _billing.has_method("consume_purchase"):
+					_billing.consume_purchase(token)
+				elif _billing and _billing.has_method("consumePurchase"):
+					_billing.consumePurchase(token)
+			else:
+				if not bool(p.get("is_acknowledged", false)):
+					if _billing and _billing.has_method("acknowledge_purchase"):
+						_billing.acknowledge_purchase(token)
+					elif _billing and _billing.has_method("acknowledgePurchase"):
+						_billing.acknowledgePurchase(token)
+			_fulfill_purchase(pid, prod)
+			if _pending_callbacks.has(pid):
+				var cb: Callable = _pending_callbacks[pid]
+				_pending_callbacks.erase(pid)
+				if cb.is_valid():
+					cb.call()
+			purchase_succeeded.emit(pid)
+
+func _on_billing_purchase_error(code: int, msg: String) -> void:
+	purchase_failed.emit("", "Billing Error (%d): %s" % [code, msg])
+
+func _on_billing_sku_details_completed(_details: Array) -> void:
+	pass
+
+# ================= ADS INITIALIZATION =================
+func _init_platform_ads() -> void:
+	if Engine.has_singleton("GodotAdMob"):
+		_admob = Engine.get_singleton("GodotAdMob")
+		if _admob.has_signal("rewarded"):
+			_admob.rewarded.connect(_on_admob_reward_granted)
+	elif Engine.has_singleton("PoingGodotAdMob"):
+		_admob = Engine.get_singleton("PoingGodotAdMob")
+		if _admob.has_signal("on_rewarded_ad_user_earned_reward"):
+			_admob.on_rewarded_ad_user_earned_reward.connect(func(_type, _amt): _on_admob_reward_granted("", 0))
+
+func _on_admob_reward_granted(_type: String = "", _amount: int = 0) -> void:
+	var placement: String = _pending_ad_placement
+	var cb: Callable = _pending_ad_callback
+	_pending_ad_placement = ""
+	_pending_ad_callback = Callable()
+	_grant_reward(placement, cb)
+
+func _check_daily_ad_reset() -> void:
+	var dt := Time.get_date_dict_from_system(true)
+	var today_str := "%04d-%02d-%02d" % [dt["year"], dt["month"], dt["day"]]
+	if SaveManager.economy.get("last_rewarded_date", "") != today_str:
+		SaveManager.economy["last_rewarded_date"] = today_str
+		SaveManager.economy["rewarded_ads_today"] = 0
+		SaveManager.request_save()
+
+func is_no_ads() -> bool:
+	return bool(SaveManager.economy.get("no_ads_purchased", false))
+
+func get_pearls() -> int:
+	return SaveManager.get_pearls()
+
+func add_pearls(amount: int) -> void:
+	SaveManager.add_pearls(amount)
+	pearls_updated.emit(get_pearls())
+
+func spend_pearls(amount: int) -> bool:
+	var ok: bool = SaveManager.spend_pearls(amount)
+	if ok:
+		pearls_updated.emit(get_pearls())
+	return ok
+
+func is_theme_unlocked(theme_id: String) -> bool:
+	if theme_id == "classic_jade":
+		return true
+	var unlocked: Array = SaveManager.economy.get("unlocked_themes", ["classic_jade"])
+	return theme_id in unlocked
+
+func unlock_theme(theme_id: String) -> bool:
+	var unlocked: Array = SaveManager.economy.get("unlocked_themes", ["classic_jade"])
+	if not (theme_id in unlocked):
+		unlocked.append(theme_id)
+		SaveManager.economy["unlocked_themes"] = unlocked
+		SaveManager.request_save()
+		theme_unlocked.emit(theme_id)
+		return true
+	return false
+
+func equip_theme(theme_id: String) -> void:
+	if is_theme_unlocked(theme_id):
+		SaveManager.economy["active_tile_theme"] = theme_id
+		SaveManager.request_save()
+		theme_equipped.emit(theme_id)
+
+func get_active_theme() -> String:
+	return String(SaveManager.economy.get("active_tile_theme", "classic_jade"))
+
+func can_watch_rewarded_ad() -> bool:
+	_check_daily_ad_reset()
+	var count: int = int(SaveManager.economy.get("rewarded_ads_today", 0))
+	return count < MAX_DAILY_REWARDED_ADS
+
+func get_remaining_rewarded_ads() -> int:
+	_check_daily_ad_reset()
+	var count: int = int(SaveManager.economy.get("rewarded_ads_today", 0))
+	return maxi(0, MAX_DAILY_REWARDED_ADS - count)
+
+# ================= ZEN INTERSTITIAL FREQUENCY CAPPER =================
+func record_level_cleared() -> void:
+	_stages_cleared_since_ad += 1
+
+func can_show_interstitial(current_level: int = 4) -> bool:
+	if is_no_ads():
+		return false
+	if current_level < INTERSTITIAL_START_LEVEL:
+		return false
+	if _stages_cleared_since_ad < INTERSTITIAL_MIN_LEVELS:
+		return false
+	var now_sec: float = float(Time.get_ticks_msec()) / 1000.0
+	if now_sec - _last_interstitial_time < INTERSTITIAL_MIN_INTERVAL:
+		return false
+	return true
+
+func show_interstitial_if_ready(current_level: int = 4, context: String = "level_clear") -> bool:
+	if can_show_interstitial(current_level):
+		show_interstitial(context)
+		return true
+	return false
+
+func show_interstitial(context: String = "general") -> void:
+	_last_interstitial_time = float(Time.get_ticks_msec()) / 1000.0
+	_stages_cleared_since_ad = 0
+	
+	if _admob != null and _admob.has_method("show_interstitial"):
+		_admob.show_interstitial()
+	
+	interstitial_ad_shown.emit(context)
+
+# ================= TILE / BANNER ADS =================
+func show_banner_ad() -> void:
+	if is_no_ads():
+		hide_banner_ad()
+		return
+		
+	_banner_visible = true
+	if _admob != null and _admob.has_method("show_banner"):
+		_admob.show_banner()
+	banner_visibility_changed.emit(true)
+
+func hide_banner_ad() -> void:
+	_banner_visible = false
+	if _admob != null and _admob.has_method("hide_banner"):
+		_admob.hide_banner()
+	banner_visibility_changed.emit(false)
+
+func is_banner_ad_visible() -> bool:
+	return _banner_visible and not is_no_ads()
+
+# ================= PURCHASE PROCESSING =================
+func buy_product(product_id: String, on_success: Callable = Callable()) -> void:
+	if not PRODUCTS.has(product_id):
+		purchase_failed.emit(product_id, "Unknown product")
+		return
+		
+	var prod: Dictionary = PRODUCTS[product_id]
+	
+	if _billing != null:
+		_pending_callbacks[product_id] = on_success
+		var res = null
+		if _billing.has_method("purchase"):
+			res = _billing.purchase(product_id)
+		elif _billing.has_method("purchaseProduct"):
+			res = _billing.purchaseProduct(product_id)
+			
+		if res is Dictionary and res.get("status", OK) != OK:
+			purchase_failed.emit(product_id, "Purchase initialization error: " + str(res.get("response_code", "")))
+		return
+	
+	# Mobile Release Guard: never allow free fulfillment if billing service failed to connect
+	if OS.has_feature("mobile") and not OS.is_debug_build():
+		purchase_failed.emit(product_id, "Google Play Billing service unavailable. Please check your network connection.")
+		return
+		
+	# Desktop/Editor/Debug: Simulate purchase fulfillment for testing
+	_fulfill_purchase(product_id, prod)
+	if on_success.is_valid():
+		on_success.call()
+	purchase_succeeded.emit(product_id)
+
+func buy_with_pearls(product_id: String, on_success: Callable = Callable()) -> bool:
+	if not PRODUCTS.has(product_id):
+		return false
+	var prod: Dictionary = PRODUCTS[product_id]
+	var cost: int = int(prod.get("pearl_cost", 0))
+	if cost <= 0:
+		return false
+		
+	if spend_pearls(cost):
+		unlock_theme(product_id)
+		equip_theme(product_id)
+		if on_success.is_valid():
+			on_success.call()
+		return true
+	return false
+
+func _fulfill_purchase(product_id: String, prod: Dictionary) -> void:
+	if product_id == "no_ads":
+		SaveManager.economy["no_ads_purchased"] = true
+		hide_banner_ad()
+		add_pearls(int(prod.get("pearls_grant", 500)))
+		AudioManager.play_win()
+	elif prod.has("pearls_grant"):
+		add_pearls(int(prod.get("pearls_grant", 0)))
+		AudioManager.play_win()
+	elif product_id.begins_with("theme_"):
+		unlock_theme(product_id)
+		equip_theme(product_id)
+		AudioManager.play_win()
+	SaveManager.request_save()
+
+func restore_purchases() -> void:
+	AudioManager.play_click()
+	if _billing != null:
+		if _billing.has_method("query_purchases"):
+			_billing.query_purchases("inapp")
+		elif _billing.has_method("queryPurchases"):
+			_billing.queryPurchases("inapp", false)
+	SaveManager.save_game()
+
+# ================= REWARDED AD OFFERINGS =================
+func simulate_rewarded_ad(placement: String = "daily_pearls") -> void:
+	show_rewarded_ad(placement, Callable())
+
+func show_rewarded_ad(placement: String, on_reward: Callable = Callable()) -> void:
+	if not can_watch_rewarded_ad():
+		return
+		
+	_check_daily_ad_reset()
+	var cur: int = int(SaveManager.economy.get("rewarded_ads_today", 0))
+	SaveManager.economy["rewarded_ads_today"] = cur + 1
+	SaveManager.request_save()
+	
+	if _admob != null and _admob.has_method("show_rewarded_video"):
+		_pending_ad_placement = placement
+		_pending_ad_callback = on_reward
+		_admob.show_rewarded_video()
+		return
+		
+	_grant_reward(placement, on_reward)
+
+func _grant_reward(placement: String, on_reward: Callable = Callable()) -> void:
+	match placement:
+		"props_refill":
+			GameManager.hints += 1
+			GameManager.shuffles += 1
+			GameManager.props_updated.emit(GameManager.undos, GameManager.hints, GameManager.shuffles)
+			rewarded_ad_rewarded.emit(placement, "props", 1)
+			if on_reward.is_valid():
+				on_reward.call("props", 1)
+		"daily_pearls":
+			add_pearls(60)
+			rewarded_ad_rewarded.emit(placement, "pearls", 60)
+			if on_reward.is_valid():
+				on_reward.call("pearls", 60)
+		"double_clear":
+			add_pearls(100)
+			rewarded_ad_rewarded.emit(placement, "pearls", 100)
+			if on_reward.is_valid():
+				on_reward.call("pearls", 100)
+		_:
+			add_pearls(50)
+			rewarded_ad_rewarded.emit(placement, "pearls", 50)
+			if on_reward.is_valid():
+				on_reward.call("pearls", 50)

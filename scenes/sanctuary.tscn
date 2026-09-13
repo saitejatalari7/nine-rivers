@@ -1,0 +1,113 @@
+[gd_scene load_steps=2 format=3 uid="uid://csanctuary001"]
+
+[ext_resource type="Script" path="res://scripts/ui/sanctuary_view.gd" id="1_sanc"]
+
+[node name="SanctuaryView" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_sanc")
+
+[node name="WaterBg" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.0156863, 0.0941176, 0.0823529, 1)
+
+[node name="PondArea" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="FishContainer" type="Node2D" parent="PondArea"]
+
+[node name="RipplesContainer" type="Node2D" parent="PondArea"]
+
+[node name="TopBar" type="HBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 24.0
+offset_top = 24.0
+offset_right = -24.0
+offset_bottom = 96.0
+grow_horizontal = 2
+theme_override_constants/separation = 16
+
+[node name="BtnBack" type="Button" parent="TopBar"]
+custom_minimum_size = Vector2(120, 56)
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "← Table"
+
+[node name="Title" type="Label" parent="TopBar"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.95, 0.76, 0.31, 1)
+theme_override_font_sizes/font_size = 25
+text = "Koi Sanctuary (鲤鱼潭)"
+horizontal_alignment = 1
+
+[node name="JadeBalance" type="Label" parent="TopBar"]
+custom_minimum_size = Vector2(120, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 23
+text = "250 🪨"
+horizontal_alignment = 2
+
+[node name="BottomBar" type="HBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -110.0
+offset_bottom = -30.0
+grow_horizontal = 2
+grow_vertical = 0
+alignment = 1
+
+[node name="BtnShop" type="Button" parent="BottomBar"]
+custom_minimum_size = Vector2(270, 72)
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+text = "🏮 Koi & Garden Shop"
+
+[node name="ShopDrawer" type="PanelContainer" parent="."]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 30.0
+offset_top = -540.0
+offset_right = -30.0
+offset_bottom = -110.0
+grow_horizontal = 2
+grow_vertical = 0
+
+[node name="Scroll" type="ScrollContainer" parent="ShopDrawer"]
+layout_mode = 2
+
+[node name="ShopList" type="VBoxContainer" parent="ShopDrawer/Scroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 14
+
+[node name="BtnCloseShop" type="Button" parent="ShopDrawer"]
+custom_minimum_size = Vector2(40, 40)
+layout_mode = 2
+size_flags_horizontal = 8
+size_flags_vertical = 0
+text = "✕"

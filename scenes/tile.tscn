@@ -1,0 +1,11 @@
+[gd_scene load_steps=2 format=3 uid="uid://ctileview001"]
+
+[ext_resource type="Script" path="res://scripts/ui/tile_view.gd" id="1_tv"]
+
+[node name="TileView" type="Control"]
+custom_minimum_size = Vector2(64, 84)
+layout_mode = 3
+anchors_preset = 0
+offset_right = 64.0
+offset_bottom = 84.0
+script = ExtResource("1_tv")

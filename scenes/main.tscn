@@ -1,0 +1,71 @@
+[gd_scene load_steps=11 format=3 uid="uid://cmainscene001"]
+
+[ext_resource type="Script" path="res://scripts/main.gd" id="1_main"]
+[ext_resource type="PackedScene" path="res://scenes/board.tscn" id="2_board"]
+[ext_resource type="Script" path="res://scripts/ui/camera_controller.gd" id="3_cam"]
+[ext_resource type="PackedScene" path="res://scenes/ui/hud.tscn" id="4_hud"]
+[ext_resource type="PackedScene" path="res://scenes/ui/modal.tscn" id="5_modal"]
+[ext_resource type="Shader" path="res://assets/shaders/river_felt.gdshader" id="6_shader"]
+[ext_resource type="PackedScene" path="res://scenes/sanctuary.tscn" id="7_sanc"]
+[ext_resource type="Texture2D" path="res://assets/branding/splash.jpg" id="8_splash"]
+[ext_resource type="Script" path="res://scripts/ui/zen_pond_background.gd" id="9_zenbg"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_felt"]
+shader = ExtResource("6_shader")
+shader_parameter/felt_color = Color(0.0196, 0.149, 0.1137, 1)
+shader_parameter/caustic_color = Color(0.0627, 0.4196, 0.3216, 0.4)
+shader_parameter/gold_color = Color(0.949, 0.757, 0.306, 0.8)
+shader_parameter/flow_level = 0.0
+shader_parameter/overdrive = 0.0
+shader_parameter/speed = 0.8
+
+[node name="Main" type="Node2D"]
+script = ExtResource("1_main")
+
+[node name="FeltBackground" type="CanvasLayer" parent="."]
+layer = -10
+script = ExtResource("9_zenbg")
+
+[node name="BgColor" type="ColorRect" parent="FeltBackground"]
+material = SubResource("ShaderMaterial_felt")
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.0196, 0.149, 0.1137, 1)
+
+[node name="FishContainer" type="Node2D" parent="FeltBackground"]
+
+[node name="FloraContainer" type="Node2D" parent="FeltBackground"]
+
+[node name="RipplesContainer" type="Node2D" parent="FeltBackground"]
+
+[node name="MotesContainer" type="Node2D" parent="FeltBackground"]
+
+[node name="Board" parent="." instance=ExtResource("2_board")]
+
+[node name="Camera2D" type="Camera2D" parent="."]
+position = Vector2(540, 960)
+script = ExtResource("3_cam")
+
+[node name="HUD" parent="." instance=ExtResource("4_hud")]
+
+[node name="Modal" parent="." instance=ExtResource("5_modal")]
+
+[node name="Sanctuary" parent="." instance=ExtResource("7_sanc")]
+visible = false
+
+[node name="SplashScreen" type="CanvasLayer" parent="."]
+layer = 25
+
+[node name="SplashTexture" type="TextureRect" parent="SplashScreen"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+texture = ExtResource("8_splash")
+expand_mode = 1
+stretch_mode = 6

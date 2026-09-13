@@ -1,0 +1,30 @@
+[gd_scene load_steps=2 format=3 uid="uid://cmodal001"]
+
+[ext_resource type="Script" path="res://scripts/ui/modal_controller.gd" id="1_mod"]
+
+[node name="Modal" type="CanvasLayer"]
+layer = 10
+script = ExtResource("1_mod")
+
+[node name="Backdrop" type="ColorRect" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.0117, 0.0784, 0.0588, 0.82)
+
+[node name="Center" type="CenterContainer" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Card" type="PanelContainer" parent="Center"]
+custom_minimum_size = Vector2(920, 0)
+layout_mode = 2
+
+[node name="Content" type="VBoxContainer" parent="Center/Card"]
+layout_mode = 2
+theme_override_constants/separation = 16

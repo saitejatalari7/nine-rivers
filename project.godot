@@ -1,0 +1,48 @@
+; Engine configuration file.
+; It's best edited using the editor UI and not directly,
+; since the parameters that go here are not all obvious.
+;
+; Format:
+;   [section] ; section goes between []
+;   param=value ; assign values to parameters
+
+config_version=5
+
+[application]
+
+config/name="Nine Rivers"
+config/description="Zen Roguelite Mahjong Solitaire"
+run/main_scene="res://scenes/main.tscn"
+config/features=PackedStringArray("4.6", "Forward Plus")
+config/icon="res://assets/branding/app_icon.jpg"
+
+[autoload]
+
+SaveManager="*res://scripts/autoload/save_manager.gd"
+SettingsManager="*res://scripts/autoload/settings_manager.gd"
+AudioManager="*res://scripts/autoload/audio_manager.gd"
+GameManager="*res://scripts/autoload/game_manager.gd"
+MonetizationManager="*res://scripts/autoload/monetization_manager.gd"
+
+[display]
+
+window/size/viewport_width=1080
+window/size/viewport_height=1920
+window/size/window_width_override=576
+window/size/window_height_override=1024
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
+window/handheld/orientation=1
+
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/GodotGooglePlayBilling/plugin.cfg")
+
+[rendering]
+
+textures/canvas_textures/default_texture_filter=2
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+textures/vram_compression/import_etc2_astc=true
+anti_aliasing/quality/msaa_2d=2
+environment/defaults/default_clear_color=Color(0.0156, 0.137, 0.105, 1)

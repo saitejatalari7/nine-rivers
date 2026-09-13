@@ -1,0 +1,56 @@
+[gd_scene format=3 uid="uid://c0ndg53dl0cyy"]
+
+[ext_resource type="Script" path="res://scripts/effects/tile_shatter_dust.gd" id="1_dust_script"]
+
+[node name="TileShatterDust" type="Node2D"]
+z_index = 650
+script = ExtResource("1_dust_script")
+
+[node name="DustCloud" type="CPUParticles2D" parent="."]
+z_index = 650
+emitting = false
+amount = 42
+lifetime = 0.55
+one_shot = true
+explosiveness = 0.88
+spread = 180.0
+gravity = Vector2(0, -45)
+initial_velocity_min = 40.0
+initial_velocity_max = 125.0
+damping_min = 70.0
+damping_max = 105.0
+scale_amount_min = 4.0
+scale_amount_max = 9.0
+color = Color(0.960784, 0.898039, 0.776471, 0.921569)
+
+[node name="Shards" type="CPUParticles2D" parent="."]
+z_index = 660
+emitting = false
+amount = 14
+lifetime = 0.42
+one_shot = true
+explosiveness = 0.95
+spread = 180.0
+gravity = Vector2(0, 240)
+initial_velocity_min = 120.0
+initial_velocity_max = 240.0
+angular_velocity_min = -360.0
+angular_velocity_max = 360.0
+scale_amount_min = 2.8
+scale_amount_max = 5.6
+color = Color(0.988235, 0.976471, 0.941176, 1)
+
+[node name="Embers" type="CPUParticles2D" parent="."]
+z_index = 670
+emitting = false
+amount = 24
+lifetime = 0.68
+one_shot = true
+explosiveness = 0.75
+spread = 180.0
+gravity = Vector2(0, -95)
+initial_velocity_min = 35.0
+initial_velocity_max = 90.0
+scale_amount_min = 1.6
+scale_amount_max = 3.4
+color = Color(0.984314, 0.835294, 0.356863, 1)
