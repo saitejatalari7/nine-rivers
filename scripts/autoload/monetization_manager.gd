@@ -13,6 +13,8 @@ signal interstitial_ad_shown(context: String)
 signal banner_visibility_changed(is_visible: bool)
 signal theme_unlocked(theme_id: String)
 signal theme_equipped(theme_id: String)
+signal background_theme_unlocked(theme_id: String)
+signal background_theme_equipped(theme_id: String)
 
 const PRODUCTS: Dictionary = {
 	"no_ads": {
@@ -83,6 +85,32 @@ const PRODUCTS: Dictionary = {
 		"price_inr": "₹99",
 		"price_str": "₹99 / $1.99 (or 1,500 🦪)",
 		"pearl_cost": 1500,
+		"is_consumable": false
+	},
+	"bg_misty_spring": {
+		"id": "bg_misty_spring",
+		"theme_id": "misty_spring",
+		"name": "Misty Mountain Spring",
+		"name_zh": "清岚泉",
+		"desc": "Teal mist water, delicate sakura petals, and rare Asagi koi.",
+		"price_usd": "$0.99",
+		"price_inr": "₹49",
+		"price_str": "₹49 / $0.99 (or 1,500 🪨 / 500 🦪)",
+		"jade_cost": 1500,
+		"pearl_cost": 500,
+		"is_consumable": false
+	},
+	"bg_sunset_haven": {
+		"id": "bg_sunset_haven",
+		"theme_id": "sunset_haven",
+		"name": "Sunset Lotus Haven",
+		"name_zh": "夕霞泽",
+		"desc": "Twilight purple water, glowing crimson caustics, and royal Tancho koi.",
+		"price_usd": "$0.99",
+		"price_inr": "₹49",
+		"price_str": "₹49 / $0.99 (or 1,500 🪨 / 500 🦪)",
+		"jade_cost": 1500,
+		"pearl_cost": 500,
 		"is_consumable": false
 	}
 }
@@ -265,6 +293,56 @@ func equip_theme(theme_id: String) -> void:
 
 func get_active_theme() -> String:
 	return String(SaveManager.economy.get("active_tile_theme", "classic_jade"))
+
+func is_background_theme_unlocked(theme_id: String) -> bool:
+	if theme_id in ["auto", "emerald_pond", "moonlit_river", "autumn_stream"]:
+		return true
+	var unlocked: Array = SaveManager.economy.get("unlocked_background_themes", ["emerald_pond", "moonlit_river", "autumn_stream"])
+	return theme_id in unlocked
+
+func unlock_background_theme(theme_id: String) -> bool:
+	var unlocked: Array = SaveManager.economy.get("unlocked_background_themes", ["emerald_pond", "moonlit_river", "autumn_stream"])
+	if not (theme_id in unlocked):
+		unlocked.append(theme_id)
+		SaveManager.economy["unlocked_background_themes"] = unlocked
+		SaveManager.request_save()
+		background_theme_unlocked.emit(theme_id)
+		return true
+	return false
+
+func equip_background_theme(theme_id: String) -> void:
+	if is_background_theme_unlocked(theme_id):
+		SaveManager.economy["active_background_theme"] = theme_id
+		SaveManager.request_save()
+		background_theme_equipped.emit(theme_id)
+
+func get_active_background_theme() -> String:
+	return String(SaveManager.economy.get("active_background_theme", "auto"))
+
+func buy_background_with_jade(theme_id: String) -> bool:
+	var prod_key := "bg_" + theme_id
+	var cost: int = 1500
+	if PRODUCTS.has(prod_key):
+		cost = int(PRODUCTS[prod_key].get("jade_cost", 1500))
+	if SaveManager.get_jade() >= cost:
+		SaveManager.spend_jade(cost)
+		unlock_background_theme(theme_id)
+		equip_background_theme(theme_id)
+		AudioManager.play_win()
+		return true
+	return false
+
+func buy_background_with_pearls(theme_id: String) -> bool:
+	var prod_key := "bg_" + theme_id
+	var cost: int = 500
+	if PRODUCTS.has(prod_key):
+		cost = int(PRODUCTS[prod_key].get("pearl_cost", 500))
+	if spend_pearls(cost):
+		unlock_background_theme(theme_id)
+		equip_background_theme(theme_id)
+		AudioManager.play_win()
+		return true
+	return false
 
 func can_watch_rewarded_ad() -> bool:
 	_check_daily_ad_reset()

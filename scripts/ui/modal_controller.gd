@@ -17,6 +17,144 @@ signal replay_tutorial_requested()
 const BoonPool = preload("res://scripts/core/boon_pool.gd")
 const UITheme = preload("res://scripts/ui/ui_theme.gd")
 
+const TILE_THEME_DETAILS: Dictionary = {
+	"classic_jade": {
+		"id": "classic_jade",
+		"name": "Classic Jade (羊脂白玉)",
+		"subtitle": "Timeless Chinese Ceramic Craftsmanship",
+		"desc": "Fine milk-ivory ceramic tiles with hand-engraved cinnabar vermilion and emerald jade calligraphy on a warm biscuit terracotta underside.",
+		"purpose": "Balanced natural contrast for both bright sunlight and dim rooms. High-clarity strokes prevent misreads during fast-paced clearing.",
+		"tactile": "Smooth glazed ceramic texture with crisp, acoustic stone clacks. Clears fracture into delicate jade dust.",
+		"samples": [["bam", 1], ["char", 9], ["dragon", 2]]
+	},
+	"theme_imperial_gold": {
+		"id": "theme_imperial_gold",
+		"name": "Imperial Gold (皇家金叶)",
+		"subtitle": "24-Karat Gold Leaf on Crimson Lacquer",
+		"desc": "Opulent gilded face with delicate chased gold filigree on imperial crimson lacquer backing. Fits the grandeur of royal courts.",
+		"purpose": "Maximum visual prominence. Gilded tile faces catch the light, making free playable tiles immediately distinct in dense 3D stacks.",
+		"tactile": "Heavy lacquered clack. Every match disintegrates into a radiant shower of glittering 24k golden sand.",
+		"samples": [["bam", 1], ["char", 9], ["dragon", 1]]
+	},
+	"theme_obsidian_ink": {
+		"id": "theme_obsidian_ink",
+		"name": "Obsidian Ink (玄黑墨玉)",
+		"subtitle": "Polished Basalt Stone & Luminous White Jade",
+		"desc": "Carved from deep volcanic basalt stone with luminous white-jade glyphs and cinnabar seals on a dark basalt underside.",
+		"purpose": "True OLED Dark Mode. Drastically minimizes screen glare and blue light emissions, preventing eye strain during evening play.",
+		"tactile": "Deep, resonant mineral clatter. Matched pairs disperse into wisps of midnight basalt mist.",
+		"samples": [["bam", 1], ["char", 9], ["dragon", 3]]
+	},
+	"theme_cherry_blossom": {
+		"id": "theme_cherry_blossom",
+		"name": "Cherry Blossom (落樱白瓷)",
+		"subtitle": "Rosewater Porcelain on Plum Rosewood",
+		"desc": "Delicate blush porcelain tiles with cinnabar plum flower engravings resting on a dark plum rosewood foundation.",
+		"purpose": "Tranquil sensory comfort. Soft pastel tones ease mental tension and facilitate long, uninterrupted zen flow states.",
+		"tactile": "Gentle porcelain chime. Matched tiles dissolve gracefully into floating pink sakura petals.",
+		"samples": [["flower", 1], ["char", 9], ["dot", 1]]
+	}
+}
+
+const BG_THEME_DETAILS: Dictionary = {
+	"auto": {
+		"id": "auto",
+		"name": "Dynamic River Flow (九河漫流)",
+		"subtitle": "Evolving Water Journey",
+		"desc": "The living river continuously transforms its water currents, koi species, and floating flora every 5 stages as you progress.",
+		"mood": "Adaptive & Ever-Changing · Shifts seamlessly through all 5 river realms.",
+		"is_free": true,
+		"koi": "Kohaku, Ogon, Showa, Asagi, Tancho",
+		"flora": "Lotus, Night Lilies, Maple Leaves, Sakura",
+		"theme_data": {
+			"felt_color": Color("#021711"),
+			"secondary_color": Color("#053325"),
+			"caustic_color": Color(0.06, 0.65, 0.48, 0.42),
+			"gold_color": Color(0.96, 0.78, 0.28, 0.85)
+		}
+	},
+	"emerald_pond": {
+		"id": "emerald_pond",
+		"name": "Emerald Serenity (翠玉池)",
+		"subtitle": "Classic Jade Green Sanctuary",
+		"desc": "Deep emerald water with shimmering 24k gold caustics, floating sacred lotus pads, and playful Kohaku and Sanke koi.",
+		"mood": "Daylight Clarity & Rejuvenation · The signature Nine Rivers sanctuary.",
+		"is_free": true,
+		"koi": "Kohaku & Sanke (Red & White / Tricolor)",
+		"flora": "Floating Sacred Lotus Pads",
+		"theme_data": {
+			"felt_color": Color("#021711"),
+			"secondary_color": Color("#053325"),
+			"caustic_color": Color(0.06, 0.65, 0.48, 0.42),
+			"gold_color": Color(0.96, 0.78, 0.28, 0.85)
+		}
+	},
+	"moonlit_river": {
+		"id": "moonlit_river",
+		"name": "Moonlit Twilight (月华江)",
+		"subtitle": "Midnight Indigo & Silver Moonbeams",
+		"desc": "Deep indigo water reflecting tranquil silver moonlight, nocturnal water lilies, and luminous metallic Ogon and Shiro koi.",
+		"mood": "Deep Restfulness & Night Mode · Perfectly dark backdrop for playing in bed.",
+		"is_free": true,
+		"koi": "Ogon & Shiro (Platinum Gold & Pure White)",
+		"flora": "Night-Blooming Silver Lilies",
+		"theme_data": {
+			"felt_color": Color("#040d1e"),
+			"secondary_color": Color("#0b1e42"),
+			"caustic_color": Color(0.18, 0.45, 0.85, 0.45),
+			"gold_color": Color(0.85, 0.92, 1.0, 0.85)
+		}
+	},
+	"autumn_stream": {
+		"id": "autumn_stream",
+		"name": "Autumn Maple Falls (丹枫溪)",
+		"subtitle": "Warm Amber Rust & Drifting Leaves",
+		"desc": "Rich amber current with fiery copper caustics, drifting crimson maple leaves, and vibrant Showa tri-colored koi.",
+		"mood": "Warmth, Nostalgia & Cozy Focus · Inviting earthy tones for prolonged contemplation.",
+		"is_free": true,
+		"koi": "Showa & Yamabuki (Black, Red & Golden Yellow)",
+		"flora": "Crimson Autumn Maple Leaves",
+		"theme_data": {
+			"felt_color": Color("#1a0903"),
+			"secondary_color": Color("#3a1506"),
+			"caustic_color": Color(0.85, 0.35, 0.10, 0.45),
+			"gold_color": Color(0.98, 0.70, 0.15, 0.9)
+		}
+	},
+	"misty_spring": {
+		"id": "misty_spring",
+		"name": "Misty Mountain Spring (清岚泉)",
+		"subtitle": "Cool Teal Mist & Sakura Petals",
+		"desc": "Glacial teal waters veiled in mountain mist, drifting delicate sakura petals, and rare blue-scaled Asagi koi.",
+		"mood": "Freshness & Mental Acuity · Cool tones that keep your mind sharp and refreshed.",
+		"is_free": false,
+		"koi": "Asagi & Albino (Indigo Backed & Ghost White)",
+		"flora": "Drifting Pale Sakura Petals",
+		"theme_data": {
+			"felt_color": Color("#05161b"),
+			"secondary_color": Color("#0e323b"),
+			"caustic_color": Color(0.20, 0.65, 0.72, 0.45),
+			"gold_color": Color(0.95, 0.75, 0.82, 0.85)
+		}
+	},
+	"sunset_haven": {
+		"id": "sunset_haven",
+		"name": "Sunset Lotus Haven (夕霞泽)",
+		"subtitle": "Royal Violet Dusk & Crimson Glow",
+		"desc": "Twilight purple water bathed in the golden-rose glow of setting sun caustics, floating magenta blossoms, and Tancho koi.",
+		"mood": "Aesthetic Splendor & Twilight Serenity · Rich sunset palette for evening unwinding.",
+		"is_free": false,
+		"koi": "Tancho & Hi Utsuri (Red-Crowned & Flame-Banded)",
+		"flora": "Twilight Purple Lotus Blossoms",
+		"theme_data": {
+			"felt_color": Color("#1a061d"),
+			"secondary_color": Color("#3c0e44"),
+			"caustic_color": Color(0.82, 0.25, 0.48, 0.45),
+			"gold_color": Color(0.98, 0.68, 0.20, 0.9)
+		}
+	}
+}
+
 @onready var backdrop: ColorRect = $Backdrop
 @onready var card_container: VBoxContainer = $Center/Card/Content
 @onready var card_panel: PanelContainer = $Center/Card
@@ -377,72 +515,23 @@ func show_bazaar_modal() -> void:
 	
 	_add_title("Spirit Bazaar (灵气集市)")
 	_add_subtitle("🦪 %d Spirit Pearls | 🪨 %d River Jade" % [MonetizationManager.get_pearls(), SaveManager.get_jade()])
-	
-	# Section 1: Serenity Blessing & Pearls Treasury
-	if not MonetizationManager.is_no_ads():
-		_add_button("🌸 Serenity Blessing (No-Ads + 500 🦪) — %s" % MonetizationManager.get_formatted_price("no_ads"), func():
-			MonetizationManager.buy_product("no_ads", func(): show_bazaar_modal())
-		, true)
-	else:
-		_add_tally("✨ Serenity Status", "Permanent No-Ads Active (+Daily Prop)")
-		
-	_add_button("🦪 Pouch of 500 Pearls — %s" % MonetizationManager.get_formatted_price("pearls_small"), func():
-		MonetizationManager.buy_product("pearls_small", func(): show_bazaar_modal())
-	)
-	_add_button("🦪 Chest of 2,500 Pearls (+25%) — %s" % MonetizationManager.get_formatted_price("pearls_medium"), func():
-		MonetizationManager.buy_product("pearls_medium", func(): show_bazaar_modal())
-	)
-	_add_button("🦪 Dragon Hoard (7,500 Pearls +50%) — %s" % MonetizationManager.get_formatted_price("pearls_large"), func():
-		MonetizationManager.buy_product("pearls_large", func(): show_bazaar_modal())
-	)
-	
 	_add_separator()
 	
-	# Section 2: Artisan Cosmetic Themes
-	var cur_theme := MonetizationManager.get_active_theme()
-	for theme_key in ["theme_imperial_gold", "theme_obsidian_ink", "theme_cherry_blossom"]:
-		var prod: Dictionary = MonetizationManager.PRODUCTS[theme_key]
-		var is_unlocked: bool = MonetizationManager.is_theme_unlocked(theme_key)
-		var is_active: bool = (cur_theme == theme_key)
-		
-		var btn_label := ""
-		if is_active:
-			btn_label = "✓ %s (Equipped)" % prod["name"]
-		elif is_unlocked:
-			btn_label = "Equip: %s" % prod["name"]
-		else:
-			btn_label = "Unlock %s (%s)" % [prod["name"], MonetizationManager.get_formatted_price(theme_key)]
-			
-		_add_button(btn_label, func():
-			if is_active:
-				return
-			elif is_unlocked:
-				MonetizationManager.equip_theme(theme_key)
-				show_bazaar_modal()
-			else:
-				if not MonetizationManager.buy_with_pearls(theme_key, func(): show_bazaar_modal()):
-					MonetizationManager.buy_product(theme_key, func(): show_bazaar_modal())
-		, is_active)
+	_add_button("🀄 Artisan Tile Sets (4 Collections · Live Previews)", func():
+		show_tile_catalog_modal()
+	, true)
 	
-	_add_separator()
+	_add_button("🌊 Zen Pond Backdrops (3 Free · 5 Water Themes)", func():
+		show_background_catalog_modal()
+	)
 	
-	# Section 3: Spiritual Offerings (Rewarded Ads)
-	var remaining_ads: int = MonetizationManager.get_remaining_rewarded_ads()
-	if remaining_ads > 0:
-		_add_button("🏮 Daily Meditation Blessing (+60 🦪 Free / Ad) [%d left]" % remaining_ads, func():
-			MonetizationManager.show_rewarded_ad("daily_pearls", func(_t, _a):
-				AudioManager.play_win()
-				show_bazaar_modal()
-			)
-		)
-		_add_button("🎋 Spirits' Prop Aid (+1 Hint & Shuffle / Ad)", func():
-			MonetizationManager.show_rewarded_ad("props_refill", func(_t, _a):
-				AudioManager.play_win()
-				show_bazaar_modal()
-			)
-		)
-	else:
-		_add_tally("🏮 Daily Offerings", "Completed for today (resets at dawn)")
+	_add_button("🦪 Pearl Treasury & Serenity (Remove Ads)", func():
+		show_treasury_modal()
+	)
+	
+	_add_button("🏮 Daily Meditations (Free Blessings & Props)", func():
+		show_daily_offerings_modal()
+	)
 	
 	_add_separator()
 	_add_button("↺ Restore Purchases", func():
@@ -451,6 +540,233 @@ func show_bazaar_modal() -> void:
 	)
 	_add_button("← Back to Menu", func():
 		show_main_menu()
+	)
+	show_modal()
+
+func show_tile_catalog_modal() -> void:
+	_current_screen = "tile_catalog"
+	_clear_content()
+	
+	_add_title("Artisan Tile Sets (麻将牌套)")
+	_add_subtitle("Handcrafted 2.5D Ceramic & Volcanic Stone Sets")
+	
+	var cur_theme := MonetizationManager.get_active_theme()
+	for theme_key in ["classic_jade", "theme_imperial_gold", "theme_obsidian_ink", "theme_cherry_blossom"]:
+		var detail: Dictionary = TILE_THEME_DETAILS[theme_key]
+		var is_active: bool = (cur_theme == theme_key)
+		var is_unlocked: bool = MonetizationManager.is_theme_unlocked(theme_key)
+		
+		var tag := ""
+		if is_active:
+			tag = "[EQUIPPED]"
+		elif is_unlocked:
+			tag = "[OWNED]"
+		else:
+			tag = "[%s]" % MonetizationManager.get_formatted_price(theme_key)
+			
+		var label_str := "🀄 %s · %s" % [detail["name"], tag]
+		var captured_key: String = theme_key
+		_add_button(label_str, func():
+			show_tile_detail_modal(captured_key)
+		, is_active)
+		
+	_add_separator()
+	_add_button("← Back to Bazaar", func():
+		show_bazaar_modal()
+	)
+	show_modal()
+
+func show_tile_detail_modal(theme_key: String) -> void:
+	_current_screen = "tile_detail"
+	_clear_content()
+	
+	var detail: Dictionary = TILE_THEME_DETAILS.get(theme_key, TILE_THEME_DETAILS["classic_jade"])
+	_add_title(detail["name"])
+	_add_subtitle(detail["subtitle"])
+	
+	# Live visual preview row with real physical tiles
+	_add_tile_preview_row(detail["samples"], theme_key)
+	
+	_add_description(detail["desc"])
+	_add_tally("🎯 Tactical Advantage", detail["purpose"])
+	_add_tally("✨ Feel & Dissolution", detail["tactile"])
+	
+	_add_separator()
+	
+	var cur_theme := MonetizationManager.get_active_theme()
+	var is_active: bool = (cur_theme == theme_key)
+	var is_unlocked: bool = MonetizationManager.is_theme_unlocked(theme_key)
+	
+	if is_active:
+		_add_tally("★ Current Status", "Equipped & In Play")
+	elif is_unlocked:
+		_add_button("✓ Equip This Tile Set", func():
+			MonetizationManager.equip_theme(theme_key)
+			AudioManager.play_win()
+			show_tile_detail_modal(theme_key)
+		, true)
+	else:
+		_add_button("🦪 Buy with 1,500 Spirit Pearls", func():
+			if MonetizationManager.buy_with_pearls(theme_key, func(): show_tile_detail_modal(theme_key)):
+				AudioManager.play_win()
+				show_tile_detail_modal(theme_key)
+			else:
+				show_treasury_modal()
+		, true)
+		_add_button("💳 Unlock for %s (Play Store / UPI)" % MonetizationManager.get_formatted_price(theme_key), func():
+			MonetizationManager.buy_product(theme_key, func(): show_tile_detail_modal(theme_key))
+		)
+		
+	_add_button("← Back to Tile Sets", func():
+		show_tile_catalog_modal()
+	)
+	show_modal()
+
+func show_background_catalog_modal() -> void:
+	_current_screen = "bg_catalog"
+	_clear_content()
+	
+	_add_title("Zen Pond Backdrops (水榭背幕)")
+	_add_subtitle("3 Free Environments · Living Shaders & Koi")
+	
+	var cur_bg := MonetizationManager.get_active_background_theme()
+	for bg_id in ["auto", "emerald_pond", "moonlit_river", "autumn_stream", "misty_spring", "sunset_haven"]:
+		var detail: Dictionary = BG_THEME_DETAILS[bg_id]
+		var is_active: bool = (cur_bg == bg_id)
+		var is_unlocked: bool = MonetizationManager.is_background_theme_unlocked(bg_id)
+		
+		var tag := ""
+		if is_active:
+			tag = "[ACTIVE]"
+		elif bool(detail.get("is_free", false)):
+			tag = "[FREE]"
+		elif is_unlocked:
+			tag = "[OWNED]"
+		else:
+			tag = "[1,500 🪨 / 500 🦪]"
+			
+		var label_str := "🌊 %s · %s" % [detail["name"], tag]
+		var captured_id: String = bg_id
+		_add_button(label_str, func():
+			show_background_detail_modal(captured_id)
+		, is_active)
+		
+	_add_separator()
+	_add_button("← Back to Bazaar", func():
+		show_bazaar_modal()
+	)
+	show_modal()
+
+func show_background_detail_modal(theme_id: String) -> void:
+	_current_screen = "bg_detail"
+	_clear_content()
+	
+	var detail: Dictionary = BG_THEME_DETAILS.get(theme_id, BG_THEME_DETAILS["emerald_pond"])
+	_add_title(detail["name"])
+	_add_subtitle(detail["subtitle"])
+	
+	_add_palette_preview_card(detail["theme_data"])
+	
+	_add_description(detail["desc"])
+	_add_tally("🌊 Water Atmosphere", detail["mood"])
+	_add_tally("🐟 Swimming Koi", detail["koi"])
+	_add_tally("🪷 Living Flora", detail["flora"])
+	
+	_add_separator()
+	
+	var cur_bg := MonetizationManager.get_active_background_theme()
+	var is_active: bool = (cur_bg == theme_id)
+	var is_unlocked: bool = MonetizationManager.is_background_theme_unlocked(theme_id)
+	
+	if is_active:
+		_add_tally("★ Current Status", "Currently Flowing in Background")
+	elif is_unlocked:
+		_add_button("✓ Flow in This Pond (Equip)", func():
+			MonetizationManager.equip_background_theme(theme_id)
+			AudioManager.play_win()
+			show_background_detail_modal(theme_id)
+		, true)
+	else:
+		_add_button("🪨 Unlock with 1,500 River Jade", func():
+			if MonetizationManager.buy_background_with_jade(theme_id):
+				show_background_detail_modal(theme_id)
+		, true)
+		_add_button("🦪 Unlock with 500 Spirit Pearls", func():
+			if MonetizationManager.buy_background_with_pearls(theme_id):
+				show_background_detail_modal(theme_id)
+			else:
+				show_treasury_modal()
+		)
+		_add_button("💳 Unlock for %s (Play Store / UPI)" % MonetizationManager.get_formatted_price("bg_" + theme_id), func():
+			MonetizationManager.buy_product("bg_" + theme_id, func(): show_background_detail_modal(theme_id))
+		)
+		
+	_add_button("← Back to Pond Themes", func():
+		show_background_catalog_modal()
+	)
+	show_modal()
+
+func show_treasury_modal() -> void:
+	_current_screen = "treasury"
+	_clear_content()
+	
+	_add_title("Pearl Treasury & Serenity (宝库)")
+	_add_subtitle("🦪 %d Spirit Pearls in Treasury" % MonetizationManager.get_pearls())
+	
+	if not MonetizationManager.is_no_ads():
+		_add_button("🌸 Serenity Blessing (No-Ads + 500 🦪) — %s" % MonetizationManager.get_formatted_price("no_ads"), func():
+			MonetizationManager.buy_product("no_ads", func(): show_treasury_modal())
+		, true)
+	else:
+		_add_tally("✨ Serenity Status", "Permanent No-Ads Active (+Daily Prop)")
+		
+	_add_button("🦪 Pouch of 500 Pearls — %s" % MonetizationManager.get_formatted_price("pearls_small"), func():
+		MonetizationManager.buy_product("pearls_small", func(): show_treasury_modal())
+	)
+	_add_button("🦪 Chest of 2,500 Pearls (+25%) — %s" % MonetizationManager.get_formatted_price("pearls_medium"), func():
+		MonetizationManager.buy_product("pearls_medium", func(): show_treasury_modal())
+	)
+	_add_button("🦪 Dragon Hoard (7,500 Pearls +50%) — %s" % MonetizationManager.get_formatted_price("pearls_large"), func():
+		MonetizationManager.buy_product("pearls_large", func(): show_treasury_modal())
+	)
+	
+	_add_separator()
+	_add_button("↺ Restore Purchases", func():
+		MonetizationManager.restore_purchases()
+		show_treasury_modal()
+	)
+	_add_button("← Back to Bazaar", func():
+		show_bazaar_modal()
+	)
+	show_modal()
+
+func show_daily_offerings_modal() -> void:
+	_current_screen = "daily_offerings"
+	_clear_content()
+	
+	_add_title("Daily Meditations (晨钟暮鼓)")
+	_add_subtitle("Spiritual Blessings & Optional Offerings")
+	
+	var remaining_ads: int = MonetizationManager.get_remaining_rewarded_ads()
+	if remaining_ads > 0:
+		_add_button("🏮 Daily Meditation Blessing (+60 🦪 Free / Ad) [%d left]" % remaining_ads, func():
+			MonetizationManager.show_rewarded_ad("daily_pearls", func(_t, _a):
+				AudioManager.play_win()
+				show_daily_offerings_modal()
+			)
+		, true)
+		_add_button("🎋 Spirits' Prop Aid (+1 Hint & Shuffle / Ad)", func():
+			MonetizationManager.show_rewarded_ad("props_refill", func(_t, _a):
+				AudioManager.play_win()
+				show_daily_offerings_modal()
+			)
+		)
+	else:
+		_add_tally("🏮 Daily Offerings", "Completed for today (resets at dawn)")
+		
+	_add_separator()
+	_add_button("← Back to Bazaar", func():
+		show_bazaar_modal()
 	)
 	show_modal()
 
@@ -543,6 +859,12 @@ func handle_back_pressed() -> void:
 	match _current_screen:
 		"level_select", "sanctuary", "bazaar":
 			show_main_menu()
+		"tile_catalog", "bg_catalog", "treasury", "daily_offerings":
+			show_bazaar_modal()
+		"tile_detail":
+			show_tile_catalog_modal()
+		"bg_detail":
+			show_background_catalog_modal()
 		"settings":
 			if GameManager.is_timer_active:
 				show_pause_menu()
@@ -578,6 +900,14 @@ func _add_subtitle(text: String) -> void:
 	UITheme.style_label(l, "ui", 23, UITheme.IVORY_MUTED)
 	card_container.add_child(l)
 
+func _add_description(text: String) -> void:
+	var l := Label.new()
+	l.text = text
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	UITheme.style_label(l, "ui", 21, Color(0.85, 0.90, 0.88))
+	card_container.add_child(l)
+
 func _add_separator() -> void:
 	var sep := HSeparator.new()
 	sep.add_theme_constant_override("separation", 14)
@@ -597,6 +927,82 @@ func _add_tally(key: String, val: String) -> void:
 	box.add_child(l_k)
 	box.add_child(l_v)
 	card_container.add_child(box)
+
+func _add_tile_preview_row(samples: Array, theme_id: String) -> void:
+	var center_box := CenterContainer.new()
+	center_box.custom_minimum_size = Vector2(0, 110)
+	
+	var preview_panel := PanelContainer.new()
+	var sb := UITheme.create_panel_box(Color(0.02, 0.08, 0.06, 0.85), UITheme.GOLD_MUTED, 1, 14, 0.3)
+	preview_panel.add_theme_stylebox_override("panel", sb)
+	
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 24)
+	margin.add_theme_constant_override("margin_right", 24)
+	margin.add_theme_constant_override("margin_top", 12)
+	margin.add_theme_constant_override("margin_bottom", 12)
+	
+	var hbox := HBoxContainer.new()
+	hbox.add_theme_constant_override("separation", 24)
+	hbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	
+	for s in samples:
+		var suit: String = s[0]
+		var rank: int = int(s[1])
+		var tile_ctrl := TileView.create_preview_tile(suit, rank, theme_id, 1.0)
+		hbox.add_child(tile_ctrl)
+		
+	margin.add_child(hbox)
+	preview_panel.add_child(margin)
+	center_box.add_child(preview_panel)
+	card_container.add_child(center_box)
+
+func _add_palette_preview_card(theme_data: Dictionary) -> void:
+	var center_box := CenterContainer.new()
+	center_box.custom_minimum_size = Vector2(0, 90)
+	
+	var preview_panel := PanelContainer.new()
+	var sb := UITheme.create_panel_box(Color(0.02, 0.08, 0.06, 0.85), UITheme.GOLD_MUTED, 1, 14, 0.3)
+	preview_panel.add_theme_stylebox_override("panel", sb)
+	
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 20)
+	margin.add_theme_constant_override("margin_right", 20)
+	margin.add_theme_constant_override("margin_top", 10)
+	margin.add_theme_constant_override("margin_bottom", 10)
+	
+	var hbox := HBoxContainer.new()
+	hbox.add_theme_constant_override("separation", 16)
+	hbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	
+	var colors: Array = [
+		{"name": "Water Felt", "col": theme_data.get("felt_color", Color.BLACK)},
+		{"name": "Depth Tone", "col": theme_data.get("secondary_color", Color.BLACK)},
+		{"name": "Caustics", "col": theme_data.get("caustic_color", Color.WHITE)},
+		{"name": "Gold Vein", "col": theme_data.get("gold_color", Color.GOLD)}
+	]
+	
+	for c_info in colors:
+		var v_item := VBoxContainer.new()
+		v_item.alignment = BoxContainer.ALIGNMENT_CENTER
+		
+		var swatch := ColorRect.new()
+		swatch.color = c_info["col"]
+		swatch.custom_minimum_size = Vector2(60, 36)
+		
+		var lbl := Label.new()
+		lbl.text = c_info["name"]
+		UITheme.style_label(lbl, "ui", 16, UITheme.IVORY_MUTED)
+		lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		
+		v_item.add_child(swatch)
+		v_item.add_child(lbl)
+		hbox.add_child(v_item)
+		
+	margin.add_child(hbox)
+	preview_panel.add_child(margin)
+	center_box.add_child(preview_panel)
+	card_container.add_child(center_box)
 
 func _add_button(text: String, on_click: Callable, is_gold: bool = false) -> void:
 	var b := Button.new()

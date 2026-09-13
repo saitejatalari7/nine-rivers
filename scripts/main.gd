@@ -75,7 +75,7 @@ func _show_intro_splash() -> void:
 	hud.visible = false
 	AudioManager.play_win()
 	var tween := create_tween()
-	tween.tween_interval(2.0)
+	tween.tween_interval(1.0)
 	tween.tween_property($SplashScreen/SplashTexture, "modulate:a", 0.0, 0.5)
 	tween.tween_callback(func():
 		splash_screen.visible = false

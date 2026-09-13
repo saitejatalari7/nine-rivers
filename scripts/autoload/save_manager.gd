@@ -27,6 +27,8 @@ var economy: Dictionary = {
 	"no_ads_purchased": false,
 	"unlocked_themes": ["classic_jade"],
 	"active_tile_theme": "classic_jade",
+	"unlocked_background_themes": ["emerald_pond", "moonlit_river", "autumn_stream"],
+	"active_background_theme": "auto",
 	"active_mat_theme": "river_felt",
 	"rewarded_ads_today": 0,
 	"last_rewarded_date": ""
@@ -165,6 +167,14 @@ func _apply_save_data(data: Dictionary) -> void:
 	# Enforce required default collections
 	if not sanctuary.has("koi_unlocked") or sanctuary["koi_unlocked"].is_empty():
 		sanctuary["koi_unlocked"] = ["kohaku"]
+	if not economy.has("unlocked_background_themes") or economy["unlocked_background_themes"].is_empty():
+		economy["unlocked_background_themes"] = ["emerald_pond", "moonlit_river", "autumn_stream"]
+	else:
+		for free_th in ["emerald_pond", "moonlit_river", "autumn_stream"]:
+			if not (free_th in economy["unlocked_background_themes"]):
+				economy["unlocked_background_themes"].append(free_th)
+	if not economy.has("active_background_theme"):
+		economy["active_background_theme"] = "auto"
 
 func add_pearls(amount: int) -> void:
 	economy["pearls"] = maxi(0, int(economy.get("pearls", 0)) + amount)
@@ -192,6 +202,14 @@ func add_jade(amount: int) -> void:
 
 func get_jade() -> int:
 	return int(prog.get("river_jade", 0))
+
+func spend_jade(amount: int) -> bool:
+	var cur: int = get_jade()
+	if cur >= amount:
+		prog["river_jade"] = cur - amount
+		save_game()
+		return true
+	return false
 
 func record_level_clear(lvl: int, score: int, stars_earned: int) -> void:
 	prog["level"] = max(int(prog.get("level", 1)), lvl + 1)

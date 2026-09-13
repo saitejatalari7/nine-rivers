@@ -7,7 +7,7 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/modal.tscn" id="5_modal"]
 [ext_resource type="Shader" path="res://assets/shaders/river_felt.gdshader" id="6_shader"]
 [ext_resource type="PackedScene" path="res://scenes/sanctuary.tscn" id="7_sanc"]
-[ext_resource type="Texture2D" path="res://assets/branding/splash.jpg" id="8_splash"]
+[ext_resource type="Texture2D" path="res://assets/branding/splash.png" id="8_splash"]
 [ext_resource type="Script" path="res://scripts/ui/zen_pond_background.gd" id="9_zenbg"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_felt"]

@@ -32,8 +32,17 @@ const COL_GOLD_BRIGHT := Color("#fff2b8")   # Luminous gold rim
 const COL_GOLD_DARK := Color("#c2902c")     # Chased gold shadow
 const DOTCOL: Array[Color] = [COL_BLUE, COL_RED, COL_GREEN]
 
-static func get_theme_face_color(free: bool) -> Color:
-	var th: String = MonetizationManager.get_active_theme() if Engine.has_singleton("MonetizationManager") or is_instance_valid(MonetizationManager) else "classic_jade"
+var theme_override: String = ""
+
+func get_effective_theme() -> String:
+	if not theme_override.is_empty():
+		return theme_override
+	return MonetizationManager.get_active_theme() if Engine.has_singleton("MonetizationManager") or is_instance_valid(MonetizationManager) else "classic_jade"
+
+static func get_theme_face_color(free: bool, theme_id: String = "") -> Color:
+	var th: String = theme_id
+	if th.is_empty():
+		th = MonetizationManager.get_active_theme() if Engine.has_singleton("MonetizationManager") or is_instance_valid(MonetizationManager) else "classic_jade"
 	match th:
 		"theme_imperial_gold":
 			return Color("#fffbee") if free else Color("#f4e8c8")
@@ -44,10 +53,12 @@ static func get_theme_face_color(free: bool) -> Color:
 		_: # classic_jade
 			return COL_IVORY if free else Color("#f4ece0")
 
-static func get_theme_border_color(free: bool) -> Color:
+static func get_theme_border_color(free: bool, theme_id: String = "") -> Color:
 	if SettingsManager.high_contrast_borders:
 		return Color(0.95, 0.95, 0.95, 1.0) if free else Color(0.55, 0.55, 0.55, 1.0)
-	var th: String = MonetizationManager.get_active_theme() if Engine.has_singleton("MonetizationManager") or is_instance_valid(MonetizationManager) else "classic_jade"
+	var th: String = theme_id
+	if th.is_empty():
+		th = MonetizationManager.get_active_theme() if Engine.has_singleton("MonetizationManager") or is_instance_valid(MonetizationManager) else "classic_jade"
 	match th:
 		"theme_imperial_gold":
 			return Color("#d4af37") if free else Color("#9a8235")
@@ -58,8 +69,10 @@ static func get_theme_border_color(free: bool) -> Color:
 		_:
 			return COL_BORDER if free else Color("#baa885")
 
-static func get_theme_back_base() -> Color:
-	var th: String = MonetizationManager.get_active_theme() if Engine.has_singleton("MonetizationManager") or is_instance_valid(MonetizationManager) else "classic_jade"
+static func get_theme_back_base(theme_id: String = "") -> Color:
+	var th: String = theme_id
+	if th.is_empty():
+		th = MonetizationManager.get_active_theme() if Engine.has_singleton("MonetizationManager") or is_instance_valid(MonetizationManager) else "classic_jade"
 	match th:
 		"theme_imperial_gold":
 			return Color("#4a1210") # Imperial crimson lacquer back
@@ -70,8 +83,10 @@ static func get_theme_back_base() -> Color:
 		_:
 			return COL_DEEP # Biscuit warm ceramic underside (#b79f74) from nine-rivers.html
 
-static func get_theme_back_edge() -> Color:
-	var th: String = MonetizationManager.get_active_theme() if Engine.has_singleton("MonetizationManager") or is_instance_valid(MonetizationManager) else "classic_jade"
+static func get_theme_back_edge(theme_id: String = "") -> Color:
+	var th: String = theme_id
+	if th.is_empty():
+		th = MonetizationManager.get_active_theme() if Engine.has_singleton("MonetizationManager") or is_instance_valid(MonetizationManager) else "classic_jade"
 	match th:
 		"theme_imperial_gold":
 			return Color("#8c2320")
@@ -82,8 +97,10 @@ static func get_theme_back_edge() -> Color:
 		_:
 			return Color("#a48c62")
 
-static func get_col_ink() -> Color:
-	var th: String = MonetizationManager.get_active_theme() if Engine.has_singleton("MonetizationManager") or is_instance_valid(MonetizationManager) else "classic_jade"
+static func get_col_ink(theme_id: String = "") -> Color:
+	var th: String = theme_id
+	if th.is_empty():
+		th = MonetizationManager.get_active_theme() if Engine.has_singleton("MonetizationManager") or is_instance_valid(MonetizationManager) else "classic_jade"
 	if th == "theme_obsidian_ink":
 		return Color("#f0f4f8") # White jade calligraphy on dark basalt
 	elif th == "theme_imperial_gold":
@@ -91,6 +108,17 @@ static func get_col_ink() -> Color:
 	elif th == "theme_cherry_blossom":
 		return Color("#2e181f")
 	return COL_INK
+
+static func create_preview_tile(suit: String, rank: int, theme_id: String = "", scale_factor: float = 1.0) -> TileView:
+	var tile := RiverTile.new(0, 0, 0, suit, rank)
+	var view := TileView.new()
+	view.theme_override = theme_id
+	view.setup(tile, true)
+	view.update_theme_style()
+	view.custom_minimum_size = Vector2(TILE_W * scale_factor, TILE_H * scale_factor)
+	view.size = view.custom_minimum_size
+	view.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return view
 
 static func get_col_red() -> Color:
 	var mode: String = SettingsManager.color_blind_mode
@@ -217,16 +245,16 @@ func update_theme_style() -> void:
 func _init_styleboxes() -> void:
 	# 1. 3D Biscuit / Lacquer Underside Slab (exact match to HTML --deep #b79f74)
 	sb_extrusion = StyleBoxFlat.new()
-	sb_extrusion.bg_color = get_theme_back_base()
-	sb_extrusion.border_color = get_theme_back_edge()
+	sb_extrusion.bg_color = get_theme_back_base(get_effective_theme())
+	sb_extrusion.border_color = get_theme_back_edge(get_effective_theme())
 	sb_extrusion.set_corner_radius_all(8)
 	sb_extrusion.anti_aliasing = true
 	sb_extrusion.anti_aliasing_size = 1.0
 	
 	# 2. Top Ceramic Face Slab
 	sb_base = StyleBoxFlat.new()
-	sb_base.bg_color = get_theme_face_color(is_free or is_revealed)
-	sb_base.border_color = get_theme_border_color(is_free or is_revealed)
+	sb_base.bg_color = get_theme_face_color(is_free or is_revealed, get_effective_theme())
+	sb_base.border_color = get_theme_border_color(is_free or is_revealed, get_effective_theme())
 	sb_base.set_border_width_all(1)
 	sb_base.set_corner_radius_all(8)
 	sb_base.anti_aliasing = true
@@ -442,15 +470,15 @@ func _draw() -> void:
 		draw_style_box(sb_shadow, shadow_rect)
 	
 	# 2. 3D Depth Underside Slab (matching HTML 0 4px 0 0 var(--deep))
-	sb_extrusion.bg_color = get_theme_back_base()
-	sb_extrusion.border_color = get_theme_back_edge()
+	sb_extrusion.bg_color = get_theme_back_base(get_effective_theme())
+	sb_extrusion.border_color = get_theme_back_edge(get_effective_theme())
 	var ext_rect := Rect2(offset_x, offset_y + DEPTH_3D, TILE_W, TILE_H - DEPTH_3D)
 	draw_style_box(sb_extrusion, ext_rect)
 	
 	# 3. Top Ceramic Face Slab (cream face + 1px border)
 	var face_rect := Rect2(offset_x, offset_y, TILE_W, TILE_H - DEPTH_3D)
-	sb_base.bg_color = get_theme_face_color(is_free or is_revealed)
-	sb_base.border_color = get_theme_border_color(is_free or is_revealed)
+	sb_base.bg_color = get_theme_face_color(is_free or is_revealed, get_effective_theme())
+	sb_base.border_color = get_theme_border_color(is_free or is_revealed, get_effective_theme())
 	draw_style_box(sb_base, face_rect)
 	
 	# Top inset specular highlight line: inset 0 2px 0 rgba(255,255,255,.95)
@@ -586,7 +614,7 @@ func draw_canonical_face(face_r: Rect2) -> void:
 			draw_canonical_characters(face_r, tile_data.rank)
 		"wind":
 			var w_str := WINDS[tile_data.rank - 1] if tile_data.rank <= WINDS.size() else "東"
-			draw_canonical_glyph(face_r, w_str, get_col_ink(), 38)
+			draw_canonical_glyph(face_r, w_str, get_col_ink(get_effective_theme()), 38)
 		"dragon":
 			match tile_data.rank:
 				1: draw_canonical_glyph(face_r, "中", get_col_red(), 38)
@@ -635,7 +663,7 @@ func draw_canonical_characters(face_r: Rect2, rank: int) -> void:
 	var top_sz: int = int(face_r.size.x * 0.46) # ~29px
 	var bot_sz: int = int(face_r.size.x * 0.38) # ~24px
 	
-	draw_string(font, Vector2(cx - top_sz * 0.5, cy - 3.0), num_str, HORIZONTAL_ALIGNMENT_CENTER, top_sz, top_sz, get_col_ink())
+	draw_string(font, Vector2(cx - top_sz * 0.5, cy - 3.0), num_str, HORIZONTAL_ALIGNMENT_CENTER, top_sz, top_sz, get_col_ink(get_effective_theme()))
 	draw_string(font, Vector2(cx - bot_sz * 0.5, cy + bot_sz * 0.95), "萬", HORIZONTAL_ALIGNMENT_CENTER, bot_sz, bot_sz, get_col_red())
 
 func draw_canonical_glyph(face_r: Rect2, text: String, col: Color, font_size: int) -> void:
@@ -650,7 +678,7 @@ func draw_canonical_dots(face_r: Rect2, n: int) -> void:
 	var scale_x: float = face_r.size.x / 100.0
 	var scale_y: float = face_r.size.y / 132.0
 	var dot_colors: Array[Color] = [get_col_blue(), get_col_red(), get_col_green()]
-	var cream_core_col := get_theme_face_color(true)
+	var cream_core_col := get_theme_face_color(true, get_effective_theme())
 	
 	for i in range(pts_list.size()):
 		var p: Array = pts_list[i]

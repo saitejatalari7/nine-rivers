@@ -127,8 +127,15 @@ func _ready() -> void:
 	# Initialize motes
 	_init_motes()
 	
+	if is_instance_valid(MonetizationManager) and MonetizationManager.has_signal("background_theme_equipped"):
+		MonetizationManager.background_theme_equipped.connect(_on_background_theme_equipped)
+	
 	# Apply initial theme
-	set_level(1, false)
+	var active_th := MonetizationManager.get_active_background_theme() if is_instance_valid(MonetizationManager) else "auto"
+	if active_th != "auto":
+		apply_theme_by_id(active_th, false)
+	else:
+		set_level(1, false)
 
 func _ensure_containers() -> void:
 	bg_color = get_node_or_null("BgColor")
@@ -247,6 +254,24 @@ func _init_motes() -> void:
 			"phase": randf() * TAU
 		})
 
+func _on_background_theme_equipped(theme_id: String) -> void:
+	if theme_id == "auto":
+		set_level(current_level, true)
+	else:
+		apply_theme_by_id(theme_id, true)
+
+func apply_theme_by_id(theme_id: String, animate: bool = true) -> void:
+	for idx in range(THEMES.size()):
+		if THEMES[idx]["id"] == theme_id:
+			var theme_data: Dictionary = THEMES[idx]
+			var theme_changed_flag: bool = (idx != current_theme_idx)
+			current_theme_idx = idx
+			active_theme = theme_data
+			_apply_theme(theme_data, animate)
+			if theme_changed_flag:
+				theme_changed.emit(theme_data, current_level)
+			return
+
 ## Calculate theme based on 5-level bracket
 func get_theme_for_level(level: int) -> Dictionary:
 	var safe_level: int = maxi(1, level)
@@ -256,6 +281,11 @@ func get_theme_for_level(level: int) -> Dictionary:
 ## Public API to update level and trigger dynamic theme transitions
 func set_level(level: int, animate: bool = true) -> void:
 	current_level = level
+	var active_th := MonetizationManager.get_active_background_theme() if is_instance_valid(MonetizationManager) else "auto"
+	if active_th != "auto":
+		apply_theme_by_id(active_th, animate)
+		return
+		
 	var new_theme_idx: int = int((maxi(1, level) - 1) / 5) % THEMES.size()
 	var theme_data: Dictionary = THEMES[new_theme_idx]
 	

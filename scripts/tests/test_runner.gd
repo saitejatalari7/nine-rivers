@@ -17,6 +17,7 @@ func _ready() -> void:
 	assert(GameManager != null, "GameManager autoload missing")
 	SaveManager.sanctuary["koi_unlocked"] = ["kohaku"]
 	SaveManager.sanctuary["decorations"] = ["bamboo_fountain"]
+	MonetizationManager.equip_background_theme("auto")
 	print("[PASS] All Autoload Singletons Active.")
 	
 	# 2. Test Calm Game Start
@@ -400,14 +401,15 @@ func _ready() -> void:
 	
 	# Test live theme switching
 	var theme_signal_received := [false]
-	zen_bg.theme_changed.connect(func(data, lvl):
+	var test_cb := func(data, lvl):
 		theme_signal_received[0] = true
 		assert(lvl == 6, "Signal level should be 6")
 		assert(data.id == "moonlit_river", "Signal theme should be Moonlit")
-	)
+	zen_bg.theme_changed.connect(test_cb)
 	zen_bg.set_level(6, false)
 	assert(zen_bg.current_theme_idx == 1, "Theme index should be 1 for Level 6")
 	assert(theme_signal_received[0], "Theme changed signal must be emitted on 5-level transition")
+	zen_bg.theme_changed.disconnect(test_cb)
 	
 	# Test ripple creation
 	zen_bg.add_ripple(Vector2(540, 960), 1.2)
@@ -521,8 +523,58 @@ func _ready() -> void:
 	assert(SaveManager.get_jade() <= 500, "Tampered jade must be clamped to safe cap")
 	print("[PASS] Security Anti-Tamper & Checksum Integrity verified (tampered entitlements revoked).")
 	
+	# 30. Test Tile Preview Generation & Theme Override Rendering
+	var preview_gold := TileView.create_preview_tile("bam", 1, "theme_imperial_gold", 1.0)
+	assert(is_instance_valid(preview_gold), "Preview tile must be instantiated")
+	assert(preview_gold.theme_override == "theme_imperial_gold", "Preview tile must hold theme_override")
+	assert(TileView.get_theme_back_base("theme_imperial_gold") == Color("#4a1210"), "Imperial gold must have crimson lacquer underside")
+	assert(TileView.get_col_ink("theme_obsidian_ink") == Color("#f0f4f8"), "Obsidian ink must use white jade calligraphy")
+	preview_gold.free()
+	print("[PASS] Tile Preview Generation & Theme Override Rendering verified.")
+	
+	# 31. Test Multiple Free Background Themes & Equipping
+	assert(MonetizationManager.is_background_theme_unlocked("emerald_pond") == true, "Emerald pond must be free & unlocked")
+	assert(MonetizationManager.is_background_theme_unlocked("moonlit_river") == true, "Moonlit river must be free & unlocked")
+	assert(MonetizationManager.is_background_theme_unlocked("autumn_stream") == true, "Autumn stream must be free & unlocked")
+	MonetizationManager.equip_background_theme("moonlit_river")
+	assert(MonetizationManager.get_active_background_theme() == "moonlit_river", "Moonlit river must be equipped")
+	SaveManager.add_jade(2000)
+	var bought_spring := MonetizationManager.buy_background_with_jade("misty_spring")
+	assert(bought_spring == true, "Should unlock misty_spring with jade")
+	assert(MonetizationManager.is_background_theme_unlocked("misty_spring") == true, "Misty spring must now be unlocked")
+	assert(MonetizationManager.get_active_background_theme() == "misty_spring", "Misty spring must be active after buy")
+	MonetizationManager.equip_background_theme("auto")
+	print("[PASS] Multiple Free Background Themes (Emerald, Moonlit, Autumn) & Equipping verified.")
+	
+	# 32. Test Bazaar Hub & Sub-UI Modal Navigation
+	var bz_modal_scene: PackedScene = load("res://scenes/ui/modal.tscn")
+	var bz_modal: ModalController = bz_modal_scene.instantiate()
+	add_child(bz_modal)
+	bz_modal.show_bazaar_modal()
+	assert(bz_modal._current_screen == "bazaar", "Modal must enter bazaar screen")
+	bz_modal.show_tile_catalog_modal()
+	assert(bz_modal._current_screen == "tile_catalog", "Modal must enter tile_catalog screen")
+	bz_modal.show_tile_detail_modal("theme_imperial_gold")
+	assert(bz_modal._current_screen == "tile_detail", "Modal must enter tile_detail screen")
+	bz_modal.handle_back_pressed()
+	assert(bz_modal._current_screen == "tile_catalog", "Back from tile_detail must return to tile_catalog")
+	bz_modal.handle_back_pressed()
+	assert(bz_modal._current_screen == "bazaar", "Back from tile_catalog must return to bazaar")
+	bz_modal.show_background_catalog_modal()
+	assert(bz_modal._current_screen == "bg_catalog", "Modal must enter bg_catalog screen")
+	bz_modal.show_background_detail_modal("moonlit_river")
+	assert(bz_modal._current_screen == "bg_detail", "Modal must enter bg_detail screen")
+	bz_modal.handle_back_pressed()
+	assert(bz_modal._current_screen == "bg_catalog", "Back from bg_detail must return to bg_catalog")
+	bz_modal.handle_back_pressed()
+	assert(bz_modal._current_screen == "bazaar", "Back from bg_catalog must return to bazaar")
+	bz_modal.handle_back_pressed()
+	assert(bz_modal._current_screen == "main", "Back from bazaar must return to main")
+	bz_modal.queue_free()
+	print("[PASS] Bazaar Hub & Sub-UI Modal Navigation & Back Stack verified.")
+	
 	print("==================================================")
-	print("--- ALL 29 TEST SUITES PASSED FLAWLESSLY! ---")
+	print("--- ALL 32 TEST SUITES PASSED FLAWLESSLY! ---")
 	print("==================================================")
 	get_tree().quit(0)
 
