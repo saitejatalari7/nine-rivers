@@ -34,7 +34,7 @@ const TILE_THEME_DETAILS: Dictionary = {
 		"desc": "Opulent gilded face with delicate chased gold filigree on imperial crimson lacquer backing. Fits the grandeur of royal courts.",
 		"purpose": "Maximum visual prominence. Gilded tile faces catch the light, making free playable tiles immediately distinct in dense 3D stacks.",
 		"tactile": "Heavy lacquered clack. Every match disintegrates into a radiant shower of glittering 24k golden sand.",
-		"samples": [["bam", 1], ["char", 9], ["dragon", 1]]
+		"samples": [["bam", 1], ["char", 9], ["dragon", 2]]
 	},
 	"theme_obsidian_ink": {
 		"id": "theme_obsidian_ink",
@@ -43,7 +43,7 @@ const TILE_THEME_DETAILS: Dictionary = {
 		"desc": "Carved from deep volcanic basalt stone with luminous white-jade glyphs and cinnabar seals on a dark basalt underside.",
 		"purpose": "True OLED Dark Mode. Drastically minimizes screen glare and blue light emissions, preventing eye strain during evening play.",
 		"tactile": "Deep, resonant mineral clatter. Matched pairs disperse into wisps of midnight basalt mist.",
-		"samples": [["bam", 1], ["char", 9], ["dragon", 3]]
+		"samples": [["bam", 1], ["char", 9], ["dragon", 1]]
 	},
 	"theme_cherry_blossom": {
 		"id": "theme_cherry_blossom",
@@ -52,7 +52,7 @@ const TILE_THEME_DETAILS: Dictionary = {
 		"desc": "Delicate blush porcelain tiles with cinnabar plum flower engravings resting on a dark plum rosewood foundation.",
 		"purpose": "Tranquil sensory comfort. Soft pastel tones ease mental tension and facilitate long, uninterrupted zen flow states.",
 		"tactile": "Gentle porcelain chime. Matched tiles dissolve gracefully into floating pink sakura petals.",
-		"samples": [["flower", 1], ["char", 9], ["dot", 1]]
+		"samples": [["flower", 1], ["char", 9], ["dragon", 3]]
 	}
 }
 

@@ -120,19 +120,46 @@ static func create_preview_tile(suit: String, rank: int, theme_id: String = "", 
 	view.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return view
 
-static func get_col_red() -> Color:
+static func get_col_red(theme_id: String = "") -> Color:
+	var th: String = theme_id
+	if th.is_empty():
+		th = MonetizationManager.get_active_theme() if Engine.has_singleton("MonetizationManager") or is_instance_valid(MonetizationManager) else "classic_jade"
+	if th == "theme_obsidian_ink":
+		return Color("#ff4757") # Radiant neon vermilion for dark basalt
+	elif th == "theme_imperial_gold":
+		return Color("#b22222") # Imperial royal crimson
+	elif th == "theme_cherry_blossom":
+		return Color("#cf3b5b") # Sakura rose cinnabar
 	var mode: String = SettingsManager.color_blind_mode
 	if mode in ["deuteranopia", "protanopia"]:
 		return Color("#e04a3f")
 	return COL_RED
 
-static func get_col_green() -> Color:
+static func get_col_green(theme_id: String = "") -> Color:
+	var th: String = theme_id
+	if th.is_empty():
+		th = MonetizationManager.get_active_theme() if Engine.has_singleton("MonetizationManager") or is_instance_valid(MonetizationManager) else "classic_jade"
+	if th == "theme_obsidian_ink":
+		return Color("#00d2d3") # Radiant electric turquoise
+	elif th == "theme_imperial_gold":
+		return Color("#c69214") # Gilded antique bronze-gold
+	elif th == "theme_cherry_blossom":
+		return Color("#38a169") # Tender spring tea bud green
 	var mode: String = SettingsManager.color_blind_mode
 	if mode in ["deuteranopia", "protanopia"]:
 		return Color("#008a8a")
 	return COL_GREEN
 
-static func get_col_blue() -> Color:
+static func get_col_blue(theme_id: String = "") -> Color:
+	var th: String = theme_id
+	if th.is_empty():
+		th = MonetizationManager.get_active_theme() if Engine.has_singleton("MonetizationManager") or is_instance_valid(MonetizationManager) else "classic_jade"
+	if th == "theme_obsidian_ink":
+		return Color("#54a0ff") # Radiant sapphire cyan
+	elif th == "theme_imperial_gold":
+		return Color("#b8860b") # Chased goldenrod
+	elif th == "theme_cherry_blossom":
+		return Color("#6c5ce7") # Soft wisteria iris
 	var mode: String = SettingsManager.color_blind_mode
 	if mode == "tritanopia":
 		return Color("#593570")
@@ -485,6 +512,15 @@ func _draw() -> void:
 	if is_free or is_revealed or is_dissolving:
 		draw_line(face_rect.position + Vector2(6, 1.5), face_rect.position + Vector2(TILE_W - 6, 1.5), Color(1, 1, 1, 0.85), 1.2, true)
 	
+	# 3.5 Theme-Specific Artisan Ornamentation & Face Framing
+	var cur_th: String = get_effective_theme()
+	if cur_th == "theme_imperial_gold":
+		_draw_imperial_gold_framing(face_rect)
+	elif cur_th == "theme_obsidian_ink":
+		_draw_obsidian_ink_framing(face_rect)
+	elif cur_th == "theme_cherry_blossom":
+		_draw_cherry_blossom_framing(face_rect)
+	
 	# 4. Triple Set 24k Gold Band (Bottom Bezel)
 	if tile_data.size == 3:
 		var band_h: float = 6.0
@@ -603,8 +639,54 @@ func _draw_frost_encasement(face_r: Rect2) -> void:
 	draw_line(c + Vector2(8, 2), face_r.position + face_r.size - Vector2(6, 6), frost_rim, 1.5)
 	draw_circle(face_r.position + Vector2(face_r.size.x - 8, 8), 3.0, Color.WHITE, true)
 
+# ================= THEME ARTISAN FRAMING & ORNAMENTATION =================
+func _draw_imperial_gold_framing(face_r: Rect2) -> void:
+	var frame_r := Rect2(face_r.position + Vector2(2.5, 2.5), face_r.size - Vector2(5.0, 5.0))
+	# 1. 24k Gold leaf inner border
+	draw_rect(frame_r, Color(0.85, 0.68, 0.22, 0.65), false, 1.0)
+	
+	# 2. Regal Gilded Filigree L-Brackets at 4 corners
+	var fg_col := Color(0.95, 0.78, 0.25, 0.95)
+	var fl: float = 5.0
+	# Top-Left
+	draw_line(frame_r.position + Vector2(1, 0), frame_r.position + Vector2(1, fl), fg_col, 1.4)
+	draw_line(frame_r.position + Vector2(0, 1), frame_r.position + Vector2(fl, 1), fg_col, 1.4)
+	# Top-Right
+	var tr := frame_r.position + Vector2(frame_r.size.x, 0)
+	draw_line(tr + Vector2(-1, 0), tr + Vector2(-1, fl), fg_col, 1.4)
+	draw_line(tr + Vector2(0, 1), tr + Vector2(-fl, 1), fg_col, 1.4)
+	# Bottom-Left
+	var bl := frame_r.position + Vector2(0, frame_r.size.y)
+	draw_line(bl + Vector2(1, 0), bl + Vector2(1, -fl), fg_col, 1.4)
+	draw_line(bl + Vector2(0, -1), bl + Vector2(fl, -1), fg_col, 1.4)
+	# Bottom-Right
+	var br := frame_r.position + frame_r.size
+	draw_line(br + Vector2(-1, 0), br + Vector2(-1, -fl), fg_col, 1.4)
+	draw_line(br + Vector2(0, -1), br + Vector2(-fl, -1), fg_col, 1.4)
+
+func _draw_obsidian_ink_framing(face_r: Rect2) -> void:
+	var inner_r := Rect2(face_r.position + Vector2(2.0, 2.0), face_r.size - Vector2(4.0, 4.0))
+	# Sleek slate chamfer
+	draw_rect(inner_r, Color(0.28, 0.35, 0.44, 0.40), false, 1.0)
+	# Subtle moonlit basalt reflection glint
+	draw_line(inner_r.position + Vector2(4, 1), inner_r.position + Vector2(inner_r.size.x - 4, 1), Color(0.55, 0.75, 0.92, 0.35), 1.0)
+
+func _draw_cherry_blossom_framing(face_r: Rect2) -> void:
+	var frame_r := Rect2(face_r.position + Vector2(2.5, 2.5), face_r.size - Vector2(5.0, 5.0))
+	# Rose-gold hairline border
+	draw_rect(frame_r, Color(0.85, 0.55, 0.62, 0.45), false, 1.0)
+	# Subtle sakura petal motifs in top-left and bottom-right corners
+	var petal_col := Color(0.95, 0.65, 0.75, 0.75)
+	var tl_pos := frame_r.position + Vector2(4, 4)
+	draw_circle(tl_pos, 1.6, petal_col)
+	draw_circle(tl_pos + Vector2(2, 2), 1.2, petal_col)
+	var br_pos := frame_r.position + frame_r.size - Vector2(4, 4)
+	draw_circle(br_pos, 1.6, petal_col)
+	draw_circle(br_pos - Vector2(2, 2), 1.2, petal_col)
+
 # ================= CANONICAL ARTWORK (EXACT MATCH TO NINE-RIVERS.HTML) =================
 func draw_canonical_face(face_r: Rect2) -> void:
+	var th: String = get_effective_theme()
 	match tile_data.suit:
 		"dot":
 			draw_canonical_dots(face_r, tile_data.rank)
@@ -614,23 +696,30 @@ func draw_canonical_face(face_r: Rect2) -> void:
 			draw_canonical_characters(face_r, tile_data.rank)
 		"wind":
 			var w_str := WINDS[tile_data.rank - 1] if tile_data.rank <= WINDS.size() else "東"
-			draw_canonical_glyph(face_r, w_str, get_col_ink(get_effective_theme()), 38)
+			draw_canonical_glyph(face_r, w_str, get_col_ink(th), 38)
 		"dragon":
 			match tile_data.rank:
-				1: draw_canonical_glyph(face_r, "中", get_col_red(), 38)
-				2: draw_canonical_glyph(face_r, "發", get_col_green(), 38)
+				1: draw_canonical_glyph(face_r, "中", get_col_red(th), 38)
+				2: draw_canonical_glyph(face_r, "發", get_col_green(th), 38)
 				3: draw_white_dragon_frame(face_r)
 		"flower":
 			var f_str := FLOWERS[tile_data.rank - 1] if tile_data.rank <= FLOWERS.size() else "花"
-			draw_canonical_glyph(face_r, f_str, get_col_green(), 30)
+			draw_canonical_glyph(face_r, f_str, get_col_green(th), 30)
 		"season":
 			var s_str := SEASONS[tile_data.rank - 1] if tile_data.rank <= SEASONS.size() else "季"
-			draw_canonical_glyph(face_r, s_str, get_col_blue(), 30)
+			draw_canonical_glyph(face_r, s_str, get_col_blue(th), 30)
 
 func draw_white_dragon_frame(face_r: Rect2) -> void:
+	var th: String = get_effective_theme()
 	var scale_x: float = face_r.size.x / 100.0
 	var scale_y: float = face_r.size.y / 132.0
-	var col := get_col_blue()
+	var col := get_col_blue(th)
+	if th == "theme_imperial_gold":
+		col = Color("#d49826") # 24k Gold frame
+	elif th == "theme_obsidian_ink":
+		col = Color("#38bdf8") # Radiant electric cyan frame
+	elif th == "theme_cherry_blossom":
+		col = Color("#cf3b5b") # Soft rose cinnabar frame
 	
 	# Outer rounded rectangle (64x82, rx=7, stroke=7 in 100x132 viewBox)
 	var sb_outer := StyleBoxFlat.new()
@@ -655,6 +744,7 @@ func draw_white_dragon_frame(face_r: Rect2) -> void:
 	draw_style_box(sb_inner, inner_r)
 
 func draw_canonical_characters(face_r: Rect2, rank: int) -> void:
+	var th: String = get_effective_theme()
 	var font := get_cjk_font()
 	var num_str: String = CN_NUMS[rank] if rank < CN_NUMS.size() else str(rank)
 	var cx: float = face_r.position.x + face_r.size.x * 0.5
@@ -663,22 +753,62 @@ func draw_canonical_characters(face_r: Rect2, rank: int) -> void:
 	var top_sz: int = int(face_r.size.x * 0.46) # ~29px
 	var bot_sz: int = int(face_r.size.x * 0.38) # ~24px
 	
-	draw_string(font, Vector2(cx - top_sz * 0.5, cy - 3.0), num_str, HORIZONTAL_ALIGNMENT_CENTER, top_sz, top_sz, get_col_ink(get_effective_theme()))
-	draw_string(font, Vector2(cx - bot_sz * 0.5, cy + bot_sz * 0.95), "萬", HORIZONTAL_ALIGNMENT_CENTER, bot_sz, bot_sz, get_col_red())
+	if th == "theme_imperial_gold":
+		# 24k Gilded gold engraving with warm chased depth
+		draw_string(font, Vector2(cx - top_sz * 0.5 + 1.0, cy - 2.0), num_str, HORIZONTAL_ALIGNMENT_CENTER, top_sz, top_sz, Color("#6d460e"))
+		draw_string(font, Vector2(cx - top_sz * 0.5, cy - 3.0), num_str, HORIZONTAL_ALIGNMENT_CENTER, top_sz, top_sz, Color("#d49826"))
+		draw_string(font, Vector2(cx - top_sz * 0.5 - 0.5, cy - 3.5), num_str, HORIZONTAL_ALIGNMENT_CENTER, top_sz, top_sz, Color(1.0, 0.95, 0.70, 0.45))
+		
+		# 萬 in royal crimson lacquer
+		draw_string(font, Vector2(cx - bot_sz * 0.5 + 1.0, cy + bot_sz * 0.95 + 1.0), "萬", HORIZONTAL_ALIGNMENT_CENTER, bot_sz, bot_sz, Color("#4a0e12"))
+		draw_string(font, Vector2(cx - bot_sz * 0.5, cy + bot_sz * 0.95), "萬", HORIZONTAL_ALIGNMENT_CENTER, bot_sz, bot_sz, Color("#b22222"))
+	elif th == "theme_obsidian_ink":
+		# Luminescent white-jade glyph with electric cyan glow
+		draw_string(font, Vector2(cx - top_sz * 0.5, cy - 3.0), num_str, HORIZONTAL_ALIGNMENT_CENTER, top_sz, top_sz, Color(0, 0.85, 0.8, 0.35))
+		draw_string(font, Vector2(cx - top_sz * 0.5, cy - 3.0), num_str, HORIZONTAL_ALIGNMENT_CENTER, top_sz, top_sz, Color("#f0f4f8"))
+		# 萬 in radiant neon vermilion
+		draw_string(font, Vector2(cx - bot_sz * 0.5, cy + bot_sz * 0.95), "萬", HORIZONTAL_ALIGNMENT_CENTER, bot_sz, bot_sz, Color("#ff4757"))
+	else:
+		draw_string(font, Vector2(cx - top_sz * 0.5, cy - 3.0), num_str, HORIZONTAL_ALIGNMENT_CENTER, top_sz, top_sz, get_col_ink(th))
+		draw_string(font, Vector2(cx - bot_sz * 0.5, cy + bot_sz * 0.95), "萬", HORIZONTAL_ALIGNMENT_CENTER, bot_sz, bot_sz, get_col_red(th))
 
 func draw_canonical_glyph(face_r: Rect2, text: String, col: Color, font_size: int) -> void:
+	var th: String = get_effective_theme()
 	var font := get_cjk_font()
 	var cx: float = face_r.position.x + face_r.size.x * 0.5
 	var cy: float = face_r.position.y + face_r.size.y * 0.5
+	
+	if th == "theme_imperial_gold":
+		if text == "發":
+			# Gilded 24k Gold Prosperity character
+			draw_string(font, Vector2(cx - font_size * 0.5 + 1.2, cy + font_size * 0.36 + 1.2), text, HORIZONTAL_ALIGNMENT_CENTER, font_size, font_size, Color("#6d460e"))
+			draw_string(font, Vector2(cx - font_size * 0.5, cy + font_size * 0.36), text, HORIZONTAL_ALIGNMENT_CENTER, font_size, font_size, Color("#d49826"))
+			draw_string(font, Vector2(cx - font_size * 0.5 - 0.5, cy + font_size * 0.36 - 0.5), text, HORIZONTAL_ALIGNMENT_CENTER, font_size, font_size, Color(1.0, 0.95, 0.70, 0.55))
+			return
+		elif text == "中":
+			draw_string(font, Vector2(cx - font_size * 0.5 + 1.0, cy + font_size * 0.36 + 1.0), text, HORIZONTAL_ALIGNMENT_CENTER, font_size, font_size, Color("#4a0e12"))
+			draw_string(font, Vector2(cx - font_size * 0.5, cy + font_size * 0.36), text, HORIZONTAL_ALIGNMENT_CENTER, font_size, font_size, Color("#b22222"))
+			return
+	elif th == "theme_obsidian_ink":
+		# Soft glowing halo on dark volcanic stone
+		draw_string(font, Vector2(cx - font_size * 0.5, cy + font_size * 0.36), text, HORIZONTAL_ALIGNMENT_CENTER, font_size, font_size, Color(col.r, col.g, col.b, 0.35))
+		draw_string(font, Vector2(cx - font_size * 0.5, cy + font_size * 0.36), text, HORIZONTAL_ALIGNMENT_CENTER, font_size, font_size, col)
+		return
+		
 	draw_string(font, Vector2(cx - font_size * 0.5, cy + font_size * 0.36), text, HORIZONTAL_ALIGNMENT_CENTER, font_size, font_size, col)
 
 func draw_canonical_dots(face_r: Rect2, n: int) -> void:
+	var th: String = get_effective_theme()
 	var pts_list: Array = DOTS.get(n, [])
 	var default_r: float = 9.5 if n >= 8 else (10.5 if n == 9 else 12.5)
 	var scale_x: float = face_r.size.x / 100.0
 	var scale_y: float = face_r.size.y / 132.0
-	var dot_colors: Array[Color] = [get_col_blue(), get_col_red(), get_col_green()]
-	var cream_core_col := get_theme_face_color(true, get_effective_theme())
+	var dot_colors: Array[Color] = [get_col_blue(th), get_col_red(th), get_col_green(th)]
+	var core_col := get_theme_face_color(true, th)
+	if th == "theme_obsidian_ink":
+		core_col = Color("#0f1317")
+	elif th == "theme_imperial_gold":
+		core_col = Color("#fff9e8")
 	
 	for i in range(pts_list.size()):
 		var p: Array = pts_list[i]
@@ -690,16 +820,21 @@ func draw_canonical_dots(face_r: Rect2, n: int) -> void:
 		
 		# 1. Outer colored enameled circle
 		draw_circle(center, r_val, col, true, -1.0, true)
-		# 2. Inner cream circle core (r * 0.42 matching HTML)
-		draw_circle(center, r_val * 0.42, cream_core_col, true, -1.0, true)
+		# 2. Inner circle core
+		draw_circle(center, r_val * 0.42, core_col, true, -1.0, true)
 
 func draw_canonical_bamboos(face_r: Rect2, n: int) -> void:
+	var th: String = get_effective_theme()
 	var pts_list: Array = DOTS.get(n, [])
 	var scale_x: float = face_r.size.x / 100.0
 	var scale_y: float = face_r.size.y / 132.0
-	var g_col := get_col_green()
-	var r_col := get_col_red()
-	var cream_line_col := get_theme_face_color(true)
+	var g_col := get_col_green(th)
+	var r_col := get_col_red(th)
+	var cream_line_col := get_theme_face_color(true, th)
+	if th == "theme_obsidian_ink":
+		cream_line_col = Color("#f0f4f8")
+	elif th == "theme_imperial_gold":
+		cream_line_col = Color("#fff8e1")
 	
 	for i in range(pts_list.size()):
 		var p: Array = pts_list[i]
@@ -714,7 +849,8 @@ func draw_canonical_bamboos(face_r: Rect2, n: int) -> void:
 		var sb := _get_bamboo_stylebox(col, int(round(w * 0.5)))
 		draw_style_box(sb, Rect2(x, y, w, h))
 		
-		# Crisp cream dividing line across the middle
+		# Crisp dividing line across the middle
 		var cy: float = face_r.position.y + p[1] * scale_y
 		draw_line(Vector2(x + 1.2, cy), Vector2(x + w - 1.2, cy), cream_line_col, 2.0 * scale_x, true)
+
 
