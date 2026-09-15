@@ -1,6 +1,10 @@
 extends Node
 
 const SAVE_PATH := "user://nine_rivers_save.json"
+## Previous good generation, kept so an interrupted write can never lose a profile.
+const BACKUP_PATH := "user://nine_rivers_save.bak"
+## Scratch file. A save is written here in full and verified before it replaces SAVE_PATH.
+const TEMP_PATH := "user://nine_rivers_save.tmp"
 
 var prog: Dictionary = {
 	"level": 1,
@@ -31,7 +35,11 @@ var economy: Dictionary = {
 	"active_background_theme": "auto",
 	"active_mat_theme": "river_felt",
 	"rewarded_ads_today": 0,
-	"last_rewarded_date": ""
+	"last_rewarded_date": "",
+	# How each non-consumable was obtained: product_id -> "iap" | "pearls" | "jade".
+	# Anything marked "iap" is owned by Google Play, not by this file, and is
+	# re-checked against Play on every launch. See MonetizationManager.
+	"entitlement_source": {}
 }
 
 var settings: Dictionary = {
@@ -81,7 +89,12 @@ func _compute_checksum(p: Dictionary, e: Dictionary) -> String:
 	var na: bool = bool(e.get("no_ads_purchased", false))
 	return ("%d|%d|%s|%s" % [j, prl, str(na), _SALT]).sha256_text()
 
-func save_game() -> void:
+## Writes the profile atomically: the new data goes to a scratch file and is read
+## back to prove it is complete, and only then does it replace the live save. The
+## previous generation is rotated to BACKUP_PATH rather than discarded, so a write
+## interrupted at any point still leaves at least one loadable profile on disk.
+## Returns false if the profile could not be persisted; the old file is untouched.
+func save_game() -> bool:
 	_is_dirty = false
 	_batch_timer = 0.0
 	var data := {
@@ -93,11 +106,221 @@ func save_game() -> void:
 		"version": CURRENT_VERSION,
 		"checksum": _compute_checksum(prog, economy)
 	}
-	var file := FileAccess.open_encrypted_with_pass(SAVE_PATH, FileAccess.WRITE, _ENC_KEY)
-	if file:
-		var json_string := JSON.stringify(data, "\t")
-		file.store_string(json_string)
+
+	# 1. Write the full payload to the scratch file.
+	var file := FileAccess.open_encrypted_with_pass(TEMP_PATH, FileAccess.WRITE, _ENC_KEY)
+	if file == null:
+		push_error("Nine Rivers: could not open save scratch file (error %d). Profile not written." % FileAccess.get_open_error())
+		return false
+	file.store_string(JSON.stringify(data, "\t"))
+	file.close()
+
+	# 2. Read it back. A truncated or unflushed write fails here, before it can
+	#    replace the good file.
+	if _read_save_dict(TEMP_PATH).is_empty():
+		push_error("Nine Rivers: save verification failed. Keeping the previous profile.")
+		_remove(TEMP_PATH)
+		return false
+
+	# 3. Rotate. From here every interruption still leaves a loadable file:
+	#    between 3a and 3b the backup holds the old profile, and the verified
+	#    scratch file holds the new one.
+	if FileAccess.file_exists(SAVE_PATH):
+		_remove(BACKUP_PATH)
+		if DirAccess.rename_absolute(ProjectSettings.globalize_path(SAVE_PATH), ProjectSettings.globalize_path(BACKUP_PATH)) != OK:
+			# Could not preserve the old generation; the scratch file is still
+			# verified, so continue rather than lose the new progress.
+			_remove(SAVE_PATH)
+	if DirAccess.rename_absolute(ProjectSettings.globalize_path(TEMP_PATH), ProjectSettings.globalize_path(SAVE_PATH)) != OK:
+		push_error("Nine Rivers: could not commit the save file. Recovery copy retained.")
+		return false
+	return true
+
+func _remove(path: String) -> void:
+	if FileAccess.file_exists(path):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
+
+## Reads and parses one save file. Returns an empty Dictionary if the file is
+## missing, unreadable, truncated, or not a JSON object.
+func _read_save_dict(path: String) -> Dictionary:
+	if not FileAccess.file_exists(path):
+		return {}
+
+	var content := ""
+	var file := FileAccess.open_encrypted_with_pass(path, FileAccess.READ, _ENC_KEY)
+	if file != null:
+		content = file.get_as_text()
 		file.close()
+
+	# Encrypted only. There is deliberately no plain-JSON fallback: accepting an
+	# unreadable file as plaintext let anyone skip the encryption entirely by
+	# handing the game an unencrypted save (audit T01). A file that will not
+	# decrypt is treated as damaged, and load_game() moves on to the next copy.
+	var json := JSON.new()
+	if not content.is_empty() and json.parse(content) == OK and json.data is Dictionary:
+		return json.data
+	return {}
+
+# ============================ LOAD VALIDATION ============================
+## Everything arriving from disk is untrusted: it may be truncated, hand-edited,
+## or written by a different build. Each field is coerced to its expected type and
+## clamped to a sane range before it reaches the live dictionaries, so a damaged
+## file degrades to defaults instead of breaking the game.
+##
+## This also fixes a quieter problem: JSON has no integer type, so every whole
+## number returns from a reload as a float (26 -> 26.0). Coercing here keeps the
+## types stable no matter how many save/load cycles a profile survives.
+
+const MAX_LEVEL: int = 50
+
+const VALID_TILE_THEMES: Array[String] = [
+	"classic_jade", "theme_imperial_gold", "theme_obsidian_ink", "theme_cherry_blossom"
+]
+const VALID_BG_THEMES: Array[String] = [
+	"emerald_pond", "moonlit_river", "autumn_stream", "misty_spring", "sunset_haven"
+]
+const VALID_KOI: Array[String] = ["kohaku", "sanke", "showa", "ogon", "dragon_koi"]
+const VALID_DECORATIONS: Array[String] = [
+	"bamboo_fountain", "stone_lantern", "pink_lotus", "stepping_stones"
+]
+const VALID_MOTION: Array[String] = ["full", "reduced"]
+const VALID_COLOR_BLIND: Array[String] = ["none", "deuteranopia", "protanopia", "tritanopia"]
+const VALID_ENTITLEMENT_SOURCES: Array[String] = ["iap", "pearls", "jade"]
+
+## A whole number, clamped. Accepts the floats that JSON hands back.
+func _vint(value: Variant, fallback: int, min_v: int = -2147483648, max_v: int = 2147483647) -> int:
+	if not (value is int or value is float or value is bool):
+		return fallback
+	var n: float = float(value)
+	if is_nan(n) or is_inf(n):
+		return fallback
+	return clampi(int(n), min_v, max_v)
+
+func _vbool(value: Variant, fallback: bool) -> bool:
+	return bool(value) if (value is bool or value is int or value is float) else fallback
+
+## A string restricted to a known set, so an unknown id can never be equipped.
+func _vstr(value: Variant, fallback: String, allowed: Array = []) -> String:
+	if not (value is String or value is StringName):
+		return fallback
+	var s := String(value)
+	if not allowed.is_empty() and not (s in allowed):
+		return fallback
+	return s
+
+## A list of known ids: unknown entries dropped, duplicates removed, `required`
+## entries always present.
+func _vid_list(value: Variant, allowed: Array, required: Array) -> Array:
+	var out: Array = []
+	for item in required:
+		out.append(item)
+	if value is Array:
+		for item in value:
+			if not (item is String or item is StringName):
+				continue
+			var s := String(item)
+			if s in allowed and not (s in out):
+				out.append(s)
+	return out
+
+func _sanitize_prog(raw: Variant) -> Dictionary:
+	var out: Dictionary = {}
+	if not (raw is Dictionary):
+		return out
+	var d: Dictionary = raw
+
+	# level is a pointer to the next unplayed stage, so MAX_LEVEL + 1 means "all done".
+	if d.has("level"): out["level"] = _vint(d["level"], 1, 1, MAX_LEVEL + 1)
+	if d.has("best_score"): out["best_score"] = _vint(d["best_score"], 0, 0)
+	if d.has("best_stage"): out["best_stage"] = _vint(d["best_stage"], 0, 0)
+	if d.has("river_jade"): out["river_jade"] = _vint(d["river_jade"], 0, 0)
+	if d.has("daily_streak"): out["daily_streak"] = _vint(d["daily_streak"], 0, 0)
+	if d.has("streak_shields"): out["streak_shields"] = _vint(d["streak_shields"], 0, 0, 99)
+	if d.has("last_daily_date"): out["last_daily_date"] = _vstr(d["last_daily_date"], "")
+	if d.has("tutorial_completed"): out["tutorial_completed"] = _vbool(d["tutorial_completed"], false)
+
+	# stars: {"<level>": 0..3}. Anything not shaped like that is discarded rather
+	# than copied in, which is what used to break record_level_clear() forever.
+	var stars: Dictionary = {}
+	if d.get("stars") is Dictionary:
+		for k in d["stars"].keys():
+			var key := str(k)
+			if not key.is_valid_int():
+				continue
+			var lvl: int = int(key)
+			if lvl < 1 or lvl > MAX_LEVEL:
+				continue
+			stars[key] = _vint(d["stars"][k], 0, 0, 3)
+	out["stars"] = stars
+	return out
+
+func _sanitize_economy(raw: Variant) -> Dictionary:
+	var out: Dictionary = {}
+	if not (raw is Dictionary):
+		return out
+	var d: Dictionary = raw
+
+	if d.has("pearls"): out["pearls"] = _vint(d["pearls"], 0, 0)
+	if d.has("no_ads_purchased"): out["no_ads_purchased"] = _vbool(d["no_ads_purchased"], false)
+	if d.has("rewarded_ads_today"): out["rewarded_ads_today"] = _vint(d["rewarded_ads_today"], 0, 0, 99)
+	if d.has("last_rewarded_date"): out["last_rewarded_date"] = _vstr(d["last_rewarded_date"], "")
+
+	var themes: Array = _vid_list(d.get("unlocked_themes"), VALID_TILE_THEMES, ["classic_jade"])
+	out["unlocked_themes"] = themes
+	# Never leave an unowned or unknown tile set equipped.
+	out["active_tile_theme"] = _vstr(d.get("active_tile_theme"), "classic_jade", themes)
+
+	var bgs: Array = _vid_list(d.get("unlocked_background_themes"), VALID_BG_THEMES,
+		["emerald_pond", "moonlit_river", "autumn_stream"])
+	out["unlocked_background_themes"] = bgs
+	var bg_allowed: Array = bgs.duplicate()
+	bg_allowed.append("auto")
+	out["active_background_theme"] = _vstr(d.get("active_background_theme"), "auto", bg_allowed)
+	if d.has("active_mat_theme"): out["active_mat_theme"] = _vstr(d["active_mat_theme"], "river_felt")
+
+	var sources: Dictionary = {}
+	if d.get("entitlement_source") is Dictionary:
+		for k in d["entitlement_source"].keys():
+			var src := _vstr(d["entitlement_source"][k], "", VALID_ENTITLEMENT_SOURCES)
+			if not src.is_empty():
+				sources[str(k)] = src
+	out["entitlement_source"] = sources
+	return out
+
+func _sanitize_sanctuary(raw: Variant) -> Dictionary:
+	var out: Dictionary = {}
+	if not (raw is Dictionary):
+		return out
+	var d: Dictionary = raw
+	if d.has("clarity_level"): out["clarity_level"] = _vint(d["clarity_level"], 1, 1, 10)
+	out["koi_unlocked"] = _vid_list(d.get("koi_unlocked"), VALID_KOI, ["kohaku"])
+	out["decorations"] = _vid_list(d.get("decorations"), VALID_DECORATIONS, ["bamboo_fountain"])
+	return out
+
+func _sanitize_settings(raw: Variant) -> Dictionary:
+	var out: Dictionary = {}
+	if not (raw is Dictionary):
+		return out
+	var d: Dictionary = raw
+	for key in ["music", "sfx", "haptics", "magnetic_assist"]:
+		if d.has(key): out[key] = _vbool(d[key], true)
+	if d.has("high_contrast_borders"): out["high_contrast_borders"] = _vbool(d["high_contrast_borders"], false)
+	if d.has("motion"): out["motion"] = _vstr(d["motion"], "full", VALID_MOTION)
+	if d.has("color_blind_mode"): out["color_blind_mode"] = _vstr(d["color_blind_mode"], "none", VALID_COLOR_BLIND)
+	return out
+
+## tile_mastery drives a permanent score multiplier, so it is bounded too.
+func _sanitize_mastery(raw: Variant) -> Dictionary:
+	var out: Dictionary = {}
+	if not (raw is Dictionary):
+		return out
+	for k in raw.keys():
+		var key := str(k)
+		var parts := key.split("_")
+		if parts.size() != 2 or not parts[1].is_valid_int():
+			continue
+		out[key] = _vint(raw[k], 0, 0, 999999)
+	return out
 
 func _migrate_save(data: Dictionary, from_version: int) -> Dictionary:
 	# Extensible migration chain for future versions
@@ -106,43 +329,42 @@ func _migrate_save(data: Dictionary, from_version: int) -> Dictionary:
 	data["version"] = CURRENT_VERSION
 	return data
 
+## Loads the profile, trying each generation in turn: the live save, then a
+## verified scratch file left by a write that was interrupted after verification,
+## then the previous generation. Progress is only lost if every copy is unreadable.
 func load_game() -> void:
-	if not FileAccess.file_exists(SAVE_PATH):
+	# Ordered newest-first. TEMP_PATH only survives a crash mid-rotation, and its
+	# contents were verified before that rotation began, so it outranks the backup.
+	var candidates: Array[String] = [SAVE_PATH, TEMP_PATH, BACKUP_PATH]
+
+	for i in range(candidates.size()):
+		var data: Dictionary = _read_save_dict(candidates[i])
+		if data.is_empty():
+			continue
+
+		_apply_save_data(data)
+		if i > 0:
+			# The live save was missing or damaged. Rewrite it from the copy that
+			# loaded so the player is not one more bad launch away from losing it.
+			push_warning("Nine Rivers: primary save unreadable, recovered from %s." % candidates[i])
+			save_game()
 		return
-		
-	var content := ""
-	var file := FileAccess.open_encrypted_with_pass(SAVE_PATH, FileAccess.READ, _ENC_KEY)
-	if file:
-		content = file.get_as_text()
-		file.close()
-	
-	var json := JSON.new()
-	var err := json.parse(content)
-	
-	# Fallback to plain JSON for backwards compatibility or initial migration
-	if err != OK or not (json.data is Dictionary):
-		file = FileAccess.open(SAVE_PATH, FileAccess.READ)
-		if file:
-			content = file.get_as_text()
-			file.close()
-			err = json.parse(content)
-			if err == OK and json.data is Dictionary:
-				_apply_save_data(json.data)
-				save_game() # Re-save in encrypted format immediately
-				return
-		return
-		
-	_apply_save_data(json.data)
+
+	if FileAccess.file_exists(SAVE_PATH) or FileAccess.file_exists(BACKUP_PATH):
+		push_error("Nine Rivers: every save copy was unreadable. Starting a fresh profile.")
 
 func _apply_save_data(data: Dictionary) -> void:
 	var file_version: int = int(data.get("version", 1))
 	if file_version < CURRENT_VERSION:
 		data = _migrate_save(data, file_version)
 		
-	var loaded_prog: Dictionary = data.get("prog", {}) if data.has("prog") and data["prog"] is Dictionary else {}
-	var loaded_econ: Dictionary = data.get("economy", {}) if data.has("economy") and data["economy"] is Dictionary else {}
-	
-	# Anti-tampering: verify cryptographic integrity checksum if present
+	# Coerce and clamp before anything is checked or merged, so the rest of this
+	# function — and the whole game after it — only ever sees well-formed values.
+	var loaded_prog: Dictionary = _sanitize_prog(data.get("prog"))
+	var loaded_econ: Dictionary = _sanitize_economy(data.get("economy"))
+
+	# Anti-tampering: verify cryptographic integrity checksum if present.
+	# Checked against the sanitized values, which is also what save_game() signs.
 	if data.has("checksum"):
 		var expected := _compute_checksum(loaded_prog, loaded_econ)
 		if str(data["checksum"]) != expected:
@@ -152,29 +374,19 @@ func _apply_save_data(data: Dictionary) -> void:
 			if loaded_prog.has("river_jade"):
 				loaded_prog["river_jade"] = mini(500, int(loaded_prog["river_jade"]))
 			loaded_econ["no_ads_purchased"] = false
-		
+
 	if not loaded_prog.is_empty():
 		prog.merge(loaded_prog, true)
-	if data.has("sanctuary") and data["sanctuary"] is Dictionary:
-		sanctuary.merge(data["sanctuary"], true)
-	if data.has("tile_mastery") and data["tile_mastery"] is Dictionary:
-		tile_mastery = data["tile_mastery"]
-	if data.has("settings") and data["settings"] is Dictionary:
-		settings.merge(data["settings"], true)
+	var loaded_sanctuary: Dictionary = _sanitize_sanctuary(data.get("sanctuary"))
+	if not loaded_sanctuary.is_empty():
+		sanctuary.merge(loaded_sanctuary, true)
+	if data.has("tile_mastery"):
+		tile_mastery = _sanitize_mastery(data["tile_mastery"])
+	var loaded_settings: Dictionary = _sanitize_settings(data.get("settings"))
+	if not loaded_settings.is_empty():
+		settings.merge(loaded_settings, true)
 	if not loaded_econ.is_empty():
 		economy.merge(loaded_econ, true)
-		
-	# Enforce required default collections
-	if not sanctuary.has("koi_unlocked") or sanctuary["koi_unlocked"].is_empty():
-		sanctuary["koi_unlocked"] = ["kohaku"]
-	if not economy.has("unlocked_background_themes") or economy["unlocked_background_themes"].is_empty():
-		economy["unlocked_background_themes"] = ["emerald_pond", "moonlit_river", "autumn_stream"]
-	else:
-		for free_th in ["emerald_pond", "moonlit_river", "autumn_stream"]:
-			if not (free_th in economy["unlocked_background_themes"]):
-				economy["unlocked_background_themes"].append(free_th)
-	if not economy.has("active_background_theme"):
-		economy["active_background_theme"] = "auto"
 
 func add_pearls(amount: int) -> void:
 	economy["pearls"] = maxi(0, int(economy.get("pearls", 0)) + amount)
@@ -198,7 +410,9 @@ func add_jade(amount: int) -> void:
 		if SanctuaryManager and SanctuaryManager.is_koi_unlocked("sanke"):
 			final_amount = int(ceil(float(amount) * 1.05))
 	prog["river_jade"] = int(prog.get("river_jade", 0)) + final_amount
-	save_game()
+	# Batched: jade trickles in several times per board, and record_level_clear()
+	# flushes at the end of every stage anyway.
+	request_save()
 
 func get_jade() -> int:
 	return int(prog.get("river_jade", 0))
@@ -207,7 +421,10 @@ func spend_jade(amount: int) -> bool:
 	var cur: int = get_jade()
 	if cur >= amount:
 		prog["river_jade"] = cur - amount
-		save_game()
+		# Batched like spend_pearls(): the caller flushes once the item it paid
+		# for has also been granted, so a crash cannot take the currency without
+		# the goods.
+		request_save()
 		return true
 	return false
 
@@ -246,7 +463,10 @@ func record_tile_mastery(suit: String, rank: int) -> int:
 	var key := "%s_%d" % [suit, rank]
 	var current_count: int = int(tile_mastery.get(key, 0)) + 1
 	tile_mastery[key] = current_count
-	save_game()
+	# Called once per tile cleared — up to 144 times on a single Nine Rivers
+	# board. Writing the whole encrypted file each time was needless flash wear
+	# and a stutter source, and it widened the window for an interrupted write.
+	request_save()
 	return current_count
 
 func get_tile_mastery_level(suit: String, rank: int) -> int:

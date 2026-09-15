@@ -1,0 +1,767 @@
+<title>Nine Rivers Save Audit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:wght@400;600;700&family=Archivo:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+
+<style>
+:root{
+  --paper:#eceee9;
+  --surface:#f8f9f6;
+  --surface-2:#e2e6e0;
+  --ink:#141a17;
+  --ink-2:#3d4844;
+  --muted:#697570;
+  --line:#cdd4ce;
+  --jade:#1c6b4f;
+  --cinnabar:#b0342a;
+  --gold:#9a7418;
+  --steel:#3f6f85;
+  --sev-crit:#b0342a;
+  --sev-high:#9a5f10;
+  --sev-med:#3f6f85;
+  --sev-ok:#1c6b4f;
+
+  --f-display:"Spectral",Georgia,"Times New Roman",serif;
+  --f-body:"Archivo","Helvetica Neue",Arial,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,"Consolas",monospace;
+
+  --step-0:1rem;
+  --step-1:1.15rem;
+  --step-2:1.45rem;
+  --step-3:1.95rem;
+  --step-4:2.7rem;
+}
+
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#0c1210;
+    --surface:#141b18;
+    --surface-2:#1d2622;
+    --ink:#e7ece9;
+    --ink-2:#c0cac5;
+    --muted:#8a9791;
+    --line:#2a3531;
+    --jade:#57bd92;
+    --cinnabar:#e57366;
+    --gold:#d9ae4a;
+    --steel:#79b2cb;
+    --sev-crit:#e57366;
+    --sev-high:#d9ae4a;
+    --sev-med:#79b2cb;
+    --sev-ok:#57bd92;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0c1210;
+  --surface:#141b18;
+  --surface-2:#1d2622;
+  --ink:#e7ece9;
+  --ink-2:#c0cac5;
+  --muted:#8a9791;
+  --line:#2a3531;
+  --jade:#57bd92;
+  --cinnabar:#e57366;
+  --gold:#d9ae4a;
+  --steel:#79b2cb;
+  --sev-crit:#e57366;
+  --sev-high:#d9ae4a;
+  --sev-med:#79b2cb;
+  --sev-ok:#57bd92;
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0;
+  background:var(--paper);
+  color:var(--ink);
+  font-family:var(--f-body);
+  font-size:var(--step-0);
+  line-height:1.62;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{
+  max-width:1000px;
+  margin:0 auto;
+  padding-inline:20px;
+  padding-block:0 72px;
+}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;margin:0;font-weight:600}
+p{margin:0}
+a{color:var(--jade)}
+
+.eyebrow{
+  font-family:var(--f-mono);
+  font-size:.72rem;
+  letter-spacing:.16em;
+  text-transform:uppercase;
+  color:var(--muted);
+}
+
+/* ---------- masthead ---------- */
+.masthead{
+  display:grid;
+  gap:18px;
+  padding-block:52px 34px;
+  border-bottom:2px solid var(--ink);
+}
+.seal-row{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.seal{
+  width:40px;height:40px;flex:none;
+  background:var(--cinnabar);
+  color:var(--paper);
+  display:grid;place-items:center;
+  font-family:var(--f-display);
+  font-size:1.35rem;
+  line-height:1;
+  border-radius:3px;
+}
+.masthead h1{font-size:var(--step-4);line-height:1.08;letter-spacing:-.015em}
+.standfirst{
+  font-size:var(--step-1);
+  color:var(--ink-2);
+  max-width:64ch;
+}
+.meta{
+  display:flex;flex-wrap:wrap;gap:10px 26px;
+  font-family:var(--f-mono);font-size:.78rem;color:var(--muted);
+}
+.meta b{color:var(--ink-2);font-weight:500}
+
+/* ---------- verdict ---------- */
+.verdicts{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
+  gap:2px;
+  background:var(--line);
+  border:1px solid var(--line);
+  margin-top:36px;
+}
+.verdict{
+  background:var(--surface);
+  padding:26px 24px;
+  display:grid;
+  gap:8px;
+  align-content:start;
+}
+.verdict .eyebrow{display:flex;align-items:center;gap:8px}
+.dot{width:8px;height:8px;border-radius:50%;flex:none}
+.dot.pass{background:var(--sev-ok)}
+.dot.fail{background:var(--sev-crit)}
+.verdict .figure{
+  font-family:var(--f-display);
+  font-size:var(--step-3);
+  line-height:1.1;
+  font-variant-numeric:tabular-nums;
+}
+.verdict .figure.pass{color:var(--jade)}
+.verdict .figure.fail{color:var(--cinnabar)}
+.verdict p{color:var(--ink-2);font-size:.94rem}
+
+/* ---------- sections ---------- */
+section{margin-top:56px}
+.sec-head{
+  display:grid;gap:6px;
+  margin-bottom:22px;
+  padding-bottom:12px;
+  border-bottom:1px solid var(--line);
+}
+.sec-head h2{font-size:var(--step-2);letter-spacing:-.01em}
+.prose{max-width:66ch;display:grid;gap:14px;color:var(--ink-2)}
+.prose strong{color:var(--ink);font-weight:600}
+
+.callout{
+  border-left:3px solid var(--jade);
+  background:var(--surface);
+  padding:16px 20px;
+  display:grid;gap:8px;
+  max-width:70ch;
+}
+.callout .eyebrow{color:var(--jade)}
+
+/* ---------- findings ledger ---------- */
+.ledger{display:grid;gap:2px;background:var(--line);border:1px solid var(--line)}
+.finding{
+  background:var(--surface);
+  padding:22px 24px 22px 22px;
+  border-left:4px solid var(--sev-med);
+  display:grid;gap:12px;
+}
+.finding[data-sev="CRITICAL"]{border-left-color:var(--sev-crit)}
+.finding[data-sev="HIGH"]{border-left-color:var(--sev-high)}
+.finding[data-sev="MEDIUM"]{border-left-color:var(--sev-med)}
+.finding[data-sev="PASS"]{border-left-color:var(--sev-ok)}
+
+.f-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:10px 14px}
+.f-id{
+  font-family:var(--f-mono);font-size:.78rem;
+  color:var(--muted);letter-spacing:.06em;
+}
+.f-title{font-family:var(--f-display);font-size:var(--step-1);font-weight:600;flex:1 1 320px}
+.chip{
+  font-family:var(--f-mono);font-size:.68rem;letter-spacing:.12em;
+  text-transform:uppercase;padding:3px 9px;border-radius:2px;
+  border:1px solid currentColor;white-space:nowrap;
+}
+.chip.CRITICAL{color:var(--sev-crit)}
+.chip.HIGH{color:var(--sev-high)}
+.chip.MEDIUM{color:var(--sev-med)}
+.chip.PASS{color:var(--sev-ok)}
+
+.f-plain{color:var(--ink);font-size:1.02rem;max-width:72ch}
+.f-rows{display:grid;gap:9px;margin-top:2px}
+.f-row{
+  display:grid;
+  grid-template-columns:96px 1fr;
+  gap:14px;
+  align-items:start;
+  font-size:.92rem;
+  color:var(--ink-2);
+}
+.f-row .k{
+  font-family:var(--f-mono);font-size:.7rem;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--muted);padding-top:.32em;
+}
+code{
+  font-family:var(--f-mono);
+  font-size:.86em;
+  background:var(--surface-2);
+  padding:1px 5px;
+  border-radius:2px;
+  color:var(--ink);
+}
+.proof{
+  font-family:var(--f-mono);
+  font-size:.82rem;
+  background:var(--surface-2);
+  border-radius:2px;
+  padding:10px 12px;
+  color:var(--ink);
+  overflow-x:auto;
+  white-space:pre-wrap;
+  word-break:break-word;
+}
+
+/* ---------- fix plan ---------- */
+.fixes{display:grid;gap:2px;background:var(--line);border:1px solid var(--line)}
+.fix{
+  background:var(--surface);
+  display:grid;
+  grid-template-columns:auto 1fr auto;
+  gap:6px 18px;
+  padding:18px 22px;
+  align-items:baseline;
+}
+.fix .rank{
+  font-family:var(--f-display);
+  font-size:1.3rem;
+  color:var(--cinnabar);
+  font-variant-numeric:tabular-nums;
+  min-width:1.4ch;
+}
+.fix .body{display:grid;gap:5px}
+.fix .body h3{font-size:1.04rem}
+.fix .body p{font-size:.92rem;color:var(--ink-2)}
+.fix .effort{
+  font-family:var(--f-mono);font-size:.7rem;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--muted);white-space:nowrap;
+}
+
+/* ---------- table ---------- */
+.tablewrap{overflow-x:auto;border:1px solid var(--line)}
+table{border-collapse:collapse;width:100%;min-width:560px;background:var(--surface)}
+th,td{
+  text-align:left;padding:9px 14px;font-size:.87rem;
+  border-bottom:1px solid var(--line);
+}
+th{
+  font-family:var(--f-mono);font-size:.68rem;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--muted);font-weight:500;
+  background:var(--surface-2);position:sticky;top:0;
+}
+td.num{font-variant-numeric:tabular-nums;font-family:var(--f-mono);font-size:.82rem}
+tbody tr:last-child td{border-bottom:none}
+td .stars{color:var(--gold);letter-spacing:.14em}
+.flag{color:var(--cinnabar);font-family:var(--f-mono);font-size:.76rem}
+
+footer{
+  margin-top:64px;padding-top:20px;
+  border-top:1px solid var(--line);
+  color:var(--muted);font-size:.85rem;
+  display:grid;gap:6px;max-width:70ch;
+}
+
+@media (max-width:560px){
+  :root{--step-4:2.05rem;--step-3:1.6rem;--step-2:1.3rem}
+  .f-row{grid-template-columns:1fr;gap:2px}
+  .fix{grid-template-columns:auto 1fr}
+  .fix .effort{grid-column:2}
+}
+</style>
+
+<div class="wrap">
+
+  <header class="masthead">
+    <div class="seal-row">
+      <div class="seal" aria-hidden="true">印</div>
+      <span class="eyebrow">Nine Rivers 九河 · Save System Audit</span>
+    </div>
+    <h1>What I found in your save file</h1>
+    <p class="standfirst">
+      A robot played your game from level 1 to level 25, and then I attacked the file
+      the game uses to remember your progress. The good news is the game itself works.
+      The bad news is that file trusts anything it is handed.
+    </p>
+    <div class="meta">
+      <span><b>Build</b> Nine Rivers v1.0.1</span>
+      <span><b>Engine</b> Godot 4.6.2, headless</span>
+      <span><b>Checks</b> 10 attacks + 25 levels played</span>
+      <span><b>Date</b> 15 Sep 2026</span>
+    </div>
+  </header>
+
+  <div class="verdicts">
+    <div class="verdict">
+      <span class="eyebrow"><span class="dot pass"></span>Gameplay bot</span>
+      <span class="figure pass">25 / 25 levels cleared</span>
+      <p>
+        The bot tapped 2,504 tiles through the real game code. Every level saved its
+        star rating, its level number and its jade reward exactly as expected. Nothing
+        in the actual playing and saving of a level is broken.
+      </p>
+    </div>
+    <div class="verdict">
+      <span class="eyebrow"><span class="dot fail"></span>Save file attacks</span>
+      <span class="figure fail">9 of 10 attacks succeeded</span>
+      <p>
+        Two critical, four high, three medium, as first measured. All of them come down
+        to the same root cause: the game reads its save file and believes whatever it
+        says, and the lock on that file has its key printed on the side.
+      </p>
+    </div>
+    <div class="verdict">
+      <span class="eyebrow"><span class="dot pass"></span>After the fixes</span>
+      <span class="figure pass">5 of 9 closed outright</span>
+      <p>
+        T01, T05, T06, T07 and T09 are fixed and re-tested. T02, T03 and T04 stay open at
+        the file level — a save can still be forged — but Google Play now overrules it, so
+        forging one no longer yields anything that costs money. Only T08 is untouched.
+      </p>
+    </div>
+  </div>
+
+  <section>
+    <div class="sec-head">
+      <span class="eyebrow">Start here</span>
+      <h2>What this actually means for you</h2>
+    </div>
+    <div class="prose">
+      <p>
+        Nine Rivers is a single-player game. There is no server holding your players'
+        accounts, so <strong>nobody's personal data is at risk here</strong>. No passwords,
+        no emails, nothing to leak. That is worth saying plainly before the red text below.
+      </p>
+      <p>
+        What <em>is</em> at risk is two things you care about commercially:
+      </p>
+      <p>
+        <strong>Money.</strong> Your paid items — Remove Ads, Spirit Pearls, the Imperial
+        Gold and Obsidian Ink tile sets — are handed out based on what the save file says.
+        Someone who edits that file gets all of it for free, and the game never
+        double-checks with Google Play. On Android, edited save files get packaged up and
+        shared on modding sites; this is routine, not exotic.
+      </p>
+      <p>
+        <strong>Trust.</strong> Separately from any attacker, the save file is fragile. If
+        the phone dies mid-write — battery, force-close, Android killing the app — the file
+        is destroyed and the player silently restarts at level 1 with no backup. That is the
+        kind of thing that produces one-star reviews you cannot answer.
+      </p>
+      <div class="callout">
+        <span class="eyebrow">The single most useful fix</span>
+        <p>
+          Your billing code already asks Google Play "what has this person bought?" on every
+          launch (<code>query_purchases</code> in <code>monetization_manager.gd</code>). Right
+          now it only ever <em>adds</em> items from that answer. If you also <em>remove</em>
+          anything Play does not confirm, the two critical findings below stop being worth
+          anything to an attacker — because a forged file would be corrected within seconds of
+          the game starting.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <span class="eyebrow">Findings · 10 checks, ordered by severity</span>
+      <h2>The attacks, one by one</h2>
+    </div>
+
+    <div class="ledger">
+
+      <article class="finding" data-sev="CRITICAL">
+        <div class="f-head">
+          <span class="f-id">T02</span>
+          <span class="f-title">The lock's key is printed inside the app</span>
+          <span class="chip CRITICAL">Critical</span>
+        </div>
+        <p class="f-plain">
+          The save file is locked with a password, and the file is also stamped with a
+          tamper-proof seal. Both the password and the recipe for the seal are written as
+          plain text inside the app itself. Anyone who unzips your APK can read them, so they
+          can open the file, change it, and re-stamp it so it looks untouched.
+        </p>
+        <div class="f-rows">
+          <div class="f-row"><span class="k">Proved by</span><span>Reading the two constants out of <code>save_manager.gd</code>, writing a save that grants everything, and signing it with the recipe. The game accepted it without a single warning.</span></div>
+          <div class="f-row"><span class="k">Result</span><div class="proof">pearls = 9,999,999   jade = 9,999,999
+no_ads = true        all 4 paid tile sets unlocked
+integrity check = PASSED</div></div>
+          <div class="f-row"><span class="k">Fix</span><span>You cannot hide a key inside an app you ship — treat this as unfixable and move the decision elsewhere. Let Google Play be the authority on what was purchased, and accept that the pearl balance is cosmetic.</span></div>
+        </div>
+      </article>
+
+      <article class="finding" data-sev="CRITICAL">
+        <div class="f-head">
+          <span class="f-id">T03</span>
+          <span class="f-title">The seal only covers three numbers</span>
+          <span class="chip CRITICAL">Critical</span>
+        </div>
+        <p class="f-plain">
+          Even if the seal could not be forged, it only protects jade, pearls and the
+          remove-ads flag. Everything else in the file is completely unprotected — and you
+          do not even need the key recipe to change it, because changing it does not break
+          the seal.
+        </p>
+        <div class="f-rows">
+          <div class="f-row"><span class="k">Proved by</span><span>Leaving the three protected numbers at their honest starting values, then rewriting everything else. The seal stayed valid, so no warning fired.</span></div>
+          <div class="f-row"><span class="k">Result</span><div class="proof">level = 99            daily streak = 365
+all 50 levels at 3 stars
+all 4 paid tile sets unlocked
+every tile at max mastery (permanent score bonus)
+all 5 koi unlocked (permanent gameplay bonuses)</div></div>
+          <div class="f-row"><span class="k">Fix</span><span>Sign the <em>whole</em> file, not three fields — hash the entire saved payload rather than <code>jade|pearls|no_ads</code>.</span></div>
+        </div>
+      </article>
+
+      <article class="finding" data-sev="PASS">
+        <div class="f-head">
+          <span class="f-id">T01</span>
+          <span class="f-title">The lock is optional — you can just skip it</span>
+          <span class="chip PASS">Fixed</span>
+        </div>
+        <p class="f-plain" style="border-left:2px solid var(--sev-ok);padding-left:14px">
+          <strong>Now fixed.</strong> The plain-text fallback has been removed. A file that
+          will not unlock is treated as damaged, and the game moves on to its backup copy
+          instead of trusting it. Safe to remove outright because the game has not shipped,
+          so no player has an old unencrypted save to migrate.
+        </p>
+        <p class="f-plain">
+          When the game cannot unlock the save file, it does not treat that as suspicious.
+          It shrugs, tries reading the file as ordinary text instead, and accepts whatever
+          it finds. So an attacker does not even need the password from T02 — they can hand
+          over a plain, unlocked, unsealed file and the game will take it.
+        </p>
+        <div class="f-rows">
+          <div class="f-row"><span class="k">Proved by</span><span>Writing a plain text file with no encryption and no seal at all.</span></div>
+          <div class="f-row"><span class="k">Result</span><div class="proof">level = 50   all 50 levels at 3 stars
+streak shields = 99   ACCEPTED</div></div>
+          <div class="f-row"><span class="k">Fix</span><span>This fallback exists to migrate players from old unencrypted saves, which is a fair reason — but it should only accept a plain file that still carries a valid whole-file signature, and it should be removed entirely a version or two after launch.</span></div>
+        </div>
+      </article>
+
+      <article class="finding" data-sev="HIGH">
+        <div class="f-head">
+          <span class="f-id">T04</span>
+          <span class="f-title">A broken seal is a warning, not a refusal</span>
+          <span class="chip HIGH">High</span>
+        </div>
+        <p class="f-plain">
+          When the seal genuinely does fail, the game logs a warning, trims the three
+          protected numbers back down — and then loads the rest of the tampered file
+          anyway. The paid tile sets came through untouched.
+        </p>
+        <div class="f-rows">
+          <div class="f-row"><span class="k">Proved by</span><span>Submitting a file with a deliberately garbage seal.</span></div>
+          <div class="f-row"><span class="k">Result</span><div class="proof">correctly clamped: pearls 250, jade 500, no_ads false
+still applied:     level 77
+                   all 4 paid tile sets
+                   2 paid background themes</div></div>
+          <div class="f-row"><span class="k">Fix</span><span>A failed check should reject the file, fall back to the backup copy (see T07), and only then start fresh — never partially apply a file it has already decided is untrustworthy.</span></div>
+        </div>
+      </article>
+
+      <article class="finding" data-sev="PASS">
+        <div class="f-head">
+          <span class="f-id">T05</span>
+          <span class="f-title">A malformed file can permanently break saving</span>
+          <span class="chip PASS">Fixed</span>
+        </div>
+        <p class="f-plain" style="border-left:2px solid var(--sev-ok);padding-left:14px">
+          <strong>Now fixed.</strong> Every value is checked as it loads and replaced with
+          its default if it is the wrong shape. Finishing a level after loading this exact
+          hostile file now records the stars and pays the jade correctly.
+        </p>
+        <p class="f-plain">
+          The game never checks that the things in the save file are the right <em>shape</em>.
+          If the list of star ratings arrives as a piece of text instead of a list, the game
+          copies it in as-is. Then the next time the player finishes a level, the save code
+          hits that text, throws an error, and stops halfway through — so the level is never
+          recorded and the jade reward is never paid. It will fail the same way every level,
+          forever.
+        </p>
+        <div class="f-rows">
+          <div class="f-row"><span class="k">Proved by</span><span>Loading a file with wrong types, then calling the real <code>record_level_clear()</code>.</span></div>
+          <div class="f-row"><span class="k">Result</span><div class="proof">SCRIPT ERROR: Nonexistent function 'get' in base 'String'
+  at save_manager.gd:219 (record_level_clear)
+
+-> stars not recorded, jade not awarded, file never written
+SCRIPT ERROR: Trying to assign value of type 'float'
+  to a variable of type 'Array'
+  at monetization_manager.gd:275 (is_theme_unlocked)
+-> the store stops recognising owned themes</div></div>
+          <div class="f-row"><span class="k">Fix</span><span>Check the type of each value as it is loaded and fall back to the default when it is wrong. This also protects you from half-written files, which is the same failure without an attacker.</span></div>
+        </div>
+      </article>
+
+      <article class="finding" data-sev="PASS">
+        <div class="f-head">
+          <span class="f-id">T07</span>
+          <span class="f-title">An interrupted save destroys the player's progress</span>
+          <span class="chip PASS">Fixed</span>
+        </div>
+        <p class="f-plain" style="border-left:2px solid var(--sev-ok);padding-left:14px">
+          <strong>Now fixed.</strong> Saves are written to a scratch file, read back to prove
+          they are complete, and only then swapped in — with the previous version kept as a
+          spare. Re-running this exact attack now recovers the level-25 profile instead of
+          resetting to level 1. Three further crash scenarios were tested and all recover.
+        </p>
+        <p class="f-plain">
+          This one needs no attacker — just bad luck. The game writes directly over the only
+          copy of the save file. If the phone dies, the player force-closes, or Android kills
+          the app during that write, the file is left half-finished and unreadable. There is
+          no backup, so the next launch starts from scratch. The player loses everything and
+          the game says nothing.
+        </p>
+        <div class="f-rows">
+          <div class="f-row"><span class="k">Proved by</span><span>Saving a real level-25 profile, then cutting the file to 60% of its length to imitate a crash mid-write.</span></div>
+          <div class="f-row"><span class="k">Result</span><div class="proof">profile before : level 25, 5,000 jade
+after reload   : level 1  (silently reset)
+backup file    : none</div></div>
+          <div class="f-row"><span class="k">Fix</span><span>Write to a temporary file, close it, then rename it over the real one — a rename is all-or-nothing, so the old file survives any interruption. Keep the previous version as a <code>.bak</code> and fall back to it when the main file will not load. Also check that the file actually opened before writing; right now a failed open is ignored silently.</span></div>
+        </div>
+      </article>
+
+      <article class="finding" data-sev="PASS">
+        <div class="f-head">
+          <span class="f-id">T06</span>
+          <span class="f-title">Impossible numbers are accepted without question</span>
+          <span class="chip PASS">Fixed</span>
+        </div>
+        <p class="f-plain" style="border-left:2px solid var(--sev-ok);padding-left:14px">
+          <strong>Now fixed.</strong> Money cannot go below zero, levels are held between
+          1 and 51, and stars between 0 and 3. Unknown tile sets, backgrounds and koi are
+          dropped rather than loaded, so a made-up item id can no longer be injected and
+          equipped.
+        </p>
+        <p class="f-plain">
+          Negative money, negative levels and four-star ratings all load fine. A negative
+          balance is worse than it sounds: the shop checks "do you have enough?", a negative
+          number never does, and the player can never buy anything again — including with
+          real money.
+        </p>
+        <div class="f-rows">
+          <div class="f-row"><span class="k">Proved by</span><span>Loading a correctly signed file full of out-of-range values.</span></div>
+          <div class="f-row"><span class="k">Result</span><div class="proof">pearls = -50,000   jade = -100,000   level = -5
+stars[1] = 999  (inflates the level-select total)
+
+level -5 does not crash: the negative index wraps,
+so the game quietly deals the hard "Dragon Gate"
+board as stage -5 instead of the tutorial board.</div></div>
+          <div class="f-row"><span class="k">Fix</span><span>Clamp every number to a sane range on load: money at or above zero, level between 1 and 50, stars between 0 and 3.</span></div>
+        </div>
+      </article>
+
+      <article class="finding" data-sev="MEDIUM">
+        <div class="f-head">
+          <span class="f-id">T08</span>
+          <span class="f-title">The upgrade path for future save formats is empty</span>
+          <span class="chip MEDIUM">Medium</span>
+        </div>
+        <p class="f-plain">
+          Saves carry a version number so that a future update can convert old files. The
+          function that is supposed to do that conversion currently just stamps the new
+          version number on and changes nothing. It also does not object to a file claiming
+          to be from a <em>newer</em> version than the app.
+        </p>
+        <div class="f-rows">
+          <div class="f-row"><span class="k">Proved by</span><span>Loading a file stamped <code>version = 99</code> into the version 2 build.</span></div>
+          <div class="f-row"><span class="k">Result</span><div class="proof">accepted silently, level = 40</div></div>
+          <div class="f-row"><span class="k">Fix</span><span>Nothing is broken today, but the first time you change the save format this will quietly misread every existing player's file. Write the real conversion step when you bump the version, and refuse files newer than the app understands.</span></div>
+        </div>
+      </article>
+
+      <article class="finding" data-sev="PASS">
+        <div class="f-head">
+          <span class="f-id">T09</span>
+          <span class="f-title">Every single tile writes the whole file to storage</span>
+          <span class="chip PASS">Fixed</span>
+        </div>
+        <p class="f-plain" style="border-left:2px solid var(--sev-ok);padding-left:14px">
+          <strong>Now fixed.</strong> Tile-mastery counts and jade rewards now go through the
+          four-second batch instead of writing immediately. Simulating a full 144-tile board
+          — 288 calls that previously caused 288 writes — now causes <strong>zero</strong>,
+          and runs in 0.8&nbsp;ms instead of 53&nbsp;ms. Finishing a level still saves at once,
+          and purchases still commit the moment the goods are granted.
+        </p>
+        <div class="f-rows">
+          <div class="f-row"><span class="k">Proved by</span><span>Timing 144 consecutive <code>record_tile_mastery()</code> calls.</span></div>
+          <div class="f-row"><span class="k">Result</span><div class="proof">144 full encrypt-and-write cycles
+53 ms on a desktop SSD — considerably slower
+on phone storage, and a likely stutter source</div></div>
+          <div class="f-row"><span class="k">Fix</span><span>Call <code>request_save()</code> instead of <code>save_game()</code> in these paths. Fewer writes also means fewer chances to be interrupted mid-write, which directly reduces the risk in T07.</span></div>
+        </div>
+      </article>
+
+      <article class="finding" data-sev="PASS">
+        <div class="f-head">
+          <span class="f-id">T10</span>
+          <span class="f-title">The file really is encrypted on disk</span>
+          <span class="chip PASS">Passed</span>
+        </div>
+        <p class="f-plain">
+          The one clean result. The saved file is genuine AES-encrypted binary with no
+          readable text in it, so a curious player poking around with a file browser cannot
+          simply edit their pearl count. That is a real barrier against casual cheating — it
+          is only the determined attacker from T02 who walks past it.
+        </p>
+        <div class="f-rows">
+          <div class="f-row"><span class="k">Result</span><div class="proof">1,052 bytes, no readable field names found</div></div>
+        </div>
+      </article>
+
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <span class="eyebrow">Recommended order · highest value first</span>
+      <h2>What I would fix, in order</h2>
+    </div>
+    <div class="fixes">
+      <div class="fix">
+        <span class="rank" style="color:var(--sev-ok)">✓</span>
+        <div class="body">
+          <h3>Make the save file crash-proof</h3>
+          <p><strong>Done.</strong> Scratch file, verified by reading it back, then swapped in; the previous generation is kept as a spare and loaded automatically if the live file is damaged. Four crash scenarios tested, all recover. Closes T07.</p>
+        </div>
+        <span class="effort">Shipped</span>
+      </div>
+      <div class="fix">
+        <span class="rank" style="color:var(--sev-ok)">✓</span>
+        <div class="body">
+          <h3>Let Google Play decide what was purchased</h3>
+          <p><strong>Done.</strong> Play's owned-items list is now read on launch and treated as authoritative: money-bought items are restored on a new phone, and entitlements Play cannot confirm are withdrawn. Items bought with in-game pearls are exempt. Two live bugs fixed along the way — the restore response was never being listened for, and paid background themes granted nothing at all.</p>
+        </div>
+        <span class="effort">Shipped</span>
+      </div>
+      <div class="fix">
+        <span class="rank" style="color:var(--sev-ok)">✓</span>
+        <div class="body">
+          <h3>Validate and clamp everything on load</h3>
+          <p><strong>Done.</strong> Every field is coerced to its expected type, clamped to a sane range, and checked against a whitelist of real item ids. Closes T05 and T06, and fixes the whole-number drift the bot was reporting.</p>
+        </div>
+        <span class="effort">Shipped</span>
+      </div>
+      <div class="fix">
+        <span class="rank">4</span>
+        <div class="body">
+          <h3>Sign the whole file and reject on mismatch</h3>
+          <p>Hash the entire payload instead of three fields, and treat a mismatch as a refusal rather than a trim. Fixes T03 and T04 properly. It will not stop a determined attacker while the key ships in the app, but it raises the effort a long way.</p>
+        </div>
+        <span class="effort">~1 hour</span>
+      </div>
+      <div class="fix">
+        <span class="rank" style="color:var(--sev-ok)">✓</span>
+        <div class="body">
+          <h3>Batch the tile-mastery writes</h3>
+          <p><strong>Done.</strong> Tile mastery and jade rewards now batch; level completion and purchases still commit immediately. 288 writes per board became zero. Closes T09. The plain-text fallback was removed at the same time, closing T01.</p>
+        </div>
+        <span class="effort">Shipped</span>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <span class="eyebrow">Gameplay bot · Calm Journey, levels 1–25</span>
+      <h2>The bot's run, level by level</h2>
+    </div>
+    <div class="prose" style="margin-bottom:20px">
+      <p>
+        The bot drives the real game — it loads <code>main.tscn</code>, reads the board, and
+        taps tiles through the same click handler a finger would. After every level it checks
+        that the save recorded the right level number, the right star rating, and at least the
+        right jade reward. <strong>Every one of those checks passed.</strong>
+      </p>
+      <p>
+        Two things worth noting. At level 3 the bot painted itself into a corner and had to
+        restart the board — the board <em>was</em> solvable, but greedy play can still strand
+        it, which is normal for Mahjong solitaire and is exactly what the shuffle button is
+        for. And after saving and reloading, every whole number in the file used to come back
+        as a decimal (<code>26</code> becoming <code>26.0</code>), drifting further with each
+        save cycle. <strong>That is now fixed</strong> by the load validation, and the bot's
+        persistence check passes with zero failures.
+      </p>
+    </div>
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Lvl</th><th>Board</th><th>Tiles</th><th>Taps</th>
+            <th>Stars</th><th>Score</th><th>Peak flow</th><th>Saved as</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td class="num">1</td><td>Courtyard</td><td class="num">36</td><td class="num">36</td><td class="stars">★★★</td><td class="num">4,350</td><td class="num">×4</td><td class="num">2</td></tr>
+          <tr><td class="num">2</td><td>Courtyard</td><td class="num">36</td><td class="num">36</td><td class="stars">★★★</td><td class="num">3,100</td><td class="num">×3</td><td class="num">3</td></tr>
+          <tr><td class="num">3</td><td>Gate House</td><td class="num">40</td><td class="num">76</td><td class="stars">★★★</td><td class="num">3,800</td><td class="num">×3</td><td class="num">4 <span class="flag">↻ restart</span></td></tr>
+          <tr><td class="num">4</td><td>Gate House</td><td class="num">40</td><td class="num">40</td><td class="stars">★★★</td><td class="num">3,955</td><td class="num">×3</td><td class="num">5</td></tr>
+          <tr><td class="num">5</td><td>River Steps</td><td class="num">60</td><td class="num">60</td><td class="stars">★★★</td><td class="num">9,745</td><td class="num">×3</td><td class="num">6</td></tr>
+          <tr><td class="num">6</td><td>River Steps</td><td class="num">60</td><td class="num">60</td><td class="stars">★★★</td><td class="num">4,768</td><td class="num">×3</td><td class="num">7</td></tr>
+          <tr><td class="num">7</td><td>Garden Walk</td><td class="num">72</td><td class="num">106</td><td class="stars">★★★</td><td class="num">6,246</td><td class="num">×3</td><td class="num">8</td></tr>
+          <tr><td class="num">8</td><td>Garden Walk</td><td class="num">72</td><td class="num">72</td><td class="stars">★★★</td><td class="num">6,799</td><td class="num">×4</td><td class="num">9</td></tr>
+          <tr><td class="num">9</td><td>Lotus Pagoda</td><td class="num">68</td><td class="num">68</td><td class="stars">★★★</td><td class="num">13,810</td><td class="num">×5</td><td class="num">10</td></tr>
+          <tr><td class="num">10</td><td>Lotus Pagoda</td><td class="num">68</td><td class="num">68</td><td class="stars">★★★</td><td class="num">7,039</td><td class="num">×4</td><td class="num">11</td></tr>
+          <tr><td class="num">11</td><td>Twin Bridges</td><td class="num">76</td><td class="num">118</td><td class="stars">★★★</td><td class="num">7,093</td><td class="num">×3</td><td class="num">12</td></tr>
+          <tr><td class="num">12</td><td>Twin Bridges</td><td class="num">76</td><td class="num">76</td><td class="stars">★★★</td><td class="num">8,220</td><td class="num">×6</td><td class="num">13</td></tr>
+          <tr><td class="num">13</td><td>Stone Keep</td><td class="num">88</td><td class="num">88</td><td class="stars">★★★</td><td class="num">15,725</td><td class="num">×3</td><td class="num">14</td></tr>
+          <tr><td class="num">14</td><td>Stone Keep</td><td class="num">88</td><td class="num">88</td><td class="stars">★★★</td><td class="num">8,197</td><td class="num">×3</td><td class="num">15</td></tr>
+          <tr><td class="num">15</td><td>Jade Cascade</td><td class="num">90</td><td class="num">140</td><td class="stars">★★★</td><td class="num">9,609</td><td class="num">×4</td><td class="num">16</td></tr>
+          <tr><td class="num">16</td><td>Jade Cascade</td><td class="num">90</td><td class="num">90</td><td class="stars">★★★</td><td class="num">9,663</td><td class="num">×5</td><td class="num">17</td></tr>
+          <tr><td class="num">17</td><td>Dragon Gate</td><td class="num">100</td><td class="num">100</td><td class="stars">★★★</td><td class="num">17,210</td><td class="num">×3</td><td class="num">18</td></tr>
+          <tr><td class="num">18</td><td>Dragon Gate</td><td class="num">100</td><td class="num">101</td><td class="stars">★★★</td><td class="num">11,225</td><td class="num">×6</td><td class="num">19</td></tr>
+          <tr><td class="num">19</td><td>Citadel</td><td class="num">114</td><td class="num">171</td><td class="stars">★★★</td><td class="num">10,230</td><td class="num">×3</td><td class="num">20</td></tr>
+          <tr><td class="num">20</td><td>Citadel</td><td class="num">114</td><td class="num">114</td><td class="stars">★★★</td><td class="num">11,395</td><td class="num">×4</td><td class="num">21</td></tr>
+          <tr><td class="num">21</td><td>Nine Rivers</td><td class="num">144</td><td class="num">144</td><td class="stars">★★★</td><td class="num">32,350</td><td class="num">×5</td><td class="num">22</td></tr>
+          <tr><td class="num">22</td><td>Nine Rivers</td><td class="num">144</td><td class="num">144</td><td class="stars">★★★</td><td class="num">15,960</td><td class="num">×5</td><td class="num">23</td></tr>
+          <tr><td class="num">23</td><td>Nine Rivers</td><td class="num">144</td><td class="num">220</td><td class="stars">★★★</td><td class="num">17,555</td><td class="num">×7</td><td class="num">24</td></tr>
+          <tr><td class="num">24</td><td>Nine Rivers</td><td class="num">144</td><td class="num">144</td><td class="stars">★★★</td><td class="num">16,180</td><td class="num">×6</td><td class="num">25</td></tr>
+          <tr><td class="num">25</td><td>Nine Rivers</td><td class="num">144</td><td class="num">144</td><td class="stars">★★★</td><td class="num">32,160</td><td class="num">×9</td><td class="num">26</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer>
+    <p>
+      Both test harnesses are committed to the project and can be re-run at any time:
+      <code>scenes/bot_runner.tscn</code> plays the levels,
+      <code>scenes/security_audit.tscn</code> runs the ten attacks. Each exits with a
+      non-zero status on failure, so they can sit in a build pipeline.
+    </p>
+    <p>
+      Every finding here was produced by running code against the real build, not by reading
+      it. The outputs quoted above are verbatim.
+    </p>
+  </footer>
+
+</div>
