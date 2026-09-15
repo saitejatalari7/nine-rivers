@@ -115,6 +115,9 @@ const PRODUCTS: Dictionary = {
 	}
 }
 
+## Backgrounds every player owns. These are never withdrawn by a Play reconcile.
+const FREE_BACKGROUND_THEMES: Array[String] = ["emerald_pond", "moonlit_river", "autumn_stream"]
+
 const MAX_DAILY_REWARDED_ADS: int = 4
 
 # The Zen Ad Model Frequency Capping Rules:
@@ -172,6 +175,11 @@ func _init_platform_billing() -> void:
 			_billing.purchase_error.connect(_on_billing_purchase_error)
 		elif _billing.has_signal("connect_error"):
 			_billing.connect_error.connect(func(code, msg): _on_billing_purchase_error(code, msg))
+		# The full owned-items list arrives on its own signal, separate from the
+		# per-purchase updates above. Without this the launch-time restore never
+		# produced a result and entitlements came from the save file alone.
+		if _billing.has_signal("query_purchases_response"):
+			_billing.query_purchases_response.connect(_on_billing_query_purchases_response)
 		if _billing.has_signal("sku_details_query_completed"):
 			_billing.sku_details_query_completed.connect(_on_billing_sku_details_completed)
 		if _billing.has_method("startConnection"):
@@ -220,6 +228,135 @@ func _on_billing_purchases_updated(purchases: Variant) -> void:
 				if cb.is_valid():
 					cb.call()
 			purchase_succeeded.emit(pid)
+
+## Response to our explicit query_purchases() call: the complete list of items
+## this Google account owns. Unlike purchases_updated (which reports only what
+## just changed), this is authoritative, so it is the one place we reconcile.
+func _on_billing_query_purchases_response(response: Variant) -> void:
+	var code: int = 0
+	var purchase_list: Array = []
+	if response is Dictionary:
+		code = int(response.get("response_code", response.get("code", 0)))
+		purchase_list = response.get("purchases", [])
+	elif response is Array:
+		purchase_list = response
+
+	# Only reconcile against a successful answer. A network failure must never be
+	# read as "this player owns nothing".
+	if code != 0:
+		push_warning("Nine Rivers: purchase query failed (code %d). Keeping local entitlements." % code)
+		return
+
+	var owned: Array[String] = []
+	for p in purchase_list:
+		if not (p is Dictionary):
+			continue
+		if int(p.get("purchase_state", 1)) != 1:
+			continue
+		var pid: String = str(p.get("sku", p.get("product_id", "")))
+		if not pid.is_empty():
+			owned.append(pid)
+
+	_grant_from_play(purchase_list)
+	_revoke_unconfirmed(owned)
+	SaveManager.save_game()
+
+## Re-grants everything Play confirms, so a reinstall or a new phone restores
+## purchases without the player doing anything.
+func _grant_from_play(purchase_list: Array) -> void:
+	for p in purchase_list:
+		if not (p is Dictionary):
+			continue
+		if int(p.get("purchase_state", 1)) != 1:
+			continue
+		var pid: String = str(p.get("sku", p.get("product_id", "")))
+		if not PRODUCTS.has(pid):
+			continue
+		var prod: Dictionary = PRODUCTS[pid]
+		if bool(prod.get("is_consumable", false)):
+			continue # Consumables are settled in _on_billing_purchases_updated.
+		if not bool(p.get("is_acknowledged", false)):
+			var token: String = str(p.get("purchase_token", ""))
+			if _billing and _billing.has_method("acknowledge_purchase"):
+				_billing.acknowledge_purchase(token)
+			elif _billing and _billing.has_method("acknowledgePurchase"):
+				_billing.acknowledgePurchase(token)
+		_fulfill_purchase(pid, prod, "iap", true)
+
+## Withdraws any non-consumable that the save file claims was paid for with money
+## but Google Play does not list. Items bought with in-game pearls or jade are
+## left alone, since Play has no record of those and never will.
+func _revoke_unconfirmed(owned: Array[String]) -> void:
+	var sources: Dictionary = SaveManager.economy.get("entitlement_source", {})
+	if not (sources is Dictionary):
+		sources = {}
+
+	for pid in PRODUCTS.keys():
+		var prod: Dictionary = PRODUCTS[pid]
+		if bool(prod.get("is_consumable", false)):
+			continue
+		if pid in owned:
+			continue
+
+		var source: String = str(sources.get(pid, "unknown"))
+		var buyable_with_currency: bool = int(prod.get("pearl_cost", 0)) > 0 or int(prod.get("jade_cost", 0)) > 0
+		# "unknown" means the entitlement predates source tracking or was injected
+		# into the file directly. Trust it only where an in-game purchase is even
+		# possible; products sold for money alone must come from Play.
+		if source == "pearls" or source == "jade":
+			continue
+		if source == "unknown" and buyable_with_currency:
+			continue
+
+		if _revoke_product(pid, prod):
+			sources.erase(pid)
+			push_warning("Nine Rivers: '%s' is not owned on this Google account. Entitlement withdrawn." % pid)
+
+	SaveManager.economy["entitlement_source"] = sources
+
+func _revoke_product(product_id: String, prod: Dictionary) -> bool:
+	if product_id == "no_ads":
+		if not bool(SaveManager.economy.get("no_ads_purchased", false)):
+			return false
+		SaveManager.economy["no_ads_purchased"] = false
+		return true
+
+	if product_id.begins_with("theme_"):
+		var unlocked: Array = _as_array(SaveManager.economy.get("unlocked_themes", []), ["classic_jade"])
+		if not (product_id in unlocked):
+			return false
+		unlocked.erase(product_id)
+		SaveManager.economy["unlocked_themes"] = unlocked
+		if get_active_theme() == product_id:
+			equip_theme("classic_jade")
+		return true
+
+	if product_id.begins_with("bg_"):
+		var bg_id: String = str(prod.get("theme_id", ""))
+		if bg_id.is_empty() or bg_id in FREE_BACKGROUND_THEMES:
+			return false
+		var bgs: Array = _as_array(SaveManager.economy.get("unlocked_background_themes", []), FREE_BACKGROUND_THEMES)
+		if not (bg_id in bgs):
+			return false
+		bgs.erase(bg_id)
+		SaveManager.economy["unlocked_background_themes"] = bgs
+		if get_active_background_theme() == bg_id:
+			equip_background_theme("auto")
+		return true
+
+	return false
+
+## Records how a non-consumable was paid for, so _revoke_unconfirmed() knows
+## whether Google Play is entitled to take it away again.
+func _mark_entitlement_source(product_id: String, source: String) -> void:
+	var sources: Dictionary = SaveManager.economy.get("entitlement_source", {})
+	if not (sources is Dictionary):
+		sources = {}
+	sources[product_id] = source
+	SaveManager.economy["entitlement_source"] = sources
+
+func _as_array(value: Variant, fallback: Array) -> Array:
+	return value.duplicate() if value is Array else fallback.duplicate()
 
 func _on_billing_purchase_error(code: int, msg: String) -> void:
 	purchase_failed.emit("", "Billing Error (%d): %s" % [code, msg])
@@ -328,6 +465,9 @@ func buy_background_with_jade(theme_id: String) -> bool:
 		SaveManager.spend_jade(cost)
 		unlock_background_theme(theme_id)
 		equip_background_theme(theme_id)
+		_mark_entitlement_source(prod_key, "jade")
+		# Currency spent and goods granted: commit both together.
+		SaveManager.save_game()
 		AudioManager.play_win()
 		return true
 	return false
@@ -340,6 +480,9 @@ func buy_background_with_pearls(theme_id: String) -> bool:
 	if spend_pearls(cost):
 		unlock_background_theme(theme_id)
 		equip_background_theme(theme_id)
+		_mark_entitlement_source(prod_key, "pearls")
+		# Currency spent and goods granted: commit both together.
+		SaveManager.save_game()
 		AudioManager.play_win()
 		return true
 	return false
@@ -447,23 +590,51 @@ func buy_with_pearls(product_id: String, on_success: Callable = Callable()) -> b
 	if spend_pearls(cost):
 		unlock_theme(product_id)
 		equip_theme(product_id)
+		_mark_entitlement_source(product_id, "pearls")
+		# Currency spent and goods granted: commit both together.
+		SaveManager.save_game()
 		if on_success.is_valid():
 			on_success.call()
 		return true
 	return false
 
-func _fulfill_purchase(product_id: String, prod: Dictionary) -> void:
+## Grants a product. `source` records who vouched for it: "iap" means Google Play
+## confirmed the purchase, and such grants are re-checked against Play on every
+## launch. `is_restore` suppresses the celebration when we are merely re-applying
+## something the player already owned on another device.
+func _fulfill_purchase(product_id: String, prod: Dictionary, source: String = "iap", is_restore: bool = false) -> void:
+	var granted: bool = false
+
 	if product_id == "no_ads":
+		if not bool(SaveManager.economy.get("no_ads_purchased", false)):
+			granted = true
 		SaveManager.economy["no_ads_purchased"] = true
 		hide_banner_ad()
-		add_pearls(int(prod.get("pearls_grant", 500)))
-		AudioManager.play_win()
+		# Pearls ride along with the purchase itself, never with a restore, or a
+		# player could farm them by reinstalling.
+		if not is_restore:
+			add_pearls(int(prod.get("pearls_grant", 500)))
 	elif prod.has("pearls_grant"):
-		add_pearls(int(prod.get("pearls_grant", 0)))
-		AudioManager.play_win()
+		# Consumable pearl packs. Google forgets these once consumed, so there is
+		# nothing to restore and nothing to mark.
+		if not is_restore:
+			add_pearls(int(prod.get("pearls_grant", 0)))
+			AudioManager.play_win()
+			SaveManager.request_save()
+		return
 	elif product_id.begins_with("theme_"):
-		unlock_theme(product_id)
+		granted = unlock_theme(product_id)
 		equip_theme(product_id)
+	elif product_id.begins_with("bg_"):
+		# Previously unhandled: a paid background purchase granted nothing at all.
+		var bg_id: String = str(prod.get("theme_id", ""))
+		if not bg_id.is_empty():
+			granted = unlock_background_theme(bg_id)
+			equip_background_theme(bg_id)
+
+	if not bool(prod.get("is_consumable", false)):
+		_mark_entitlement_source(product_id, source)
+	if granted and not is_restore:
 		AudioManager.play_win()
 	SaveManager.request_save()
 

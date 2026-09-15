@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://csecaudit001"]
+
+[ext_resource type="Script" path="res://scripts/tests/security_audit.gd" id="1_sec"]
+
+[node name="SecurityAudit" type="Node"]
+script = ExtResource("1_sec")

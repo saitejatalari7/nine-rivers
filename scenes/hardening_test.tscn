@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://charden001"]
+
+[ext_resource type="Script" path="res://scripts/tests/hardening_test.gd" id="1_h"]
+
+[node name="HardeningTest" type="Node"]
+script = ExtResource("1_h")
