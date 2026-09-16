@@ -163,7 +163,15 @@ var _current_screen: String = "main"
 
 func _ready() -> void:
 	visible = false
-	var sb_card := UITheme.create_panel_box(Color(0.04, 0.12, 0.09, 0.97), UITheme.GOLD_MUTED, 2, 20, 0.6)
+	# Transparent card: the tiles ARE the interface, floating on the live pond.
+	# A bordered box around them would be exactly the "boxes inside boxes" the
+	# design brief set out to remove.
+	var sb_card := StyleBoxFlat.new()
+	sb_card.bg_color = Color(0.04, 0.12, 0.09, 0.0)
+	sb_card.content_margin_left = 54
+	sb_card.content_margin_right = 54
+	sb_card.content_margin_top = 28
+	sb_card.content_margin_bottom = 28
 	card_panel.add_theme_stylebox_override("panel", sb_card)
 
 func show_modal() -> void:
@@ -182,7 +190,9 @@ func hide_modal() -> void:
 func show_main_menu() -> void:
 	_current_screen = "main"
 	_clear_content()
-	
+	# The Rack floats directly on the water; the tiles supply their own opacity.
+	_set_card_backing(false)
+
 	# Authentic Calligraphic Main Title
 	var title_brush := Label.new()
 	title_brush.text = "九河"
@@ -198,45 +208,53 @@ func show_main_menu() -> void:
 	var jade: int = SaveManager.get_jade()
 	var pearls: int = MonetizationManager.get_pearls()
 	
-	_add_tally("🌊 Journey Progress", "Stage %d / 50" % cur_lvl)
-	_add_tally("🦪 Spirit Pearls", "%d" % pearls)
-	_add_tally("🪨 River Jade", "%d" % jade)
-	_add_tally("🔥 Daily Tide Streak", "%d Days" % streak)
-	
-	_add_separator()
-	
-	_add_button("⛩️ Continue Journey (Stage %d)" % cur_lvl, func():
-		hide_modal()
-		start_calm_requested.emit(cur_lvl)
+	# One compact purse line instead of four stacked tallies. The old version
+	# gave the eye four identical rows to read before reaching anything
+	# actionable.
+	var purse := Label.new()
+	purse.text = "%d ◈   ·   %d 玉   ·   %d 日" % [pearls, jade, streak]
+	purse.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	UITheme.style_label(purse, "ui", 21, UITheme.GOLD_MUTED)
+	card_container.add_child(purse)
+
+	_add_hairline()
+
+	# THE RACK. Carved glyphs rather than emoji: emoji are someone else's
+	# artwork in someone else's style, and Samsung, Pixel and Xiaomi each draw
+	# them differently, so an art-directed screen changes shape per device.
+	_add_tile_row("河", UITheme.RED_CINNABAR, "Continue Journey",
+		"Stage %d of 50" % cur_lvl, "", func():
+			hide_modal()
+			start_calm_requested.emit(cur_lvl)
 	, true)
-	
-	_add_button("📜 Stages Map (1 - 50)", func():
-		show_level_select()
+
+	_add_tile_row("図", Color("#1f7a52"), "Stages Map", "Chapters I – V",
+		"%d/50" % cur_lvl, func(): show_level_select())
+
+	_add_tile_row("急", UITheme.RED_CINNABAR, "Timed Rapids", "Roguelite run",
+		"", func():
+			hide_modal()
+			start_run_requested.emit()
 	)
-	
-	_add_button("⚡ Timed Rapids (Roguelite Run)", func():
-		hide_modal()
-		start_run_requested.emit()
+
+	_add_tile_row("潮", Color("#28527a"), "The Daily Tide", "Global challenge",
+		"", func():
+			hide_modal()
+			start_daily_requested.emit()
 	)
-	
-	_add_button("🌊 The Daily Tide (Global Challenge)", func():
-		hide_modal()
-		start_daily_requested.emit()
+
+	_add_tile_row("鯉", Color("#1f7a52"), "Koi Sanctuary", "Zen garden",
+		"", func():
+			hide_modal()
+			open_sanctuary_requested.emit()
 	)
-	
-	_add_button("🏮 Koi Sanctuary (Zen Garden)", func():
-		hide_modal()
-		open_sanctuary_requested.emit()
-	)
-	
-	_add_button("💎 Spirit Bazaar & Treasury", func():
-		show_bazaar_modal()
-	)
-	
-	_add_button("⚙️ Settings & Accessibility", func():
-		show_settings_menu()
-	)
-	
+
+	_add_tile_row("市", Color("#9e6d19"), "Spirit Bazaar", "Tiles & ponds",
+		"%d ◈" % pearls, func(): show_bazaar_modal())
+
+	_add_tile_row("設", Color("#6d6455"), "Settings", "Audio & accessibility",
+		"", func(): show_settings_menu())
+
 	show_modal()
 
 func show_level_select() -> void:
@@ -773,46 +791,64 @@ func show_daily_offerings_modal() -> void:
 func show_settings_menu() -> void:
 	_current_screen = "settings"
 	_clear_content()
-	_add_title("Settings & Accessibility")
-	_add_subtitle("Audio, Display & Preferences")
-	
-	_add_button("🎵 Ambient Music: " + ("ON" if SettingsManager.music_enabled else "OFF"), func():
-		SettingsManager.toggle_setting("music")
-		show_settings_menu()
+	_add_seal_header("Settings", "設 · Audio & accessibility", "設")
+	_add_hairline()
+
+	# Carved glyphs, not emoji. 音 sound, 振 vibration, 動 motion, 眼 eye,
+	# 界 boundary - each is the actual character for the thing it controls, so
+	# the icon set is meaningful rather than decorative.
+	var on_col := Color("#57bd92")
+	var off_col := UITheme.IVORY_MUTED
+
+	_add_toggle_row("音", "Ambient Music",
+		"On" if SettingsManager.music_enabled else "Off", func():
+			SettingsManager.toggle_setting("music")
+			show_settings_menu()
+	, on_col if SettingsManager.music_enabled else off_col)
+
+	_add_toggle_row("響", "Tile ASMR Clacks",
+		"On" if SettingsManager.sfx_enabled else "Off", func():
+			SettingsManager.toggle_setting("sfx")
+			show_settings_menu()
+	, on_col if SettingsManager.sfx_enabled else off_col)
+
+	_add_toggle_row("振", "Haptic Vibration",
+		"On" if SettingsManager.haptics_enabled else "Off", func():
+			SettingsManager.toggle_setting("haptics")
+			show_settings_menu()
+	, on_col if SettingsManager.haptics_enabled else off_col)
+
+	_add_toggle_row("動", "Motion",
+		SettingsManager.motion_mode.capitalize(), func():
+			SettingsManager.toggle_setting("motion")
+			show_settings_menu()
 	)
-	_add_button("🥢 Tile ASMR Clacks: " + ("ON" if SettingsManager.sfx_enabled else "OFF"), func():
-		SettingsManager.toggle_setting("sfx")
-		show_settings_menu()
+
+	_add_toggle_row("眼", "Colour-Blind Mode",
+		SettingsManager.color_blind_mode.capitalize(), func():
+			SettingsManager.toggle_setting("color_blind_mode")
+			show_settings_menu()
 	)
-	_add_button("📳 Haptic Vibrations: " + ("ON" if SettingsManager.haptics_enabled else "OFF"), func():
-		SettingsManager.toggle_setting("haptics")
-		show_settings_menu()
-	)
-	_add_button("💨 Motion Mode: " + SettingsManager.motion_mode.to_upper(), func():
-		SettingsManager.toggle_setting("motion")
-		show_settings_menu()
-	)
-	_add_button("👁️ Color-Blind Mode: " + SettingsManager.color_blind_mode.capitalize(), func():
-		SettingsManager.toggle_setting("color_blind_mode")
-		show_settings_menu()
-	)
-	_add_button("🔲 High Contrast Borders: " + ("ON" if SettingsManager.high_contrast_borders else "OFF"), func():
-		SettingsManager.toggle_setting("high_contrast_borders")
-		show_settings_menu()
-	)
+
+	_add_toggle_row("界", "High Contrast Borders",
+		"On" if SettingsManager.high_contrast_borders else "Off", func():
+			SettingsManager.toggle_setting("high_contrast_borders")
+			show_settings_menu()
+	, on_col if SettingsManager.high_contrast_borders else off_col)
+
+	# NOTE: the Cloud Save toggle lives on feat/cloud-save-pgs, where the
+	# CloudSaveManager autoload exists. Referencing it here would not parse.
 	
 	_add_separator()
-	_add_button("📖 Replay Tutorial", func():
+	_add_toggle_row("教", "Replay Tutorial", "›", func():
 		hide_modal()
 		replay_tutorial_requested.emit()
 	)
-	_add_button("📜 Privacy Policy", func():
-		show_privacy_modal()
-	)
-	_add_button("🏆 Credits & Acknowledgments", func():
-		show_credits_modal()
-	)
-	_add_button("← Back", func():
+	_add_toggle_row("約", "Privacy Policy", "›", func(): show_privacy_modal())
+	_add_toggle_row("謝", "Credits", "›", func(): show_credits_modal())
+
+	_add_separator()
+	_add_button("Back", func():
 		if GameManager.is_timer_active:
 			show_pause_menu()
 		else:
@@ -882,9 +918,275 @@ func handle_back_pressed() -> void:
 			pass
 
 # ================= HELPER BUILDERS =================
+## The Rack needs no panel: the ivory tiles are opaque and carry themselves, so
+## the pond shows between them. Text screens DO need one - koi swim straight
+## through unbacked text and it becomes unreadable.
+func _set_card_backing(frosted: bool) -> void:
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.035, 0.105, 0.085, 0.93) if frosted else Color(0, 0, 0, 0.0)
+	sb.set_corner_radius_all(18 if frosted else 0)
+	sb.content_margin_left = 44 if frosted else 54
+	sb.content_margin_right = 44 if frosted else 54
+	sb.content_margin_top = 34 if frosted else 28
+	sb.content_margin_bottom = 34 if frosted else 28
+	if frosted:
+		# One hairline at the top edge only, rather than a box around everything.
+		sb.border_width_top = 1
+		sb.border_color = Color(UITheme.GOLD_MUTED.r, UITheme.GOLD_MUTED.g, UITheme.GOLD_MUTED.b, 0.30)
+		sb.shadow_color = Color(0, 0, 0, 0.55)
+		sb.shadow_size = 18
+		sb.shadow_offset = Vector2(0, 8)
+	sb.anti_aliasing = true
+	card_panel.add_theme_stylebox_override("panel", sb)
+
 func _clear_content() -> void:
+	# Default to frosted; show_main_menu() opts out for the Rack.
+	_set_card_backing(true)
 	for c in card_container.get_children():
 		c.queue_free()
+
+# ======================= THE RACK =======================
+## Menu rows are mahjong tiles lying face-up on the water, not rounded
+## rectangles with emoji. Ivory ceramic face, the warm biscuit underside showing
+## as a lip along the bottom, a carved glyph where a suit symbol would sit.
+## The point is that the interface is made of the same material as the game.
+
+const TILE_IVORY := Color("#fdf8ec")
+const TILE_IVORY_DIM := Color("#efe6d2")
+const TILE_BISCUIT := Color("#b79f74")   # the tile's own 3D underside
+const TILE_INK := Color("#232b26")
+const TILE_SUBINK := Color("#6d6455")
+const TILE_META := Color("#8a7f6b")
+const RICE_PAPER := Color("#f0e6d2")
+const PAPER_INK := Color("#2b2519")
+const PAPER_RULE := Color(0.47, 0.39, 0.24, 0.22)
+
+static func _make_tile_box(pressed: bool = false) -> StyleBoxFlat:
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = TILE_IVORY
+	sb.set_corner_radius_all(9)
+	# The bottom border IS the tile's extruded underside. This is what makes it
+	# read as a physical object rather than a card.
+	sb.border_width_bottom = 0 if pressed else 6
+	sb.border_color = TILE_BISCUIT
+	sb.content_margin_left = 20
+	sb.content_margin_right = 20
+	sb.content_margin_top = 16 if not pressed else 20
+	sb.content_margin_bottom = 16
+	sb.shadow_color = Color(0, 0, 0, 0.42)
+	sb.shadow_size = 0 if pressed else 7
+	sb.shadow_offset = Vector2(0, 4)
+	sb.anti_aliasing = true
+	return sb
+
+## One tile in the rack.
+##   glyph   - a single carved character, standing in for a suit symbol
+##   banded  - draws the gold band of a banded triple, which the player has
+##             already been taught means "this one is worth more"
+func _add_tile_row(glyph: String, glyph_col: Color, title: String, sub: String,
+		meta: String, on_click: Callable, banded: bool = false) -> void:
+	var b := Button.new()
+	b.custom_minimum_size = Vector2(0, 96)
+	b.focus_mode = Control.FOCUS_ALL
+	b.add_theme_stylebox_override("normal", _make_tile_box())
+	b.add_theme_stylebox_override("hover", _make_tile_box())
+	b.add_theme_stylebox_override("focus", _make_tile_box())
+	b.add_theme_stylebox_override("pressed", _make_tile_box(true))
+	b.pressed.connect(on_click)
+
+	var row := HBoxContainer.new()
+	row.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	row.offset_left = 24; row.offset_right = -24
+	# -12 at the bottom leaves the biscuit lip exposed; that lip is the whole
+	# reason this reads as a tile rather than a list row.
+	row.offset_top = 0; row.offset_bottom = -12
+	row.add_theme_constant_override("separation", 18)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	b.add_child(row)
+
+	var g := Label.new()
+	g.text = glyph
+	g.custom_minimum_size = Vector2(56, 0)
+	g.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	g.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	g.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	UITheme.style_label(g, "cjk", 46, glyph_col)
+	row.add_child(g)
+
+	var col := VBoxContainer.new()
+	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	col.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	col.alignment = BoxContainer.ALIGNMENT_CENTER
+	col.add_theme_constant_override("separation", 1)
+	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(col)
+
+	var t := Label.new()
+	t.text = title
+	t.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	UITheme.style_label(t, "ui", 27, TILE_INK)
+	col.add_child(t)
+
+	if not sub.is_empty():
+		var s := Label.new()
+		s.text = sub
+		s.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		UITheme.style_label(s, "ui", 17, TILE_SUBINK)
+		col.add_child(s)
+
+	if not meta.is_empty():
+		var m := Label.new()
+		m.text = meta
+		m.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		m.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		UITheme.style_label(m, "ui", 19, TILE_META)
+		row.add_child(m)
+
+	if banded:
+		# Gold band along the bottom bezel, same as a banded triple in play.
+		var band := ColorRect.new()
+		band.color = UITheme.GOLD_CORE
+		band.custom_minimum_size = Vector2(0, 7)
+		band.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		band.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
+		band.offset_left = 14; band.offset_right = -14
+		band.offset_top = -19; band.offset_bottom = -12
+		b.add_child(band)
+
+	card_container.add_child(b)
+
+## A hairline that fades at both ends, instead of another boxed border.
+func _add_hairline() -> void:
+	var g := GradientTexture2D.new()
+	var grad := Gradient.new()
+	grad.offsets = PackedFloat32Array([0.0, 0.5, 1.0])
+	grad.colors = PackedColorArray([
+		Color(UITheme.GOLD_MUTED.r, UITheme.GOLD_MUTED.g, UITheme.GOLD_MUTED.b, 0.0),
+		Color(UITheme.GOLD_MUTED.r, UITheme.GOLD_MUTED.g, UITheme.GOLD_MUTED.b, 0.5),
+		Color(UITheme.GOLD_MUTED.r, UITheme.GOLD_MUTED.g, UITheme.GOLD_MUTED.b, 0.0),
+	])
+	g.gradient = grad
+	g.width = 256
+	g.height = 1
+	var tr := TextureRect.new()
+	tr.texture = g
+	tr.stretch_mode = TextureRect.STRETCH_SCALE
+	tr.custom_minimum_size = Vector2(0, 1)
+	tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	card_container.add_child(tr)
+
+## Header for a sub-screen: title, romanised subtitle, and ONE cinnabar seal.
+## Cinnabar is the strongest colour available, so it is spent exactly once per
+## screen rather than sprinkled around.
+func _add_seal_header(title: String, sub: String, seal_glyph: String) -> void:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 18)
+	card_container.add_child(row)
+
+	var col := VBoxContainer.new()
+	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	col.add_theme_constant_override("separation", 2)
+	row.add_child(col)
+
+	var t := Label.new()
+	t.text = title
+	UITheme.style_label(t, "title", 40, UITheme.GOLD_CORE)
+	col.add_child(t)
+
+	if not sub.is_empty():
+		var s := Label.new()
+		s.text = sub
+		UITheme.style_label(s, "ui", 19, UITheme.IVORY_MUTED)
+		col.add_child(s)
+
+	var seal := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = UITheme.RED_CINNABAR
+	sb.set_corner_radius_all(4)
+	sb.content_margin_left = 12; sb.content_margin_right = 12
+	sb.content_margin_top = 6; sb.content_margin_bottom = 8
+	seal.add_theme_stylebox_override("panel", sb)
+	seal.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(seal)
+
+	var sl := Label.new()
+	sl.text = seal_glyph
+	UITheme.style_label(sl, "cjk", 34, Color("#fff4ef"))
+	seal.add_child(sl)
+
+## A tappable settings line: carved glyph, label, current value. Hairline rule
+## underneath instead of a box around it, so ten of these read as one list
+## rather than ten separate objects.
+func _add_toggle_row(glyph: String, label: String, value: String,
+		on_click: Callable, value_col: Color = UITheme.GOLD_CORE) -> void:
+	var b := Button.new()
+	b.custom_minimum_size = Vector2(0, 62)
+	var flat := StyleBoxEmpty.new()
+	var hov := StyleBoxFlat.new()
+	hov.bg_color = Color(1, 1, 1, 0.045)
+	hov.set_corner_radius_all(5)
+	b.add_theme_stylebox_override("normal", flat)
+	b.add_theme_stylebox_override("focus", flat)
+	b.add_theme_stylebox_override("hover", hov)
+	b.add_theme_stylebox_override("pressed", hov)
+	b.pressed.connect(on_click)
+
+	var row := HBoxContainer.new()
+	row.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	row.offset_left = 8; row.offset_right = -8
+	row.add_theme_constant_override("separation", 16)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	b.add_child(row)
+
+	var g := Label.new()
+	g.text = glyph
+	g.custom_minimum_size = Vector2(40, 0)
+	g.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	g.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	g.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	UITheme.style_label(g, "cjk", 28, UITheme.GOLD_MUTED)
+	row.add_child(g)
+
+	var l := Label.new()
+	l.text = label
+	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	UITheme.style_label(l, "ui", 23, UITheme.IVORY_BASE)
+	row.add_child(l)
+
+	var v := Label.new()
+	v.text = value
+	v.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	UITheme.style_label(v, "ui", 22, value_col)
+	row.add_child(v)
+
+	card_container.add_child(b)
+	_add_hairline()
+
+## A key/value line on the rice-paper sheet: hairline rule, no boxes.
+func _add_sheet_row(key: String, val: String, val_col: Color = UITheme.IVORY_BASE) -> void:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 16)
+	row.custom_minimum_size = Vector2(0, 54)
+	card_container.add_child(row)
+
+	var k := Label.new()
+	k.text = key
+	k.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	k.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	UITheme.style_label(k, "ui", 22, UITheme.IVORY_MUTED)
+	row.add_child(k)
+
+	var v := Label.new()
+	v.text = val
+	v.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	v.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	UITheme.style_label(v, "ui", 23, val_col)
+	row.add_child(v)
+
+	_add_hairline()
 
 func _add_title(text: String) -> void:
 	var l := Label.new()
