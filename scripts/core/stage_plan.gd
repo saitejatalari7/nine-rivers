@@ -17,7 +17,7 @@ extends RefCounted
 const BoardGenerator = preload("res://scripts/core/board_generator.gd")
 const LayoutData = preload("res://scripts/core/layout_data.gd")
 
-const TOTAL_LEVELS: int = 1000
+const TOTAL_LEVELS: int = 350
 const LEVELS_PER_CHAPTER: int = 50
 const CHAPTERS: int = TOTAL_LEVELS / LEVELS_PER_CHAPTER
 
@@ -83,19 +83,47 @@ static func chapter_subtitle(chapter: int) -> String:
 	return "%s · Stages %d - %d" % [CHAPTER_NAMES[c]["zh"], r.x, r.y]
 
 
-## Tile count is the dominant difficulty term, and column count decides how
-## small the tiles get - both measured by scripts/tests/board_metrics.gd.
+## How many tiles are free at deal time, as a share of the board. Tile count
+## says how LONG a board takes; this says how CONSTRAINED it is, and two boards
+## of the same size can differ sharply. Measured by topology_probe.gd - the
+## existing shapes sit between 0.21 and 0.39.
+static var _free_ratio_cache: Dictionary = {}
+
+static func free_ratio(name: String) -> float:
+	if _free_ratio_cache.has(name):
+		return _free_ratio_cache[name]
+	var pos := BoardGenerator.get_layout_positions(name)
+	if pos.is_empty():
+		return 1.0
+	var free: int = 0
+	for p in pos:
+		if BoardGenerator.is_slot_free(p, pos):
+			free += 1
+	var r: float = float(free) / float(pos.size())
+	_free_ratio_cache[name] = r
+	return r
+
+
+## Tile count sets the base; the free ratio nudges it. A board that opens with
+## almost nothing available plays a tier harder than its size suggests, and one
+## that opens wide plays a tier easier.
 static func tier_of_layout(name: String) -> int:
 	var n: int = BoardGenerator.get_layout_positions(name).size()
-	if n <= 48:
-		return 1
-	if n <= 72:
-		return 2
-	if n <= 96:
-		return 3
-	if n <= 120:
-		return 4
-	return 5
+	var base: int = 1
+	if n > 120:
+		base = 5
+	elif n > 96:
+		base = 4
+	elif n > 72:
+		base = 3
+	elif n > 48:
+		base = 2
+	var r: float = free_ratio(name)
+	if r < 0.22:
+		base += 1
+	elif r > 0.32:
+		base -= 1
+	return clampi(base, 1, TIERS)
 
 
 static func _build_tiers() -> void:

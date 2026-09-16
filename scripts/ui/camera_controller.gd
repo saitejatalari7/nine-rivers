@@ -53,9 +53,11 @@ func frame_board(bounds: Rect2, viewport_size: Vector2) -> void:
 	tween.tween_property(self, "position", center, 0.35).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	tween.tween_property(self, "zoom", Vector2(fit_scale, fit_scale), 0.35).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 
-func handle_external_pan(_rel: Vector2) -> void:
-	# Disabled: Board is solidly locked in place for mobile touch accuracy
-	pass
+func handle_external_pan(rel: Vector2) -> void:
+	if is_equal_approx(zoom.x, default_zoom):
+		return
+	position -= rel / zoom.x
+	_clamp_position()
 
 func punch_camera(offset: Vector2) -> void:
 	var orig_pos := position
@@ -63,9 +65,44 @@ func punch_camera(offset: Vector2) -> void:
 	tween.tween_property(self, "position", orig_pos + offset, 0.05).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	tween.tween_property(self, "position", orig_pos, 0.12).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 
-func _unhandled_input(_event: InputEvent) -> void:
-	# Disabled: Camera is locked to prevent accidental drifting or pinch-zooming on mobile touchscreens
-	pass
+## Zoom and pan are the recourse for a board whose tiles are small: pictorial
+## layouts need width, and width costs tile size. Panning only engages once
+## zoomed in, so a board that fits cannot be dragged off-screen by accident.
+func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventScreenTouch:
+		var t := event as InputEventScreenTouch
+		if t.pressed:
+			touch_points[t.index] = t.position
+		else:
+			touch_points.erase(t.index)
+			initial_pinch_dist = 0.0
+		is_panning = touch_points.size() == 1
+		return
+
+	if event is InputEventScreenDrag:
+		var d := event as InputEventScreenDrag
+		touch_points[d.index] = d.position
+		if touch_points.size() >= 2:
+			var pts: Array = touch_points.values()
+			var dist: float = (pts[0] as Vector2).distance_to(pts[1] as Vector2)
+			if initial_pinch_dist <= 0.0:
+				initial_pinch_dist = dist
+				initial_pinch_zoom = zoom
+			elif dist > 0.0:
+				var z: float = clampf(
+					initial_pinch_zoom.x * (dist / initial_pinch_dist),
+					min_zoom, max_zoom)
+				zoom = Vector2(z, z)
+				_clamp_position()
+		elif is_panning:
+			handle_external_pan(d.relative)
+		return
+
+	if event is InputEventMagnifyGesture:
+		var m := event as InputEventMagnifyGesture
+		var z: float = clampf(zoom.x * m.factor, min_zoom, max_zoom)
+		zoom = Vector2(z, z)
+		_clamp_position()
 
 func reset_to_fit() -> void:
 	var center := board_bounds.position + board_bounds.size * 0.5
@@ -76,7 +113,9 @@ func reset_to_fit() -> void:
 func _clamp_position() -> void:
 	if board_bounds.size == Vector2.ZERO:
 		return
-	var margin := Vector2(300, 400)
+	# Tight when zoomed in, loose at the fitted zoom, so the board cannot be
+	# dragged out of view.
+	var margin := Vector2(300, 400) / maxf(0.25, zoom.x / maxf(0.01, default_zoom))
 	var min_p := board_bounds.position - margin
 	var max_p := board_bounds.end + margin
 	position.x = clampf(position.x, min_p.x, max_p.x)

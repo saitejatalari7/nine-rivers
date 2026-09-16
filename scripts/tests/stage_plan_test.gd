@@ -62,12 +62,16 @@ func _check_determinism() -> void:
 ## The ramp should trend upward without being a staircase: early levels easy,
 ## late levels hard, and neither extreme absent in the middle.
 func _check_curve() -> void:
+	# One bucket per chapter: 50 levels is a whole number of wave periods, so
+	# the average is clean, and "difficulty rises chapter to chapter" is the
+	# property that actually matters.
+	var span: int = StagePlan.LEVELS_PER_CHAPTER
 	var buckets: Array[float] = []
-	for b in range(10):
+	for b in range(StagePlan.CHAPTERS):
 		var sum := 0.0
-		for i in range(100):
-			sum += float(StagePlan.tier_for_level(b * 100 + i + 1))
-		buckets.append(sum / 100.0)
+		for i in range(span):
+			sum += float(StagePlan.tier_for_level(b * span + i + 1))
+		buckets.append(sum / float(span))
 
 	for i in range(1, buckets.size()):
 		if buckets[i] < buckets[i - 1] - 0.01:
@@ -75,12 +79,12 @@ func _check_curve() -> void:
 				i, buckets[i], buckets[i - 1]])
 			return
 	if buckets[0] > 2.2:
-		_fail("first 100 levels average tier %.2f - too hard to open with" % buckets[0])
+		_fail("first %d levels average tier %.2f - too hard to open with" % [span, buckets[0]])
 		return
-	if buckets[9] < 4.0:
-		_fail("last 100 levels average tier %.2f - never gets hard" % buckets[9])
+	if buckets[buckets.size() - 1] < 4.0:
+		_fail("last %d levels average tier %.2f - never gets hard" % [span, buckets[buckets.size() - 1]])
 		return
-	_pass("tier ramps %.2f -> %.2f and never regresses per 100" % [buckets[0], buckets[9]])
+	_pass("tier ramps %.2f -> %.2f per chapter" % [buckets[0], buckets[buckets.size() - 1]])
 
 	for lv in range(1, StagePlan.TEACH_LEVELS + 1):
 		if StagePlan.tier_for_level(lv) != 1:
@@ -130,9 +134,11 @@ func _check_modifiers() -> void:
 			_fail("level %d has modifier %d out of range" % [lv, m])
 			return
 		counts[m] += 1
+	var floor_each: int = StagePlan.TOTAL_LEVELS / 10
 	for m in [1, 2, 3]:
-		if counts[m] < 100:
-			_fail("modifier %d appears only %d times in 1000" % [m, counts[m]])
+		if counts[m] < floor_each:
+			_fail("modifier %d appears only %d times in %d" % [
+				m, counts[m], StagePlan.TOTAL_LEVELS])
 			return
 	_pass("modifiers: none %d, fog %d, rush %d, frost %d" % [
 		counts[0], counts[1], counts[2], counts[3]])
@@ -148,7 +154,8 @@ func _check_modifiers() -> void:
 
 
 func _check_chapters() -> void:
-	if StagePlan.CHAPTER_NAMES.size() != StagePlan.CHAPTERS:
+	# Names carry headroom for expanding the campaign later.
+	if StagePlan.CHAPTER_NAMES.size() < StagePlan.CHAPTERS:
 		_fail("%d chapter names for %d chapters" % [
 			StagePlan.CHAPTER_NAMES.size(), StagePlan.CHAPTERS])
 		return
@@ -221,9 +228,10 @@ func _check_star_gates() -> void:
 		_fail("level 101 locked with every star earned")
 		return
 	_pass("entry is refused below the gate and allowed above it")
-	print("        gates: ch II %d, ch III %d, ch XI %d, ch XX %d" % [
-		StagePlan.stars_required(1), StagePlan.stars_required(2),
-		StagePlan.stars_required(10), StagePlan.stars_required(19)])
+	var gate_line := ""
+	for c in range(1, StagePlan.CHAPTERS):
+		gate_line += "%s:%d  " % [StagePlan.ROMAN[c], StagePlan.stars_required(c)]
+	print("        gates  " + gate_line)
 
 
 func _print_sample() -> void:

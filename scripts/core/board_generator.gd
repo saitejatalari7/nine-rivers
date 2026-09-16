@@ -39,7 +39,9 @@ static func positions_from_ascii(entry: Dictionary) -> Array[Dictionary]:
 	var pos: Array[Dictionary] = []
 	var layers: Array = entry.get("layers", [])
 	for z in range(layers.size()):
-		var rows: PackedStringArray = String(layers[z]).split("
+		#  must go first: a CRLF checkout would otherwise make the trailing
+		# carriage return a tile and give every row a phantom extra column.
+		var rows: PackedStringArray = String(layers[z]).replace("", "").split("
 ")
 		var r := 0
 		for line in rows:
@@ -175,6 +177,18 @@ static func get_type_pool() -> Array[Dictionary]:
 		t.append({"suit": "dragon", "rank": r})
 	return t
 
+## Picks the least-used type, so a board draws like a real mahjong set - four
+## copies of a type - instead of the old modulo cycle, which could put seven of
+## one tile on the board and none of another.
+static func _take_type(used: Array[int], n: int) -> int:
+	var best: int = 0
+	for i in range(used.size()):
+		if used[i] < used[best]:
+			best = i
+	used[best] += n
+	return best
+
+
 static func _shuffle_array(arr: Array, rng: RandomNumberGenerator) -> void:
 	for i in range(arr.size() - 1, 0, -1):
 		var j := rng.randi_range(0, i)
@@ -281,22 +295,20 @@ static func deal_board(layout_name: String, rng: RandomNumberGenerator = null) -
 	var normal_pairs_count: int = int((total - 3 * triples_count - 2 * wild_pairs_count) / 2)
 	var total_pairs_count: int = wild_pairs_count + normal_pairs_count
 	
-	# Prepare type pool
 	var pool := get_type_pool()
 	_shuffle_array(pool, rng)
-	var pool_idx: int = 0
-	
+	var used: Array[int] = []
+	used.resize(pool.size())
+
 	var triple_sets: Array[Dictionary] = []
 	for k in range(triples_count):
-		triple_sets.append({"n": 3, "type": pool[pool_idx % pool.size()]})
-		pool_idx += 1
-		
+		triple_sets.append({"n": 3, "type": pool[_take_type(used, 3)]})
+
 	var pair_sets: Array[Dictionary] = []
 	for k in range(wild_pairs_count):
 		pair_sets.append({"n": 2, "type": {"suit": "flower" if k % 2 == 0 else "season"}})
 	for k in range(normal_pairs_count):
-		pair_sets.append({"n": 2, "type": pool[pool_idx % pool.size()]})
-		pool_idx += 1
+		pair_sets.append({"n": 2, "type": pool[_take_type(used, 2)]})
 	_shuffle_array(pair_sets, rng)
 	
 	var order := peel_dynamic(positions, triples_count, total_pairs_count, rng)
