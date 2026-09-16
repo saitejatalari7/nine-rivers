@@ -54,7 +54,10 @@ script = ExtResource("3_cam")
 
 [node name="Modal" parent="." instance=ExtResource("5_modal")]
 
-[node name="Sanctuary" parent="." instance=ExtResource("7_sanc")]
+[node name="SanctuaryLayer" type="CanvasLayer" parent="."]
+layer = 8
+
+[node name="Sanctuary" parent="SanctuaryLayer" instance=ExtResource("7_sanc")]
 visible = false
 
 [node name="SplashScreen" type="CanvasLayer" parent="."]

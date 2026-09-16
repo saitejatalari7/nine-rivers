@@ -14,7 +14,9 @@ const TutorialController = preload("res://scripts/ui/tutorial_controller.gd")
 @onready var camera: CameraController = $Camera2D
 @onready var hud: HudController = $HUD
 @onready var modal: ModalController = $Modal
-@onready var sanctuary: SanctuaryView = $Sanctuary
+## On its own CanvasLayer: parented to the Node2D it inherited the gameplay
+## camera's pan and zoom, so opening the pond after a board left it off-centre.
+@onready var sanctuary: SanctuaryView = $SanctuaryLayer/Sanctuary
 @onready var splash_screen: CanvasLayer = $SplashScreen
 @onready var zen_background = $FeltBackground
 
@@ -142,6 +144,9 @@ func _handle_back_action() -> void:
 		_on_menu_clicked()
 
 func _open_sanctuary() -> void:
+	# _handle_back_action() tests the sanctuary before the modal, so leaving a
+	# modal open underneath would send the back gesture to the wrong screen.
+	modal.hide_modal()
 	board.visible = false
 	hud.visible = false
 	sanctuary.visible = true
@@ -222,12 +227,32 @@ func _start_run_mode() -> void:
 	board.load_stage(layout_name)
 	camera.frame_board(board.board_bounds, get_viewport_rect().size)
 
+## Every player sees the same board on the same date, because the only input is
+## the date itself. Drawn from the substantial shapes only - a daily challenge
+## that deals a 36-tile opener is not a challenge - and the LCG step keeps
+## consecutive dates from simply walking down the list.
+static func daily_layout_pool() -> Array[String]:
+	var pool: Array[String] = []
+	for tier in [3, 4, 5]:
+		for name in StagePlan.layouts_in_tier(tier):
+			if not pool.has(name):
+				pool.append(name)
+	pool.sort()
+	return pool
+
+static func daily_layout_for_seed(seed_value: int) -> String:
+	var pool: Array[String] = daily_layout_pool()
+	if pool.is_empty():
+		return BoardGenerator.LADDER[1]
+	var mixed: int = (seed_value * 1103515245 + 12345) & 0x7fffffff
+	return pool[mixed % pool.size()]
+
 func _start_daily_mode() -> void:
 	board.visible = true
 	hud.visible = true
 	GameManager.start_daily_tide()
 	hud.setup_hud(GameManager.GameMode.DAILY, 1)
-	var layout_name: String = LADDER[1] # Gate House
+	var layout_name: String = daily_layout_for_seed(GameManager.daily_seed)
 	GameManager.current_layout_name = layout_name
 	
 	if zen_background and zen_background.has_method("set_level"):
@@ -258,6 +283,10 @@ func _next_stage() -> void:
 	if GameManager.current_mode == GameManager.GameMode.CALM:
 		_start_calm_mode(GameManager.current_level + 1)
 	else:
+		# _on_board_cleared() hid the HUD to clear the way for the reward screen;
+		# without this the next stage deals with no menu button, timer or props.
+		board.visible = true
+		hud.visible = true
 		GameManager.current_stage_no += 1
 		var layout_idx: int = mini(LADDER.size() - 1, GameManager.current_stage_no - 1)
 		var layout_name: String = LADDER[layout_idx]
