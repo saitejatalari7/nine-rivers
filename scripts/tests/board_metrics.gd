@@ -4,6 +4,7 @@ extends Node
 ## rule applied to the menus; this measures whether it can apply to the board.
 
 const BoardGenerator = preload("res://scripts/core/board_generator.gd")
+const LayoutData = preload("res://scripts/core/layout_data.gd")
 
 const TW: float = 64.0
 const TH: float = 84.0
@@ -15,7 +16,9 @@ const PX_PER_DP: float = 3.0
 
 func _ready() -> void:
 	print("layout          tiles  cols rows  board px      fit    tile dp   mm")
-	for name in BoardGenerator.LADDER + ["pagoda"]:
+	var names: Array = LayoutData.LAYOUTS.keys()
+	names.sort()
+	for name in names:
 		var pos := BoardGenerator.get_layout_positions(name)
 		var max_x := 0
 		var max_y := 0

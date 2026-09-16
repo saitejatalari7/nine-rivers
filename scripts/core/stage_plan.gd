@@ -118,12 +118,36 @@ static func tier_of_layout(name: String) -> int:
 		base = 3
 	elif n > 48:
 		base = 2
+	var b: Vector2 = _ratio_bounds()
 	var r: float = free_ratio(name)
-	if r < 0.22:
+	if r < b.x:
 		base += 1
-	elif r > 0.32:
+	elif r > b.y:
 		base -= 1
 	return clampi(base, 1, TIERS)
+
+
+## Thresholds are the 20th and 80th percentile of the actual layout set, not
+## fixed numbers: the first version used constants calibrated on twelve shapes
+## and, once the set grew to a hundred, demoted almost everything because the
+## median had moved. Percentiles shift a fifth of the set each way whatever the
+## distribution does.
+static var _bounds_cache: Vector2 = Vector2(-1.0, -1.0)
+
+static func _ratio_bounds() -> Vector2:
+	if _bounds_cache.x >= 0.0:
+		return _bounds_cache
+	var ratios: Array[float] = []
+	for name in LayoutData.LAYOUTS.keys():
+		ratios.append(free_ratio(name))
+	if ratios.size() < 5:
+		_bounds_cache = Vector2(0.0, 1.0)
+		return _bounds_cache
+	ratios.sort()
+	_bounds_cache = Vector2(
+		ratios[int(ratios.size() * 0.2)],
+		ratios[int(ratios.size() * 0.8)])
+	return _bounds_cache
 
 
 static func _build_tiers() -> void:
@@ -171,13 +195,19 @@ static func tier_for_level(level: int) -> int:
 	return clampi(int(round(ramp)) + WAVE[(lv - 1) % WAVE.size()], 1, TIERS)
 
 
+## Round-robin within the tier: the nth level of a given tier takes the nth
+## shape in that tier's pool. A stride-based index left 28 of 101 shapes
+## unreachable, which is authored content nobody ever sees.
 static func layout_for_level(level: int) -> String:
-	var pool: Array = layouts_in_tier(tier_for_level(level))
+	var tier: int = tier_for_level(level)
+	var pool: Array = layouts_in_tier(tier)
 	if pool.is_empty():
 		return "turtle"
-	# Stride by a number coprime with most pool sizes so consecutive levels in
-	# the same tier do not repeat a shape.
-	return pool[(level * 7 + level / 11) % pool.size()]
+	var nth: int = 0
+	for lv in range(1, clampi(level, 1, TOTAL_LEVELS)):
+		if tier_for_level(lv) == tier:
+			nth += 1
+	return pool[nth % pool.size()]
 
 
 ## 0 NONE, 1 FOG, 2 RUSH, 3 FROST - matching StageModifiers.Modifier.
