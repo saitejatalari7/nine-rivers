@@ -141,6 +141,35 @@ static func style_label(
 		lbl.add_theme_font_size_override("font_size", size)
 	lbl.add_theme_color_override("font_color", color)
 
+# ================= PRESS FEEDBACK =================
+## Touch has no hover. A control whose pressed state is drawn the same as its
+## hover state therefore gives a phone player nothing at all, which is what the
+## settings rows did - both states were the same 4.5% white wash.
+##
+## Feedback fires on button_down rather than on pressed, so it lands when the
+## finger touches rather than when it lifts. That difference is what makes a
+## tap feel connected to the control rather than lagging behind it.
+static func add_press_feedback(btn: BaseButton) -> void:
+	var cb := Callable(UITheme, "_on_press_feedback")
+	if not btn.is_connected("button_down", cb):
+		btn.button_down.connect(cb)
+
+static func _on_press_feedback() -> void:
+	if Engine.get_main_loop() == null:
+		return
+	AudioManager.play_ui_tap()
+
+## A press wash for controls drawn without a full stylebox set - strong enough
+## to be visible under a fingertip, which the old 4.5% was not.
+static func create_press_wash(corner_r: int = 5) -> StyleBoxFlat:
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(1, 1, 1, 0.12)
+	sb.set_corner_radius_all(corner_r)
+	sb.border_width_left = 3
+	sb.border_color = GOLD_CORE
+	sb.anti_aliasing = true
+	return sb
+
 # ================= STYLEBOX BUILDERS =================
 
 static func create_panel_box(
@@ -273,10 +302,8 @@ static func style_button(
 	if font != null:
 		btn.add_theme_font_override("font", font)
 	
-	# Connect micro-animations for hover & press
-	if not btn.is_connected("mouse_entered", Callable(UITheme, "_on_button_hover")):
-		btn.mouse_entered.connect(Callable(UITheme, "_on_button_hover").bind(btn))
-		btn.mouse_exited.connect(Callable(UITheme, "_on_button_unhover").bind(btn))
+	add_press_feedback(btn)
+
 
 static func style_circular_button(
 	btn: Button,
@@ -297,20 +324,13 @@ static func style_circular_button(
 	if font != null:
 		btn.add_theme_font_override("font", font)
 	
-	if not btn.is_connected("mouse_entered", Callable(UITheme, "_on_button_hover")):
-		btn.mouse_entered.connect(Callable(UITheme, "_on_button_hover").bind(btn))
-		btn.mouse_exited.connect(Callable(UITheme, "_on_button_unhover").bind(btn))
+	add_press_feedback(btn)
 
-static func _on_button_hover(btn: Button) -> void:
-	if btn.disabled:
-		return
-	btn.pivot_offset = btn.size * 0.5
-	var tween := btn.create_tween()
-	tween.tween_property(btn, "scale", Vector2(1.035, 1.035), 0.12).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 
-static func _on_button_unhover(btn: Button) -> void:
-	var tween := btn.create_tween()
-	tween.tween_property(btn, "scale", Vector2.ONE, 0.12).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+## Hover scale tweens were removed. There is no hover on a phone: Godot
+## synthesises mouse_entered from a touch, so a tap grew the button by 3.5%
+## and it STAYED grown until a later touch landed elsewhere. The press state
+## and the tap haptic carry the feedback instead.
 
 # ================= SAFE AREA =================
 ## Top and bottom insets in VIEWPORT pixels, for notches, status bars and

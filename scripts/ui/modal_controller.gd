@@ -545,9 +545,10 @@ func show_boon_draft() -> void:
 		# A relic is a thing you pick up, so it is drawn as a tile you can lift
 		# off the rack, not as a bordered card in a stack of bordered cards.
 		var card := PanelContainer.new()
-		# Two lines of text plus a wrapped description, so it needs more than
-		# the bare 48dp minimum to avoid clipping the second line.
-		card.custom_minimum_size = Vector2(0, UITheme.TOUCH_MIN + 24.0)
+		# The tappable Button sits INSIDE the tile stylebox, so it loses the
+		# 16px top and bottom content margins. The card has to carry those 32px
+		# on top of the touch minimum or the button itself comes out at 45dp.
+		card.custom_minimum_size = Vector2(0, UITheme.TOUCH_MIN + 32.0)
 		card.add_theme_stylebox_override("panel", _make_tile_box())
 
 		var row := HBoxContainer.new()
@@ -580,18 +581,28 @@ func show_boon_draft() -> void:
 		row.add_child(vbox)
 		card.add_child(row)
 
+		# A real Button laid over the card rather than a raw gui_input handler:
+		# the handler had no pressed state, no keyboard or focus support, and
+		# relied on mouse emulation from touch. (The previous relic_btn here
+		# was built and then never added to the tree, so it did nothing.)
 		var relic_btn := Button.new()
 		relic_btn.flat = true
-		relic_btn.anchors_preset = Control.PRESET_FULL_RECT
-		relic_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		relic_btn.size_flags_vertical = Control.SIZE_EXPAND_FILL
-		
+		relic_btn.focus_mode = Control.FOCUS_ALL
+		var clear := StyleBoxEmpty.new()
+		for st in ["normal", "hover", "focus"]:
+			relic_btn.add_theme_stylebox_override(st, clear)
+		var ink := StyleBoxFlat.new()
+		ink.bg_color = Color(0, 0, 0, 0.10)
+		ink.set_corner_radius_all(9)
+		relic_btn.add_theme_stylebox_override("pressed", ink)
+		card.add_child(relic_btn)
+		UITheme.add_press_feedback(relic_btn)
+
 		var b_copy := b
-		card.gui_input.connect(func(ev: InputEvent):
-			if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
-				GameManager.acquire_relic(b_copy)
-				hide_modal()
-				next_stage_requested.emit()
+		relic_btn.pressed.connect(func():
+			GameManager.acquire_relic(b_copy)
+			hide_modal()
+			next_stage_requested.emit()
 		)
 		
 		card_container.add_child(card)
@@ -1205,6 +1216,7 @@ func _add_tile_row(glyph: String, glyph_col: Color, title: String, sub: String,
 	b.add_theme_stylebox_override("focus", _make_tile_box())
 	b.add_theme_stylebox_override("pressed", _make_tile_box(true))
 	b.pressed.connect(on_click)
+	UITheme.add_press_feedback(b)
 
 	var row := HBoxContainer.new()
 	row.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -1296,6 +1308,7 @@ func _style_stage_token(btn: Button, current: bool) -> void:
 	btn.add_theme_color_override("font_hover_color", TILE_INK)
 	btn.add_theme_color_override("font_pressed_color", TILE_INK)
 	btn.add_theme_color_override("font_focus_color", TILE_INK)
+	UITheme.add_press_feedback(btn)
 
 ## A stage still out of reach: no tile, no border, just the number waiting.
 func _style_stage_token_locked(btn: Button) -> void:
@@ -1386,8 +1399,9 @@ func _add_toggle_row(glyph: String, label: String, value: String,
 	b.add_theme_stylebox_override("normal", flat)
 	b.add_theme_stylebox_override("focus", flat)
 	b.add_theme_stylebox_override("hover", hov)
-	b.add_theme_stylebox_override("pressed", hov)
+	b.add_theme_stylebox_override("pressed", UITheme.create_press_wash(5))
 	b.pressed.connect(on_click)
+	UITheme.add_press_feedback(b)
 
 	var row := HBoxContainer.new()
 	row.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)

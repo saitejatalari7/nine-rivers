@@ -449,7 +449,31 @@ func _pregenerate_glass_shatter_sounds() -> void:
 
 # ================= PUBLIC SFX PLAY METHODS =================
 
+## Vibration is a separate accessibility setting from sound, so it must not sit
+## behind the sfx gate. Every haptic in this file used to be written after an
+## early return on sfx_enabled, which meant muting the game also killed
+## vibration - while Settings still showed "Haptic Vibration: On". Each play_*
+## method now fires this FIRST, before any sound decision.
+func haptic(ms: int) -> void:
+	if SettingsManager.haptics_enabled:
+		Input.vibrate_handheld(ms)
+
+## A UI tap. Lighter and shorter than a tile clack so a menu does not sound
+## like gameplay.
+func play_ui_tap() -> void:
+	haptic(4)
+	if not SettingsManager.sfx_enabled or click_sample == null:
+		return
+	var player: AudioStreamPlayer = _get_available_player()
+	if player:
+		player.stream = click_sample
+		player.pitch_scale = 1.12 + randf() * 0.05
+		player.volume_db = -11.0
+		player.play()
+
+
 func play_click() -> void:
+	haptic(5)
 	if not SettingsManager.sfx_enabled or click_sample == null:
 		return
 	var player: AudioStreamPlayer = _get_available_player()
@@ -458,10 +482,9 @@ func play_click() -> void:
 		player.pitch_scale = 0.98 + randf() * 0.04
 		player.volume_db = -5.0
 		player.play()
-	if SettingsManager.haptics_enabled:
-		Input.vibrate_handheld(5)
 
 func play_tile_clack(pitch_mod: float = 1.0) -> void:
+	haptic(8)
 	if not SettingsManager.sfx_enabled or clack_samples.is_empty():
 		return
 	var sample: AudioStreamWAV = clack_samples[randi() % clack_samples.size()]
@@ -471,11 +494,9 @@ func play_tile_clack(pitch_mod: float = 1.0) -> void:
 		player.pitch_scale = pitch_mod * (0.96 + randf() * 0.08)
 		player.volume_db = -3.5
 		player.play()
-	
-	if SettingsManager.haptics_enabled:
-		Input.vibrate_handheld(8)
 
 func play_tile_match(flow_level: int, is_triple: bool = false, is_glass: bool = false) -> void:
+	haptic(35 if is_glass else (25 if is_triple else 15))
 	if not SettingsManager.sfx_enabled:
 		return
 	
@@ -498,9 +519,6 @@ func play_tile_match(flow_level: int, is_triple: bool = false, is_glass: bool = 
 	if flow_level >= 5:
 		# Deep temple gong chime for Flow Overdrive!
 		get_tree().create_timer(0.12).timeout.connect(func(): _play_guzheng_string(freq * 0.5, 0.85, 0.88))
-	
-	if SettingsManager.haptics_enabled:
-		Input.vibrate_handheld(35 if is_glass else (25 if is_triple else 15))
 
 func play_golden_sand(is_triple: bool = false) -> void:
 	if not SettingsManager.sfx_enabled or sand_samples.is_empty():
@@ -514,6 +532,7 @@ func play_golden_sand(is_triple: bool = false) -> void:
 		player.play()
 
 func play_glass_shatter(is_triple: bool = false) -> void:
+	haptic(40)
 	if not SettingsManager.sfx_enabled or glass_samples.is_empty():
 		return
 	var sample: AudioStreamWAV = glass_samples[randi() % glass_samples.size()]
@@ -523,8 +542,6 @@ func play_glass_shatter(is_triple: bool = false) -> void:
 		player.pitch_scale = (0.95 if is_triple else 1.0) * (0.98 + randf() * 0.05)
 		player.volume_db = 0.5 if is_triple else -1.0
 		player.play()
-	if SettingsManager.haptics_enabled:
-		Input.vibrate_handheld(40)
 
 func play_tile_shatter(is_triple: bool = false) -> void:
 	if not SettingsManager.sfx_enabled or shatter_samples.is_empty():
@@ -547,6 +564,7 @@ func play_wild_strand() -> void:
 		get_tree().create_timer(i * 0.05).timeout.connect(func(): _play_guzheng_string(f, 0.35, 0.45))
 
 func play_misplay() -> void:
+	haptic(40)
 	if not SettingsManager.sfx_enabled:
 		return
 	var player := _get_available_player()
@@ -566,9 +584,6 @@ func play_misplay() -> void:
 		player.stream = wav
 		player.volume_db = -2.0
 		player.play()
-	
-	if SettingsManager.haptics_enabled:
-		Input.vibrate_handheld(40)
 
 func play_win() -> void:
 	if not SettingsManager.sfx_enabled:
@@ -603,11 +618,10 @@ func play_win() -> void:
 	)
 
 func play_tile_pick() -> void:
+	haptic(8)
 	if not SettingsManager.sfx_enabled:
 		return
 	_play_guzheng_string(783.99, 0.12, 0.40)
-	if SettingsManager.haptics_enabled:
-		Input.vibrate_handheld(8)
 
 func play_combo_high() -> void:
 	if not SettingsManager.sfx_enabled:
@@ -618,13 +632,13 @@ func play_combo_high() -> void:
 		get_tree().create_timer(i * 0.07).timeout.connect(func(): _play_guzheng_string(f, 0.55, 0.55))
 
 func play_tick_warn() -> void:
+	haptic(12)
 	if not SettingsManager.sfx_enabled:
 		return
 	_play_guzheng_string(329.63, 0.14, 0.42)
-	if SettingsManager.haptics_enabled:
-		Input.vibrate_handheld(12)
 
 func play_water_drop() -> void:
+	haptic(8)
 	if not SettingsManager.sfx_enabled:
 		return
 	var player := _get_available_player()
@@ -648,10 +662,9 @@ func play_water_drop() -> void:
 		player.stream = wav
 		player.volume_db = -3.5
 		player.play()
-	if SettingsManager.haptics_enabled:
-		Input.vibrate_handheld(8)
 
 func play_hitstop_impact() -> void:
+	haptic(35)
 	if not SettingsManager.sfx_enabled:
 		return
 	var player := _get_available_player()
@@ -673,8 +686,6 @@ func play_hitstop_impact() -> void:
 		player.stream = wav
 		player.volume_db = -0.5
 		player.play()
-	if SettingsManager.haptics_enabled:
-		Input.vibrate_handheld(35)
 
 # ================= GUZHENG PHYSICAL STRING SYNTHESIZER =================
 

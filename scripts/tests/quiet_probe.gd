@@ -5,6 +5,16 @@ func _ready() -> void:
 	add_child(main)
 	await get_tree().process_frame
 	await get_tree().process_frame
+	# main.tscn runs its intro splash on boot, and the splash tween ends by
+	# calling _return_home(), which forces the main menu. If that lands while
+	# the probe is part-way through, it silently replaces whatever screen is
+	# being measured - and the measurement still reports "ok". Wait it out
+	# before touching anything.
+	var splash: Node = main.get_node_or_null("SplashScreen")
+	if splash != null:
+		splash.visible = false
+	await get_tree().create_timer(1.2).timeout
+
 	var pond: Node = main.get_node("FeltBackground")
 	var modal: Node = main.get_node("Modal")
 	var fails := 0

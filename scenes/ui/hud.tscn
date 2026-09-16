@@ -37,13 +37,13 @@ alignment = 1
 [node name="Lbl" type="Label" parent="TopBar/Readout/StatsBox/LevelBox"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.6, 0.75, 0.68, 1)
-theme_override_font_sizes/font_size = 14
+theme_override_font_sizes/font_size = 36
 text = "STAGE"
 horizontal_alignment = 1
 
 [node name="ValLevel" type="Label" parent="TopBar/Readout/StatsBox/LevelBox"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 24
+theme_override_font_sizes/font_size = 48
 text = "1"
 horizontal_alignment = 1
 
@@ -55,13 +55,13 @@ alignment = 1
 [node name="Lbl" type="Label" parent="TopBar/Readout/StatsBox/ScoreBox"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.6, 0.75, 0.68, 1)
-theme_override_font_sizes/font_size = 14
+theme_override_font_sizes/font_size = 36
 text = "SCORE"
 horizontal_alignment = 1
 
 [node name="ValScore" type="Label" parent="TopBar/Readout/StatsBox/ScoreBox"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 24
+theme_override_font_sizes/font_size = 48
 text = "0"
 horizontal_alignment = 1
 
@@ -72,13 +72,13 @@ alignment = 1
 [node name="Lbl" type="Label" parent="TopBar/Readout/StatsBox/TilesBox"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.6, 0.75, 0.68, 1)
-theme_override_font_sizes/font_size = 14
+theme_override_font_sizes/font_size = 36
 text = "TILES"
 horizontal_alignment = 1
 
 [node name="ValTiles" type="Label" parent="TopBar/Readout/StatsBox/TilesBox"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 24
+theme_override_font_sizes/font_size = 48
 text = "36"
 horizontal_alignment = 1
 
@@ -89,13 +89,13 @@ alignment = 1
 [node name="Lbl" type="Label" parent="TopBar/Readout/StatsBox/SetsBox"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.6, 0.75, 0.68, 1)
-theme_override_font_sizes/font_size = 14
+theme_override_font_sizes/font_size = 36
 text = "SETS"
 horizontal_alignment = 1
 
 [node name="ValSets" type="Label" parent="TopBar/Readout/StatsBox/SetsBox"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 24
+theme_override_font_sizes/font_size = 48
 text = "0"
 horizontal_alignment = 1
 
@@ -110,7 +110,7 @@ grow_horizontal = 2
 
 [node name="ClockText" type="Label" parent="TimerWrap"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 22
+theme_override_font_sizes/font_size = 42
 text = "1:40"
 horizontal_alignment = 1
 
@@ -132,7 +132,7 @@ grow_horizontal = 2
 [node name="FlowLabel" type="Label" parent="FlowBanner"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.95, 0.76, 0.31, 1)
-theme_override_font_sizes/font_size = 22
+theme_override_font_sizes/font_size = 42
 text = "Flow ×2 · Bamboo"
 horizontal_alignment = 1
 vertical_alignment = 1
@@ -186,7 +186,7 @@ mouse_filter = 2
 
 [node name="ToastLabel" type="Label" parent="Toast"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 18
+theme_override_font_sizes/font_size = 42
 text = "Notification"
 horizontal_alignment = 1
 vertical_alignment = 1
