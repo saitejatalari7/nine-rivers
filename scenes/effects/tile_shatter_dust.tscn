@@ -9,19 +9,19 @@ script = ExtResource("1_dust_script")
 [node name="DustCloud" type="CPUParticles2D" parent="."]
 z_index = 650
 emitting = false
-amount = 42
-lifetime = 0.55
+amount = 26
+lifetime = 0.5
 one_shot = true
 explosiveness = 0.88
 spread = 180.0
 gravity = Vector2(0, -45)
-initial_velocity_min = 40.0
-initial_velocity_max = 125.0
+initial_velocity_min = 35.0
+initial_velocity_max = 105.0
 damping_min = 70.0
 damping_max = 105.0
-scale_amount_min = 4.0
-scale_amount_max = 9.0
-color = Color(0.960784, 0.898039, 0.776471, 0.921569)
+scale_amount_min = 1.1
+scale_amount_max = 2.4
+color = Color(0.960784, 0.898039, 0.776471, 0.34)
 
 [node name="Shards" type="CPUParticles2D" parent="."]
 z_index = 660
@@ -43,14 +43,14 @@ color = Color(0.988235, 0.976471, 0.941176, 1)
 [node name="Embers" type="CPUParticles2D" parent="."]
 z_index = 670
 emitting = false
-amount = 24
-lifetime = 0.68
+amount = 18
+lifetime = 0.62
 one_shot = true
 explosiveness = 0.75
 spread = 180.0
 gravity = Vector2(0, -95)
 initial_velocity_min = 35.0
 initial_velocity_max = 90.0
-scale_amount_min = 1.6
-scale_amount_max = 3.4
-color = Color(0.984314, 0.835294, 0.356863, 1)
+scale_amount_min = 0.7
+scale_amount_max = 1.6
+color = Color(0.984314, 0.835294, 0.356863, 0.8)

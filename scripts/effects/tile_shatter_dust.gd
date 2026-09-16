@@ -46,6 +46,106 @@ static func _ensure_resources() -> void:
 		c.add_point(Vector2(1.0, 1.9))
 		_dust_scale_curve = c
 
+# ---------------------------------------------------------------- rendered shards
+## Blender-rendered fracture pieces. A CPUParticles2D can only carry one
+## texture for every particle, so real shards are spawned as individual
+## sprites instead - that is what lets each one take its own spin and drift,
+## so no two shatters look alike.
+
+const SHARD_ATLAS_DIR := "res://assets/tiles/"
+const SHARD_ATLAS_FILES: Dictionary = {
+	"classic_jade": "shards_classic_jade.png",
+	"theme_imperial_gold": "shards_imperial_gold.png",
+	"theme_obsidian_ink": "shards_obsidian_ink.png",
+	"theme_cherry_blossom": "shards_cherry_blossom.png",
+}
+const SHARD_COLS: int = 6
+const SHARD_ROWS: int = 3
+const SHARD_CELL: float = 160.0
+## Atlas is rendered at 4x the logical tile size, same as the tile bodies.
+const SHARD_SCALE: float = 0.25
+
+static var _shard_atlas_cache: Dictionary = {}
+
+static func get_shard_atlas(theme_id: String) -> Texture2D:
+	if _shard_atlas_cache.has(theme_id):
+		return _shard_atlas_cache[theme_id]
+	var tex: Texture2D = null
+	var fname: String = String(SHARD_ATLAS_FILES.get(theme_id, ""))
+	if not fname.is_empty():
+		var path := SHARD_ATLAS_DIR + fname
+		if ResourceLoader.exists(path):
+			tex = load(path) as Texture2D
+	_shard_atlas_cache[theme_id] = tex
+	return tex
+
+var _live_shards: Array[Dictionary] = []
+
+func _spawn_rendered_shards() -> void:
+	var theme_id: String = "classic_jade"
+	if is_instance_valid(MonetizationManager):
+		theme_id = MonetizationManager.get_active_theme()
+	var atlas: Texture2D = get_shard_atlas(theme_id)
+	if atlas == null:
+		return
+
+	# A subset each time, so repeated shatters of the same tile differ.
+	var cells: Array[int] = []
+	for i in range(SHARD_COLS * SHARD_ROWS):
+		cells.append(i)
+	cells.shuffle()
+	var count: int = randi_range(7, 10)
+
+	for i in range(count):
+		var idx: int = cells[i]
+		var at := AtlasTexture.new()
+		at.atlas = atlas
+		at.region = Rect2((idx % SHARD_COLS) * SHARD_CELL,
+						  (idx / SHARD_COLS) * SHARD_CELL,
+						  SHARD_CELL, SHARD_CELL)
+		var spr := Sprite2D.new()
+		spr.texture = at
+		spr.scale = Vector2(SHARD_SCALE, SHARD_SCALE) * randf_range(0.75, 1.15)
+		spr.rotation = randf_range(0.0, TAU)
+		spr.z_index = 45
+		spr.position = Vector2(randf_range(-10, 10), randf_range(-12, 12))
+		add_child(spr)
+
+		# Burst outward and slightly upward, then gravity pulls them down and
+		# they fade - rather than settling as debris on the board.
+		var ang: float = randf_range(0.0, TAU)
+		var speed: float = randf_range(70.0, 190.0)
+		_live_shards.append({
+			"node": spr,
+			"vel": Vector2(cos(ang) * speed, sin(ang) * speed - randf_range(40.0, 110.0)),
+			"spin": randf_range(-7.0, 7.0),
+			"life": 0.0,
+			"max_life": randf_range(0.45, 0.75),
+		})
+
+func _process(delta: float) -> void:
+	if _live_shards.is_empty():
+		return
+	var gravity: float = 620.0
+	for i in range(_live_shards.size() - 1, -1, -1):
+		var s: Dictionary = _live_shards[i]
+		var spr: Sprite2D = s["node"]
+		if not is_instance_valid(spr):
+			_live_shards.remove_at(i)
+			continue
+		s["life"] = float(s["life"]) + delta
+		var t: float = float(s["life"]) / float(s["max_life"])
+		if t >= 1.0:
+			spr.queue_free()
+			_live_shards.remove_at(i)
+			continue
+		var vel: Vector2 = s["vel"]
+		vel.y += gravity * delta
+		s["vel"] = vel
+		spr.position += vel * delta
+		spr.rotation += float(s["spin"]) * delta
+		spr.modulate.a = 1.0 - (t * t)   # hold opacity, then fall away quickly
+
 func _enter_tree() -> void:
 	_ensure_resources()
 
@@ -63,13 +163,19 @@ func _ready() -> void:
 		embers.emitting = true
 		
 	if shards:
-		shards.emitting = true
-		
+		# The rendered sprites carry the ceramic chunks now; keep the old
+		# particle shards only as a fallback when the atlas is missing.
+		shards.emitting = get_shard_atlas(
+			MonetizationManager.get_active_theme() if is_instance_valid(MonetizationManager) else "classic_jade"
+		) == null
+
+	_spawn_rendered_shards()
+
 	# Draw expanding shockwave ring and central celestial lens flare
 	_spawn_shockwave_and_flare()
-	
+
 	# Clean up after all particles disperse
-	get_tree().create_timer(1.0).timeout.connect(queue_free)
+	get_tree().create_timer(1.2).timeout.connect(queue_free)
 
 var is_glass_mode: bool = false
 var is_glass: bool = false
@@ -123,15 +229,17 @@ func setup(accent_color: Color = Color("#f2c14e"), is_triple: bool = false, suit
 			
 		if embers:
 			# Sparkling specular glints & golden sand flecks
-			embers.amount = 38 if is_triple else 24
+			embers.amount = 24 if is_triple else 16
 			embers.gravity = Vector2(0, -25)
 			embers.initial_velocity_max = 110.0
-			embers.color = Color(1.0, 0.94, 0.65, 0.95)
-			
+			embers.color = Color(1.0, 0.94, 0.65, 0.70)
+
 		if dust_cloud:
-			# Soft golden sand powder mist wisp
-			dust_cloud.amount = 38
-			dust_cloud.color = Color(0.96, 0.86, 0.52, 0.55)
+			# Soft golden sand powder mist. Kept deliberately faint: the
+			# rendered shards are the effect now, and the dust was previously
+			# a ~500px white flash that buried them completely.
+			dust_cloud.amount = 20
+			dust_cloud.color = Color(0.96, 0.86, 0.52, 0.28)
 
 func _spawn_shockwave_and_flare() -> void:
 	var fx := Node2D.new()
@@ -164,8 +272,8 @@ func _spawn_shockwave_and_flare() -> void:
 		# 3. 4-point Diamond Starburst Lens Flare (First 0.18s)
 		if progress < 0.45:
 			var flare_p := progress / 0.45
-			var flare_alpha := (1.0 - flare_p) * 0.95
-			var flare_len := lerpf(10.0, 48.0 if is_glass_mode else 38.0, sin(flare_p * PI * 0.5))
+			var flare_alpha := (1.0 - flare_p) * 0.45
+			var flare_len := lerpf(8.0, 30.0 if is_glass_mode else 22.0, sin(flare_p * PI * 0.5))
 			var flare_thick := lerpf(3.2, 0.8, flare_p)
 			var flare_col := Color(flare_col_base.r, flare_col_base.g, flare_col_base.b, flare_alpha)
 			
@@ -174,6 +282,6 @@ func _spawn_shockwave_and_flare() -> void:
 			# Vertical beam
 			fx.draw_line(Vector2(0, -flare_len * 0.8), Vector2(0, flare_len * 0.8), flare_col, flare_thick, true)
 			# Central radiant core
-			fx.draw_circle(Vector2.ZERO, lerpf(5.5, 1.5, flare_p), Color(1.0, 1.0, 1.0, flare_alpha))
+			fx.draw_circle(Vector2.ZERO, lerpf(3.0, 1.0, flare_p), Color(1.0, 1.0, 1.0, flare_alpha * 0.8))
 	)
 	tween.tween_callback(fx.queue_free)

@@ -34,6 +34,35 @@ const DOTCOL: Array[Color] = [COL_BLUE, COL_RED, COL_GREEN]
 
 var theme_override: String = ""
 
+## Draw the Blender-rendered tile body instead of flat StyleBoxFlat slabs.
+## Kept as a switch so the two can be compared on a real device: the whole
+## point of the art pass is a judgement that can only be made on a phone.
+const USE_RENDERED_BODY: bool = true
+
+const BODY_TEX_DIR := "res://assets/tiles/"
+const BODY_TEX_FILES: Dictionary = {
+	"classic_jade": "tile_classic_jade.png",
+	"theme_imperial_gold": "tile_imperial_gold.png",
+	"theme_obsidian_ink": "tile_obsidian_ink.png",
+	"theme_cherry_blossom": "tile_cherry_blossom.png",
+}
+
+## theme_id -> Texture2D, or null when the file is missing. Cached across every
+## tile: there are up to 144 on screen and they share four textures.
+static var _body_tex_cache: Dictionary = {}
+
+static func get_body_texture(theme_id: String) -> Texture2D:
+	if _body_tex_cache.has(theme_id):
+		return _body_tex_cache[theme_id]
+	var tex: Texture2D = null
+	var fname: String = String(BODY_TEX_FILES.get(theme_id, ""))
+	if not fname.is_empty():
+		var path := BODY_TEX_DIR + fname
+		if ResourceLoader.exists(path):
+			tex = load(path) as Texture2D
+	_body_tex_cache[theme_id] = tex
+	return tex
+
 func get_effective_theme() -> String:
 	if not theme_override.is_empty():
 		return theme_override
@@ -496,31 +525,49 @@ func _draw() -> void:
 		var shadow_rect := Rect2(offset_x, offset_y + shadow_y, TILE_W, TILE_H - DEPTH_3D)
 		draw_style_box(sb_shadow, shadow_rect)
 	
-	# 2. 3D Depth Underside Slab (matching HTML 0 4px 0 0 var(--deep))
-	sb_extrusion.bg_color = get_theme_back_base(get_effective_theme())
-	sb_extrusion.border_color = get_theme_back_edge(get_effective_theme())
-	var ext_rect := Rect2(offset_x, offset_y + DEPTH_3D, TILE_W, TILE_H - DEPTH_3D)
-	draw_style_box(sb_extrusion, ext_rect)
-	
-	# 3. Top Ceramic Face Slab (cream face + 1px border)
+	# 2 & 3. Tile body.
+	# face_rect stays the 64x80 top face, because the gold band, wild crest,
+	# glass treatment and symbols are all positioned against it.
 	var face_rect := Rect2(offset_x, offset_y, TILE_W, TILE_H - DEPTH_3D)
-	sb_base.bg_color = get_theme_face_color(is_free or is_revealed, get_effective_theme())
-	sb_base.border_color = get_theme_border_color(is_free or is_revealed, get_effective_theme())
-	draw_style_box(sb_base, face_rect)
-	
-	# Top inset specular highlight line: inset 0 2px 0 rgba(255,255,255,.95)
-	if is_free or is_revealed or is_dissolving:
-		draw_line(face_rect.position + Vector2(6, 1.5), face_rect.position + Vector2(TILE_W - 6, 1.5), Color(1, 1, 1, 0.85), 1.2, true)
-	
-	# 3.5 Theme-Specific Artisan Ornamentation & Face Framing
 	var cur_th: String = get_effective_theme()
-	if cur_th == "theme_imperial_gold":
-		_draw_imperial_gold_framing(face_rect)
-	elif cur_th == "theme_obsidian_ink":
-		_draw_obsidian_ink_framing(face_rect)
-	elif cur_th == "theme_cherry_blossom":
-		_draw_cherry_blossom_framing(face_rect)
-	
+	var body_tex: Texture2D = get_body_texture(cur_th) if USE_RENDERED_BODY else null
+
+	if body_tex != null:
+		# The rendered sprite is a COMPLETE tile body seen face-on, bevelled
+		# edges and all, so it replaces the extrusion slab and the face slab
+		# together. It is drawn into the full TILE_W x TILE_H rect rather than
+		# face_rect: the art is 64:84 and face_rect is 64:80, so drawing it
+		# into face_rect alone would squash it by 5%.
+		var body_rect := Rect2(offset_x, offset_y, TILE_W, TILE_H)
+		# Blocked tiles were a separate, darker face colour per theme. One
+		# texture plus a tint keeps the two states from drifting apart.
+		var tint: Color = Color.WHITE if (is_free or is_revealed or is_dissolving) else Color(0.70, 0.70, 0.68, 1.0)
+		draw_texture_rect(body_tex, body_rect, false, tint)
+		# No procedural highlight line or theme framing here: the sprite already
+		# carries its own bevel highlight, and for gold and cherry it carries the
+		# lacquer border too. Drawing the code ornament on top would clash.
+	else:
+		# Procedural fallback: original flat-slab path, used when the rendered
+		# art is missing or USE_RENDERED_BODY is off.
+		sb_extrusion.bg_color = get_theme_back_base(cur_th)
+		sb_extrusion.border_color = get_theme_back_edge(cur_th)
+		var ext_rect := Rect2(offset_x, offset_y + DEPTH_3D, TILE_W, TILE_H - DEPTH_3D)
+		draw_style_box(sb_extrusion, ext_rect)
+
+		sb_base.bg_color = get_theme_face_color(is_free or is_revealed, cur_th)
+		sb_base.border_color = get_theme_border_color(is_free or is_revealed, cur_th)
+		draw_style_box(sb_base, face_rect)
+
+		if is_free or is_revealed or is_dissolving:
+			draw_line(face_rect.position + Vector2(6, 1.5), face_rect.position + Vector2(TILE_W - 6, 1.5), Color(1, 1, 1, 0.85), 1.2, true)
+
+		if cur_th == "theme_imperial_gold":
+			_draw_imperial_gold_framing(face_rect)
+		elif cur_th == "theme_obsidian_ink":
+			_draw_obsidian_ink_framing(face_rect)
+		elif cur_th == "theme_cherry_blossom":
+			_draw_cherry_blossom_framing(face_rect)
+
 	# 4. Triple Set 24k Gold Band (Bottom Bezel)
 	if tile_data.size == 3:
 		var band_h: float = 6.0
