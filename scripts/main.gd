@@ -55,6 +55,9 @@ func _ready() -> void:
 	modal.resume_game_requested.connect(_resume_game)
 	modal.return_home_requested.connect(_return_home)
 	modal.open_sanctuary_requested.connect(_open_sanctuary)
+	modal.background_quiet_changed.connect(func(quiet: bool):
+		if zen_background and zen_background.has_method("set_quiet"):
+			zen_background.set_quiet(quiet))
 	modal.replay_tutorial_requested.connect(func():
 		_start_calm_mode(1)
 		tutorial.start_tutorial()

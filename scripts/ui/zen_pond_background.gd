@@ -102,6 +102,8 @@ var active_theme: Dictionary = THEMES[0]
 var current_parallax := Vector2.ZERO
 var target_parallax := Vector2.ZERO
 var sim_time: float = 0.0
+var _quiet: bool = false
+var _quiet_accum: float = 0.0
 
 # Flora items: Array of { pos, scale, rot, phase, type, blossom }
 var flora_items: Array[Dictionary] = []
@@ -172,7 +174,29 @@ func _ensure_containers() -> void:
 		motes_container.name = "MotesContainer"
 		add_child(motes_container)
 
+## Modals cover most of the screen but the pond stays visible around the card,
+## so we throttle the simulation instead of freezing it - motion speed is
+## unchanged, we just simulate and redraw at ~20fps while a modal is up.
+const QUIET_STEP: float = 1.0 / 20.0
+
+func set_quiet(quiet: bool) -> void:
+	if _quiet == quiet:
+		return
+	_quiet = quiet
+	_quiet_accum = 0.0
+	if is_instance_valid(fish_container):
+		for koi in fish_container.get_children():
+			if koi.has_method("set_quiet"):
+				koi.set_quiet(quiet)
+
 func _process(delta: float) -> void:
+	if _quiet:
+		_quiet_accum += delta
+		if _quiet_accum < QUIET_STEP:
+			return
+		delta = _quiet_accum
+		_quiet_accum = 0.0
+
 	sim_time += delta
 	
 	# 1. Update Parallax with Accelerometer & Autonomous Lissajous Drift
@@ -349,6 +373,8 @@ func _refresh_koi(theme_data: Dictionary) -> void:
 		)
 		koi.setup(species_list[i], spawn_pos)
 		koi.set_pond_bounds(pond_rect)
+		# A theme swap can happen mid-modal; new fish must inherit the throttle.
+		koi.set_quiet(_quiet)
 
 func _setup_flora(theme_data: Dictionary) -> void:
 	flora_items.clear()

@@ -69,7 +69,24 @@ func setup(koi_species: String, start_pos: Vector2) -> void:
 			col_body = Color(0.97, 0.96, 0.93)
 			col_markings = Color(0.88, 0.22, 0.15)
 
+const QUIET_STEP: float = 1.0 / 20.0
+
+var _quiet: bool = false
+var _quiet_accum: float = 0.0
+
+## Throttled (not frozen) while a modal is open - see ZenPondBackground.set_quiet.
+func set_quiet(quiet: bool) -> void:
+	_quiet = quiet
+	_quiet_accum = 0.0
+
 func _process(delta: float) -> void:
+	if _quiet:
+		_quiet_accum += delta
+		if _quiet_accum < QUIET_STEP:
+			return
+		delta = _quiet_accum
+		_quiet_accum = 0.0
+
 	wander_timer -= delta
 	if wander_timer <= 0.0:
 		_pick_new_wander_target()

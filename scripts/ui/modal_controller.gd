@@ -13,6 +13,7 @@ signal next_stage_requested()
 signal resume_game_requested()
 signal return_home_requested()
 signal replay_tutorial_requested()
+signal background_quiet_changed(quiet: bool)
 
 const BoonPool = preload("res://scripts/core/boon_pool.gd")
 const UITheme = preload("res://scripts/ui/ui_theme.gd")
@@ -159,7 +160,21 @@ const BG_THEME_DETAILS: Dictionary = {
 @onready var card_container: VBoxContainer = $Center/Card/Content
 @onready var card_panel: PanelContainer = $Center/Card
 
-var _current_screen: String = "main"
+## Backed by a setter so every screen change (18 assignment sites) reports the
+## new load to main.gd without each one having to remember to.
+var _current_screen: String = "main": set = _set_current_screen
+
+## "main" is The Rack, where the pond is the hero and stays at full frame rate.
+## Every other screen is a card laid over the water, so the pond behind it is
+## throttled - see ZenPondBackground.set_quiet.
+const LIGHT_SCREENS: Array[String] = ["main"]
+
+func _set_current_screen(value: String) -> void:
+	_current_screen = value
+	_sync_background_load()
+
+func _sync_background_load() -> void:
+	background_quiet_changed.emit(visible and not (_current_screen in LIGHT_SCREENS))
 
 ## The modal had no safe-area handling at all. Centred content usually
 ## survives, but Settings and Level Select nearly fill the height, and under
@@ -190,6 +205,7 @@ func _ready() -> void:
 
 func show_modal() -> void:
 	visible = true
+	_sync_background_load()
 	card_panel.scale = Vector2(0.92, 0.92)
 	card_panel.modulate.a = 0.0
 	var tween := create_tween().set_parallel(true)
@@ -199,7 +215,9 @@ func show_modal() -> void:
 func hide_modal() -> void:
 	var tween := create_tween()
 	tween.tween_property(card_panel, "modulate:a", 0.0, 0.12)
-	tween.tween_callback(func(): visible = false)
+	tween.tween_callback(func():
+		visible = false
+		_sync_background_load())
 
 func show_main_menu() -> void:
 	_current_screen = "main"
