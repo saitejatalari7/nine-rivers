@@ -171,7 +171,7 @@ func _read_save_dict(path: String) -> Dictionary:
 ## number returns from a reload as a float (26 -> 26.0). Coercing here keeps the
 ## types stable no matter how many save/load cycles a profile survives.
 
-const MAX_LEVEL: int = 50
+const MAX_LEVEL: int = 1000
 
 const VALID_TILE_THEMES: Array[String] = [
 	"classic_jade", "theme_imperial_gold", "theme_obsidian_ink", "theme_cherry_blossom"

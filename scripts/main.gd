@@ -5,6 +5,7 @@ const BoardController = preload("res://scripts/core/board_controller.gd")
 const CameraController = preload("res://scripts/ui/camera_controller.gd")
 const HudController = preload("res://scripts/ui/hud_controller.gd")
 const ModalController = preload("res://scripts/ui/modal_controller.gd")
+const StagePlan = preload("res://scripts/core/stage_plan.gd")
 const SanctuaryView = preload("res://scripts/ui/sanctuary_view.gd")
 const StageModifiers = preload("res://scripts/core/stage_modifiers.gd")
 const TutorialController = preload("res://scripts/ui/tutorial_controller.gd")
@@ -185,18 +186,21 @@ func _start_calm_mode(level: int) -> void:
 	hud.visible = true
 	GameManager.start_calm(level)
 	hud.setup_hud(GameManager.GameMode.CALM, level)
-	var layout_idx: int = mini(LADDER.size() - 1, int((level - 1) / 2))
-	var layout_name: String = LADDER[layout_idx]
+	var plan: Dictionary = StagePlan.describe(level)
+	var layout_name: String = plan["layout"]
 	GameManager.current_layout_name = layout_name
 	
 	if zen_background and zen_background.has_method("set_level"):
 		zen_background.set_level(level)
 	
-	StageModifiers.set_modifier_for_stage(0, level)
+	StageModifiers.active_modifier = plan["modifier"] as StageModifiers.Modifier
 	if StageModifiers.active_modifier != StageModifiers.Modifier.NONE:
 		hud.show_toast("%s: %s" % [StageModifiers.get_modifier_name(), StageModifiers.get_modifier_desc()])
 	
-	board.load_stage(layout_name)
+	# Seeded from the level number, so a stage is the same puzzle every time.
+	var rng := RandomNumberGenerator.new()
+	rng.seed = plan["seed"]
+	board.load_stage(layout_name, rng)
 	camera.frame_board(board.board_bounds, get_viewport_rect().size)
 	
 	if level == 1 and not SaveManager.prog.get("tutorial_completed", false):

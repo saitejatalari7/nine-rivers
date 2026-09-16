@@ -12,6 +12,8 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 OUT=$(mktemp -d)
+# Windows consoles default to cp1252 and the script prints the CJK set.
+export PYTHONIOENCODING=utf-8
 py tools/collect_glyphs.py "$OUT/glyphs.txt"
 
 for F in NotoSerifSC MaShanZheng-Regular; do

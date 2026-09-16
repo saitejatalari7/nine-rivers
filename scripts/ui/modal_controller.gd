@@ -17,6 +17,7 @@ signal background_quiet_changed(quiet: bool)
 
 const BoonPool = preload("res://scripts/core/boon_pool.gd")
 const UITheme = preload("res://scripts/ui/ui_theme.gd")
+const StagePlan = preload("res://scripts/core/stage_plan.gd")
 
 const TILE_THEME_DETAILS: Dictionary = {
 	"classic_jade": {
@@ -274,13 +275,14 @@ func show_main_menu() -> void:
 	# artwork in someone else's style, and Samsung, Pixel and Xiaomi each draw
 	# them differently, so an art-directed screen changes shape per device.
 	_add_tile_row("河", UITheme.RED_CINNABAR, "Continue Journey",
-		"Stage %d of 50" % cur_lvl, "", func():
+		"Stage %d of %d" % [cur_lvl, StagePlan.TOTAL_LEVELS], "", func():
 			hide_modal()
 			start_calm_requested.emit(cur_lvl)
 	, true)
 
-	_add_tile_row("図", Color("#1f7a52"), "Stages Map", "Chapters I – V",
-		"%d/50" % cur_lvl, func(): show_level_select())
+	_add_tile_row("図", Color("#1f7a52"), "Stages Map",
+		"%d chapters" % StagePlan.CHAPTERS,
+		"%d/%d" % [cur_lvl, StagePlan.TOTAL_LEVELS], func(): show_level_select())
 
 	_add_tile_row("急", UITheme.RED_CINNABAR, "Timed Rapids", "Roguelite run",
 		"", func():
@@ -318,8 +320,9 @@ func show_level_select() -> void:
 	for s_val in stars_data.values():
 		total_stars += int(s_val)
 		
-	_add_seal_header("River Stages", "九河图 · Chapters I – V", "図")
-	_add_purse_line("%d / 150 ★  ·  Stage %d unlocked" % [total_stars, max_unlocked])
+	_add_seal_header("River Stages", "九河图 · %d chapters" % StagePlan.CHAPTERS, "図")
+	_add_purse_line("%d / %d ★  ·  Stage %d unlocked" % [
+		total_stars, StagePlan.total_stars(), max_unlocked])
 	_add_hairline()
 
 	# No inner ScrollContainer: the card scrolls, and nesting two is ambiguous
@@ -328,13 +331,19 @@ func show_level_select() -> void:
 	vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	vbox.add_theme_constant_override("separation", 16)
 	
-	var chapters: Array[Dictionary] = [
-		{"name": "Chapter I: The Spring Brooks", "sub": "春溪 · Stages 1 - 10", "start": 1, "end": 10},
-		{"name": "Chapter II: The Bamboo Valley", "sub": "竹谷 · Stages 11 - 20", "start": 11, "end": 20},
-		{"name": "Chapter III: The Golden Rapids", "sub": "金滩 · Stages 21 - 30", "start": 21, "end": 30},
-		{"name": "Chapter IV: The Jade Gorges", "sub": "玉峡 · Stages 31 - 40", "start": 31, "end": 40},
-		{"name": "Chapter V: The Dragon Sea", "sub": "龙海 · Stages 41 - 50", "start": 41, "end": 50}
-	]
+	# Only chapters the player has reached, plus the next one, so 20 chapters
+	# do not become 1000 rows of mostly-blank grid.
+	var shown_last: int = mini(StagePlan.chapter_of(max_unlocked) + 1, StagePlan.CHAPTERS - 1)
+	var chapters: Array[Dictionary] = []
+	for c in range(shown_last + 1):
+		var r: Vector2i = StagePlan.chapter_range(c)
+		chapters.append({
+			"name": StagePlan.chapter_title(c),
+			"sub": StagePlan.chapter_subtitle(c),
+			"start": r.x, "end": r.y, "index": c,
+			"gate": StagePlan.stars_required(c),
+			"open": StagePlan.is_chapter_unlocked(c, total_stars),
+		})
 	
 	for ch in chapters:
 		var ch_box := VBoxContainer.new()
@@ -367,8 +376,12 @@ func show_level_select() -> void:
 		var ch_stars: int = 0
 		for lvl in range(ch["start"], ch["end"] + 1):
 			ch_stars += int(stars_data.get(str(lvl), 0))
+		var span: int = int(ch["end"]) - int(ch["start"]) + 1
 		var stars_lbl := Label.new()
-		stars_lbl.text = "%d/30 ★" % ch_stars
+		if bool(ch["open"]):
+			stars_lbl.text = "%d/%d ★" % [ch_stars, span * 3]
+		else:
+			stars_lbl.text = "%d ★ to open" % int(ch["gate"])
 		stars_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		UITheme.style_label(stars_lbl, "ui", UITheme.FS_CAPTION, UITheme.GOLD_BRIGHT,
 			UITheme.W_SEMIBOLD)
@@ -382,6 +395,12 @@ func show_level_select() -> void:
 		grid.add_theme_constant_override("h_separation", 8)
 		grid.add_theme_constant_override("v_separation", 8)
 		
+		if not bool(ch["open"]):
+			# Locked: the gate line above says what it costs, so the grid would
+			# only be 50 identical dead tokens.
+			vbox.add_child(ch_box)
+			continue
+
 		for lvl in range(ch["start"], ch["end"] + 1):
 			var btn := Button.new()
 			# 5 x 144 + separation = 752 of the 812px available.
