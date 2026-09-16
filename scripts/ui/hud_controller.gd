@@ -87,17 +87,17 @@ func _init_dynamic_hud_elements() -> void:
 	calm_goals_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	calm_goals_label.position = Vector2(28, 176)
 	calm_goals_label.size = Vector2(get_viewport().get_visible_rect().size.x - 56, 38)
-	calm_goals_label.add_theme_font_size_override("font_size", 20)
+	calm_goals_label.add_theme_font_size_override("font_size", UITheme.FS_CAPTION)
 	calm_goals_label.add_theme_color_override("font_color", Color(0.78, 0.90, 0.84, 0.95))
 	add_child(calm_goals_label)
 	
 	# 3. Spirit Pearls Counter Pill in TopBar
 	btn_pearls = Button.new()
 	btn_pearls.name = "BtnPearls"
-	btn_pearls.custom_minimum_size = Vector2(144, 72)
+	btn_pearls.custom_minimum_size = Vector2(196, UITheme.TOUCH_MIN)
 	btn_pearls.text = "◈ %d" % MonetizationManager.get_pearls()
 	UITheme.style_button(btn_pearls, true, 16)
-	btn_pearls.add_theme_font_size_override("font_size", 25)
+	btn_pearls.add_theme_font_size_override("font_size", UITheme.FS_BODY)
 	btn_pearls.pressed.connect(func(): pearls_clicked.emit())
 	$TopBar.add_child(btn_pearls)
 	$TopBar.move_child(btn_pearls, 1) # Positioned between Menu and Readout
@@ -114,15 +114,15 @@ func _apply_luxury_theme() -> void:
 	
 	# 2. Menu Talisman Button
 	UITheme.style_circular_button($TopBar/BtnMenu, UITheme.GOLD_CORE)
-	$TopBar/BtnMenu.add_theme_font_size_override("font_size", 40)
+	$TopBar/BtnMenu.add_theme_font_size_override("font_size", 56)
 	
 	# 3. Action Props Buttons (Undo, Hint, Shuffle)
 	UITheme.style_button(btn_undo, false, 18)
 	UITheme.style_button(btn_hint, false, 18)
 	UITheme.style_button(btn_shuffle, false, 18)
-	btn_undo.add_theme_font_size_override("font_size", 28)
-	btn_hint.add_theme_font_size_override("font_size", 28)
-	btn_shuffle.add_theme_font_size_override("font_size", 28)
+	btn_undo.add_theme_font_size_override("font_size", UITheme.FS_BODY)
+	btn_hint.add_theme_font_size_override("font_size", UITheme.FS_BODY)
+	btn_shuffle.add_theme_font_size_override("font_size", UITheme.FS_BODY)
 	
 	# 4. Timer Bar Styling
 	var sb_timer_bg := StyleBoxFlat.new()
@@ -148,13 +148,13 @@ func _apply_luxury_theme() -> void:
 	toast_panel.add_theme_stylebox_override("panel", sb_toast)
 	
 	# 7. Bundled Font Typography
-	UITheme.style_label(lbl_level, "ui", 33, UITheme.GOLD_BRIGHT)
-	UITheme.style_label(lbl_score, "ui", 33, UITheme.IVORY_BASE)
-	UITheme.style_label(lbl_tiles, "ui", 33, UITheme.IVORY_BASE)
-	UITheme.style_label(lbl_sets, "ui", 33, UITheme.IVORY_BASE)
-	UITheme.style_label(lbl_clock, "ui", 25, UITheme.IVORY_BASE)
-	UITheme.style_label(lbl_flow, "ui", 25, UITheme.GOLD_BRIGHT)
-	UITheme.style_label(lbl_toast, "ui", 23, UITheme.IVORY_BASE)
+	UITheme.style_label(lbl_level, "ui", 48, UITheme.GOLD_BRIGHT, UITheme.W_SEMIBOLD)
+	UITheme.style_label(lbl_score, "ui", 48, UITheme.IVORY_BASE, UITheme.W_SEMIBOLD)
+	UITheme.style_label(lbl_tiles, "ui", 48, UITheme.IVORY_BASE, UITheme.W_SEMIBOLD)
+	UITheme.style_label(lbl_sets, "ui", 48, UITheme.IVORY_BASE, UITheme.W_SEMIBOLD)
+	UITheme.style_label(lbl_clock, "ui", UITheme.FS_BODY, UITheme.IVORY_BASE)
+	UITheme.style_label(lbl_flow, "ui", UITheme.FS_BODY, UITheme.GOLD_BRIGHT)
+	UITheme.style_label(lbl_toast, "ui", UITheme.FS_BODY, UITheme.IVORY_BASE)
 	
 	for stat_lbl in [
 		$TopBar/Readout/StatsBox/LevelBox/Lbl,
@@ -163,10 +163,11 @@ func _apply_luxury_theme() -> void:
 		$TopBar/Readout/StatsBox/SetsBox/Lbl
 	]:
 		if is_instance_valid(stat_lbl):
-			UITheme.style_label(stat_lbl, "ui", 16, Color(0.65, 0.80, 0.73, 1))
+			UITheme.style_label(stat_lbl, "ui", UITheme.FS_CAPTION, Color(0.65, 0.80, 0.73, 1),
+				UITheme.W_MEDIUM, 2)
 	
 	if is_instance_valid(calm_goals_label):
-		UITheme.style_label(calm_goals_label, "ui", 20, Color(0.78, 0.90, 0.84, 0.95))
+		UITheme.style_label(calm_goals_label, "ui", UITheme.FS_CAPTION, Color(0.78, 0.90, 0.84, 0.95))
 
 ## Previously applied insets, so re-applying is idempotent. The old version
 ## did `position.y += inset` once in _ready(); running it a second time would
@@ -237,7 +238,8 @@ func refresh_relics_bar() -> void:
 			continue
 			
 		var b_token := Button.new()
-		b_token.custom_minimum_size = Vector2(34, 34)
+		# Was 34px - 11.3dp, roughly 2mm, the smallest tap target in the build.
+		b_token.custom_minimum_size = Vector2(112, 112)
 		b_token.text = relic_info.get("icon", "宝")
 		b_token.tooltip_text = "%s: %s" % [relic_info.get("name", ""), relic_info.get("desc", "")]
 		UITheme.style_circular_button(b_token, UITheme.GOLD_CORE)

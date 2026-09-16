@@ -11,12 +11,17 @@ func _ready() -> void:
 	SaveManager.prog["level"] = 26
 	await get_tree().create_timer(2.2).timeout
 	var modal = main.get_node("Modal")
-	modal.show_main_menu()
-	await get_tree().create_timer(0.5).timeout
-	await _shot("ui_main_rack")
-	modal.show_settings_menu()
-	await get_tree().create_timer(0.4).timeout
-	await _shot("ui_sub_settings")
+	for entry in [
+		["ui_main_rack", func(): modal.show_main_menu()],
+		["ui_sub_settings", func(): modal.show_settings_menu()],
+		["ui_sub_levels", func(): modal.show_level_select()],
+		["ui_sub_bazaar", func(): modal.show_bazaar_modal()],
+		["ui_sub_treasury", func(): modal.show_treasury_modal()],
+		["ui_sub_sanctuary", func(): modal.show_sanctuary_menu()],
+	]:
+		entry[1].call()
+		await get_tree().create_timer(0.45).timeout
+		await _shot(entry[0])
 	get_tree().quit(0)
 
 func _shot(n: String) -> void:

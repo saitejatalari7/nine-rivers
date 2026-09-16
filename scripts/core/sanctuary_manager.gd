@@ -2,18 +2,18 @@ class_name SanctuaryManager
 extends RefCounted
 
 const KOI_SHOP: Array[Dictionary] = [
-	{"id": "kohaku", "name": "Kohaku (Red & White)", "cost": 0, "desc": "Brings peace to the river waters."},
-	{"id": "sanke", "name": "Taisho Sanke (Tricolor)", "cost": 200, "desc": "+5% bonus River Jade from all clears."},
-	{"id": "showa", "name": "Showa Sanshoku (Black & Red)", "cost": 400, "desc": "Extends Flow timer window."},
-	{"id": "ogon", "name": "Platinum Ogon (Radiant Silver)", "cost": 750, "desc": "+10% score multiplier in Calm Mode."},
+	{"id": "kohaku", "name": "Kohaku", "cost": 0, "desc": "Brings peace to the river waters."},
+	{"id": "sanke", "name": "Taisho Sanke", "cost": 200, "desc": "+5% bonus River Jade from all clears."},
+	{"id": "showa", "name": "Showa Sanshoku", "cost": 400, "desc": "Extends Flow timer window."},
+	{"id": "ogon", "name": "Platinum Ogon", "cost": 750, "desc": "+10% score multiplier in Calm Mode."},
 	{"id": "dragon_koi", "name": "Golden Dragon Koi", "cost": 1500, "desc": "Flow Overdrive threshold reduced to Flow ×6."}
 ]
 
 const DECORATIONS: Array[Dictionary] = [
-	{"id": "bamboo_fountain", "name": "Bamboo Water Fountain", "cost": 0, "desc": "Rhythmic, peaceful wooden clacks."},
-	{"id": "stone_lantern", "name": "Stone Lantern (Toro)", "cost": 150, "desc": "Casts warm, soft light on the riverbank."},
-	{"id": "pink_lotus", "name": "Blooming Lotus Blossom", "cost": 300, "desc": "Floating flower with soft ambient particles."},
-	{"id": "stepping_stones", "name": "Riverbed Stepping Stones", "cost": 500, "desc": "Ancient mossy stones crossing the stream."}
+	{"id": "bamboo_fountain", "name": "Bamboo Fountain", "cost": 0, "desc": "Rhythmic, peaceful wooden clacks."},
+	{"id": "stone_lantern", "name": "Stone Lantern", "cost": 150, "desc": "Casts warm, soft light on the riverbank."},
+	{"id": "pink_lotus", "name": "Lotus Blossom", "cost": 300, "desc": "Floating flower with soft ambient particles."},
+	{"id": "stepping_stones", "name": "Stepping Stones", "cost": 500, "desc": "Ancient mossy stones crossing the stream."}
 ]
 
 static func is_koi_unlocked(id: String) -> bool:

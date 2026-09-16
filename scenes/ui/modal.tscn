@@ -25,6 +25,13 @@ grow_vertical = 2
 custom_minimum_size = Vector2(920, 0)
 layout_mode = 2
 
-[node name="Content" type="VBoxContainer" parent="Center/Card"]
+[node name="Scroll" type="ScrollContainer" parent="Center/Card"]
 layout_mode = 2
+horizontal_scroll_mode = 0
+follow_focus = true
+scroll_deadzone = 24
+
+[node name="Content" type="VBoxContainer" parent="Center/Card/Scroll"]
+layout_mode = 2
+size_flags_horizontal = 3
 theme_override_constants/separation = 16

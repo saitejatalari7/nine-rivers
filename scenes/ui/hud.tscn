@@ -11,14 +11,14 @@ anchor_right = 1.0
 offset_left = 24.0
 offset_top = 64.0
 offset_right = -24.0
-offset_bottom = 172.0
+offset_bottom = 208.0
 grow_horizontal = 2
 theme_override_constants/separation = 14
 
 [node name="BtnMenu" type="Button" parent="TopBar"]
-custom_minimum_size = Vector2(88, 88)
+custom_minimum_size = Vector2(144, 144)
 layout_mode = 2
-theme_override_font_sizes/font_size = 40
+theme_override_font_sizes/font_size = 56
 text = "☰"
 
 [node name="Readout" type="PanelContainer" parent="TopBar"]
@@ -144,7 +144,7 @@ anchor_top = 1.0
 anchor_right = 0.5
 anchor_bottom = 1.0
 offset_left = -450.0
-offset_top = -215.0
+offset_top = -219.0
 offset_right = 450.0
 offset_bottom = -75.0
 grow_horizontal = 2
@@ -153,21 +153,21 @@ theme_override_constants/separation = 28
 alignment = 1
 
 [node name="BtnUndo" type="Button" parent="PropsBar"]
-custom_minimum_size = Vector2(260, 120)
+custom_minimum_size = Vector2(260, 144)
 layout_mode = 2
-theme_override_font_sizes/font_size = 28
+theme_override_font_sizes/font_size = 42
 text = "Undo\n(3)"
 
 [node name="BtnHint" type="Button" parent="PropsBar"]
-custom_minimum_size = Vector2(260, 120)
+custom_minimum_size = Vector2(260, 144)
 layout_mode = 2
-theme_override_font_sizes/font_size = 28
+theme_override_font_sizes/font_size = 42
 text = "Hint\n(3)"
 
 [node name="BtnShuffle" type="Button" parent="PropsBar"]
-custom_minimum_size = Vector2(260, 120)
+custom_minimum_size = Vector2(260, 144)
 layout_mode = 2
-theme_override_font_sizes/font_size = 28
+theme_override_font_sizes/font_size = 42
 text = "Shuffle\n(3)"
 
 [node name="Toast" type="PanelContainer" parent="."]

@@ -28,8 +28,52 @@ const BLUE_COBALT := Color("#1d537a")    # Traditional cobalt blue
 const INK_BLACK := Color("#0d1411")      # Deepest lacquer/ink
 const CARD_BG := Color(0.043, 0.118, 0.098, 0.96) # Frosted card background
 
+# ================= TYPE SCALE =================
+## Sizes are in the 1080-wide DESIGN space, not device pixels.
+##
+## The stretch mode is canvas_items with aspect "expand", which is WIDTH-bound:
+## the 1080 design width is mapped onto the device width whatever the height.
+## Android pins usable width to roughly 360-412dp across nearly every phone in
+## the market, so 1080 design px lands on ~360dp - i.e. 3 design px per dp, and
+## a design size divided by 3 gives you sp. This is a property of the stretch
+## mode, not of screen density: a 1080p phone and a 1440p phone both land here.
+##
+## Below FS_CAPTION, text stops being reliably readable at arm's length, and
+## Android accessibility guidance treats 12sp as the floor for any text a user
+## has to act on.
+const FS_CAPTION: int = 36    # 12sp - units, counts, secondary metadata
+const FS_BODY: int = 42       # 14sp - default body copy
+const FS_BODY_LG: int = 48    # 16sp - primary row text and button labels
+const FS_TITLE: int = 60      # 20sp - screen and section headers
+const FS_DISPLAY: int = 84    # 28sp - hero numerals
+
+## Minimum size for anything tappable. Both Material and the Apple HIG land on
+## the same ~48dp / 9mm figure, which is the width of an adult fingertip's
+## contact patch; below it, miss rates climb sharply.
+const TOUCH_MIN: float = 144.0   # 48dp
+
 # ================= FONTS =================
+## Weights we actually use. Outfit.ttf is a VARIABLE font whose default
+## instance is Thin (wght 100) - so every label in the game was rendering in
+## hairline Thin, which is most of why small text read as unreadable and why
+## the build never matched the design mockups. Asking for a weight explicitly
+## is not optional here; 400 is as much an override as 700 is.
+const W_REGULAR: int = 400
+const W_MEDIUM: int = 500
+const W_SEMIBOLD: int = 600
+const W_BOLD: int = 700
+
 static var _ui_font: Font = null
+static var _ui_variations: Dictionary = {}
+static var _wght_tag_cached: int = 0
+
+static func _wght_tag() -> int:
+	if _wght_tag_cached == 0:
+		var ts := TextServerManager.get_primary_interface()
+		# 0x77676874 is "wght" packed big-endian; only a fallback if the
+		# interface is somehow unavailable.
+		_wght_tag_cached = ts.name_to_tag("wght") if ts != null else 0x77676874
+	return _wght_tag_cached
 static var _cjk_font: Font = null
 static var _title_font: Font = null
 
@@ -53,11 +97,35 @@ static func get_title_font() -> Font:
 			_title_font = _cjk_font
 	return _title_font
 
+## A weighted, optionally letter-spaced instance of the UI face.
+##   weight   - OpenType wght axis, 100-900
+##   tracking - extra pixels between glyphs, for tracked uppercase labels
+static func get_ui_variation(weight: int = W_REGULAR, tracking: int = 0) -> Font:
+	var base := get_ui_font()
+	if base == null:
+		return null
+	var key := "%d/%d" % [weight, tracking]
+	if _ui_variations.has(key):
+		return _ui_variations[key]
+	var fv := FontVariation.new()
+	fv.base_font = base
+	# The key MUST be the numeric OpenType tag. A String key ("wght") is
+	# accepted without error and then silently ignored, which is exactly how
+	# this went unnoticed: spacing_glyph still applied, so the variation
+	# looked live while the weight axis did nothing.
+	fv.variation_opentype = { _wght_tag(): float(weight) }
+	if tracking != 0:
+		fv.spacing_glyph = tracking
+	_ui_variations[key] = fv
+	return fv
+
 static func style_label(
 	lbl: Label,
 	font_type: String = "ui",
 	size: int = 20,
-	color: Color = IVORY_BASE
+	color: Color = IVORY_BASE,
+	weight: int = W_REGULAR,
+	tracking: int = 0
 ) -> void:
 	var font: Font = null
 	match font_type:
@@ -66,7 +134,7 @@ static func style_label(
 		"cjk":
 			font = get_cjk_font()
 		_:
-			font = get_ui_font()
+			font = get_ui_variation(weight, tracking)
 	if font != null:
 		lbl.add_theme_font_override("font", font)
 	if size > 0:
@@ -201,7 +269,7 @@ static func style_button(
 	btn.add_theme_color_override("font_pressed_color", GOLD_CORE)
 	btn.add_theme_color_override("font_disabled_color", Color(0.48, 0.58, 0.54, 0.6))
 	
-	var font := get_ui_font()
+	var font := get_ui_variation(W_SEMIBOLD)
 	if font != null:
 		btn.add_theme_font_override("font", font)
 	
@@ -225,7 +293,7 @@ static func style_circular_button(
 	btn.add_theme_color_override("font_pressed_color", GOLD_DARK)
 	btn.add_theme_color_override("font_disabled_color", Color(0.4, 0.5, 0.46, 0.5))
 	
-	var font := get_ui_font()
+	var font := get_ui_variation(W_SEMIBOLD)
 	if font != null:
 		btn.add_theme_font_override("font", font)
 	

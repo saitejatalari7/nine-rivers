@@ -157,8 +157,9 @@ const BG_THEME_DETAILS: Dictionary = {
 }
 
 @onready var backdrop: ColorRect = $Backdrop
-@onready var card_container: VBoxContainer = $Center/Card/Content
+@onready var card_container: VBoxContainer = $Center/Card/Scroll/Content
 @onready var card_panel: PanelContainer = $Center/Card
+@onready var scroll_view: ScrollContainer = $Center/Card/Scroll
 
 ## Backed by a setter so every screen change (18 assignment sites) reports the
 ## new load to main.gd without each one having to remember to.
@@ -172,6 +173,38 @@ const LIGHT_SCREENS: Array[String] = ["main"]
 func _set_current_screen(value: String) -> void:
 	_current_screen = value
 	_sync_background_load()
+	# Screens are built synchronously right after this assignment, so a fit
+	# that waits one frame measures the finished content. Hooking it here means
+	# no individual screen has to remember to call it.
+	_fit_scroll()
+
+## The card centres its content, so anything taller than the screen is clipped
+## at BOTH ends - the top of a long screen runs off the top edge and there is
+## no way to scroll back to it. A ScrollContainer fixes that, but it reports a
+## near-zero minimum size by design, which would collapse the card to nothing.
+## So we size the scroll view to its content and cap it at the space actually
+## available: short screens stay centred and look exactly as before, long ones
+## fill the height and scroll.
+func _fit_scroll() -> void:
+	if not is_instance_valid(scroll_view):
+		return
+	await get_tree().process_frame
+	if not is_instance_valid(scroll_view) or not is_instance_valid(card_container):
+		return
+	var vp := get_viewport()
+	if vp == null:
+		return
+	var insets: Vector2 = UITheme.get_safe_insets(vp)
+	# Measure the card's own top/bottom padding rather than assuming it:
+	# _set_card_backing swaps the stylebox between screens, so a hardcoded
+	# figure is wrong on exactly the screens that are tall enough to matter.
+	var chrome: float = 0.0
+	var sb: StyleBox = card_panel.get_theme_stylebox("panel")
+	if sb != null:
+		chrome = sb.get_margin(SIDE_TOP) + sb.get_margin(SIDE_BOTTOM)
+	var avail: float = vp.get_visible_rect().size.y - insets.x - insets.y - chrome
+	var wanted: float = card_container.get_combined_minimum_size().y
+	scroll_view.custom_minimum_size.y = minf(wanted, maxf(avail, 240.0))
 
 func _sync_background_load() -> void:
 	background_quiet_changed.emit(visible and not (_current_screen in LIGHT_SCREENS))
@@ -185,6 +218,9 @@ func _apply_safe_area() -> void:
 	var c := $Center
 	c.offset_top = insets.x
 	c.offset_bottom = -insets.y
+	# A rotation or an inset arriving late changes how much room the scroll
+	# view has, so it has to be re-measured against the new height.
+	_fit_scroll()
 
 func _ready() -> void:
 	visible = false
@@ -206,6 +242,7 @@ func _ready() -> void:
 func show_modal() -> void:
 	visible = true
 	_sync_background_load()
+	_fit_scroll()
 	card_panel.scale = Vector2(0.92, 0.92)
 	card_panel.modulate.a = 0.0
 	var tween := create_tween().set_parallel(true)
@@ -246,7 +283,8 @@ func show_main_menu() -> void:
 	var purse := Label.new()
 	purse.text = "%d ◈   ·   %d 玉   ·   %d 日" % [pearls, jade, streak]
 	purse.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	UITheme.style_label(purse, "ui", 21, UITheme.GOLD_MUTED)
+	UITheme.style_label(purse, "ui", UITheme.FS_CAPTION, UITheme.GOLD_MUTED,
+		UITheme.W_MEDIUM, 2)
 	card_container.add_child(purse)
 
 	_add_hairline()
@@ -303,10 +341,10 @@ func show_level_select() -> void:
 	_add_purse_line("%d / 150 ★  ·  Stage %d unlocked" % [total_stars, max_unlocked])
 	_add_hairline()
 
-	var scroll := ScrollContainer.new()
-	scroll.custom_minimum_size = Vector2(460, 400)
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	
+	# No inner ScrollContainer here: the card itself scrolls now, and nesting
+	# two scroll regions makes a drag near the boundary ambiguous on touch.
+	# It also fixes the old bug where this was pinned to 400px tall while ~800px
+	# of card sat empty, clipping Chapter III mid-title.
 	var vbox := VBoxContainer.new()
 	vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	vbox.add_theme_constant_override("separation", 16)
@@ -325,18 +363,36 @@ func show_level_select() -> void:
 		
 		# Chapter Header Row
 		var h_box := HBoxContainer.new()
+		h_box.add_theme_constant_override("separation", 16)
+
+		var title_col := VBoxContainer.new()
+		title_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		title_col.add_theme_constant_override("separation", 2)
+		h_box.add_child(title_col)
+
 		var ch_title := Label.new()
-		ch_title.text = "%s (%s)" % [ch["name"], ch["sub"]]
+		ch_title.text = String(ch["name"])
+		ch_title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		ch_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		UITheme.style_label(ch_title, "ui", 18, UITheme.GOLD_CORE)
-		h_box.add_child(ch_title)
+		UITheme.style_label(ch_title, "ui", UITheme.FS_BODY, UITheme.GOLD_CORE, UITheme.W_SEMIBOLD)
+		title_col.add_child(ch_title)
+
+		var ch_sub := Label.new()
+		ch_sub.text = String(ch["sub"]).to_upper()
+		ch_sub.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		ch_sub.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		UITheme.style_label(ch_sub, "ui", UITheme.FS_CAPTION, UITheme.IVORY_MUTED,
+			UITheme.W_MEDIUM, 2)
+		title_col.add_child(ch_sub)
 		
 		var ch_stars: int = 0
 		for lvl in range(ch["start"], ch["end"] + 1):
 			ch_stars += int(stars_data.get(str(lvl), 0))
 		var stars_lbl := Label.new()
 		stars_lbl.text = "%d/30 ★" % ch_stars
-		UITheme.style_label(stars_lbl, "ui", 17, UITheme.GOLD_BRIGHT)
+		stars_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		UITheme.style_label(stars_lbl, "ui", UITheme.FS_CAPTION, UITheme.GOLD_BRIGHT,
+			UITheme.W_SEMIBOLD)
 		h_box.add_child(stars_lbl)
 		ch_box.add_child(h_box)
 		
@@ -349,8 +405,11 @@ func show_level_select() -> void:
 		
 		for lvl in range(ch["start"], ch["end"] + 1):
 			var btn := Button.new()
-			btn.custom_minimum_size = Vector2(96, 68)
-			btn.add_theme_font_size_override("font_size", 18)
+			# Square 48dp token. Five of these plus separation is 752 of the
+			# 812px the card gives us, so the grid still fits at full size.
+			var tok: float = UITheme.TOUCH_MIN
+			btn.custom_minimum_size = Vector2(tok, tok)
+			btn.add_theme_font_size_override("font_size", UITheme.FS_BODY)
 			if lvl <= max_unlocked:
 				var s_count: int = int(stars_data.get(str(lvl), 0))
 				var star_str := ""
@@ -375,8 +434,7 @@ func show_level_select() -> void:
 		ch_box.add_child(grid)
 		vbox.add_child(ch_box)
 		
-	scroll.add_child(vbox)
-	card_container.add_child(scroll)
+	card_container.add_child(vbox)
 
 	_add_separator()
 	_add_button("Back", func():
@@ -420,7 +478,7 @@ func show_level_clear(level: int, score: int, stars: int) -> void:
 		star_str += "★ " if i < stars else "☆ "
 	star_lbl.text = star_str.strip_edges()
 	star_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	UITheme.style_label(star_lbl, "ui", 48, UITheme.GOLD_BRIGHT)
+	UITheme.style_label(star_lbl, "ui", UITheme.FS_DISPLAY, UITheme.GOLD_BRIGHT)
 	card_container.add_child(star_lbl)
 	
 	_add_hairline()
@@ -487,7 +545,9 @@ func show_boon_draft() -> void:
 		# A relic is a thing you pick up, so it is drawn as a tile you can lift
 		# off the rack, not as a bordered card in a stack of bordered cards.
 		var card := PanelContainer.new()
-		card.custom_minimum_size = Vector2(0, 92)
+		# Two lines of text plus a wrapped description, so it needs more than
+		# the bare 48dp minimum to avoid clipping the second line.
+		card.custom_minimum_size = Vector2(0, UITheme.TOUCH_MIN + 24.0)
 		card.add_theme_stylebox_override("panel", _make_tile_box())
 
 		var row := HBoxContainer.new()
@@ -495,10 +555,10 @@ func show_boon_draft() -> void:
 
 		var g := Label.new()
 		g.text = String(b.get("icon", "宝"))
-		g.custom_minimum_size = Vector2(56, 0)
+		g.custom_minimum_size = Vector2(68, 0)
 		g.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		g.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		UITheme.style_label(g, "cjk", 44, GLYPH_JADE)
+		UITheme.style_label(g, "cjk", 52, GLYPH_JADE)
 		row.add_child(g)
 
 		var vbox := VBoxContainer.new()
@@ -508,11 +568,11 @@ func show_boon_draft() -> void:
 
 		var h_title := Label.new()
 		h_title.text = b["name"]
-		UITheme.style_label(h_title, "ui", 24, TILE_INK)
+		UITheme.style_label(h_title, "ui", UITheme.FS_BODY_LG, TILE_INK, UITheme.W_SEMIBOLD)
 
 		var l_desc := Label.new()
 		l_desc.text = b["desc"]
-		UITheme.style_label(l_desc, "ui", 16, TILE_SUBINK)
+		UITheme.style_label(l_desc, "ui", UITheme.FS_CAPTION, TILE_SUBINK)
 		l_desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 
 		vbox.add_child(h_title)
@@ -615,7 +675,7 @@ func show_bazaar_modal() -> void:
 	)
 
 	_add_tile_row("宝", GLYPH_GOLD, "Pearl Treasury",
-		"Pearls & the Serenity blessing", "%d ◈" % pearls, func():
+		"Pearls & blessings", "%d ◈" % pearls, func():
 			show_treasury_modal()
 	)
 
@@ -831,7 +891,7 @@ func show_treasury_modal() -> void:
 
 	if not MonetizationManager.is_no_ads():
 		_add_tile_row("静", GLYPH_JADE, "Serenity Blessing",
-			"No ads, for good · +500 ◈ pearls",
+			"No ads · +500 ◈ pearls",
 			MonetizationManager.get_formatted_price("no_ads"), func():
 				MonetizationManager.buy_product("no_ads", func(): show_treasury_modal())
 		, true)
@@ -877,7 +937,7 @@ func show_daily_offerings_modal() -> void:
 	var remaining_ads: int = MonetizationManager.get_remaining_rewarded_ads()
 	if remaining_ads > 0:
 		_add_tile_row("福", GLYPH_GOLD, "Meditation Blessing",
-			"+60 ◈ pearls, free · watch an offering",
+			"+60 ◈ pearls · free",
 			"%d left" % remaining_ads, func():
 				MonetizationManager.show_rewarded_ad("daily_pearls", func(_t, _a):
 					AudioManager.play_win()
@@ -1136,7 +1196,9 @@ static func _make_tile_box(pressed: bool = false) -> StyleBoxFlat:
 func _add_tile_row(glyph: String, glyph_col: Color, title: String, sub: String,
 		meta: String, on_click: Callable, banded: bool = false) -> void:
 	var b := Button.new()
-	b.custom_minimum_size = Vector2(0, 104 if banded else 96)
+	# UITheme.TOUCH_MIN (48dp) is the floor; a banded tile needs a little more
+	# because the gold band eats into the bottom of the face.
+	b.custom_minimum_size = Vector2(0, UITheme.TOUCH_MIN + (8.0 if banded else 0.0))
 	b.focus_mode = Control.FOCUS_ALL
 	b.add_theme_stylebox_override("normal", _make_tile_box())
 	b.add_theme_stylebox_override("hover", _make_tile_box())
@@ -1153,18 +1215,18 @@ func _add_tile_row(glyph: String, glyph_col: Color, title: String, sub: String,
 	# face, and at -12 it ran straight through the subtitle's descenders, so
 	# the text read as struck through.
 	row.offset_top = 0
-	row.offset_bottom = -26 if banded else -12
+	row.offset_bottom = -30 if banded else -14
 	row.add_theme_constant_override("separation", 18)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	b.add_child(row)
 
 	var g := Label.new()
 	g.text = glyph
-	g.custom_minimum_size = Vector2(56, 0)
+	g.custom_minimum_size = Vector2(68, 0)
 	g.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	g.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	g.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	UITheme.style_label(g, "cjk", 46, glyph_col)
+	UITheme.style_label(g, "cjk", 56, glyph_col)
 	row.add_child(g)
 
 	var col := VBoxContainer.new()
@@ -1178,14 +1240,18 @@ func _add_tile_row(glyph: String, glyph_col: Color, title: String, sub: String,
 	var t := Label.new()
 	t.text = title
 	t.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	UITheme.style_label(t, "ui", 27, TILE_INK)
+	UITheme.style_label(t, "ui", UITheme.FS_BODY_LG, TILE_INK, UITheme.W_SEMIBOLD)
 	col.add_child(t)
 
 	if not sub.is_empty():
 		var s := Label.new()
-		s.text = sub
+		# Tracked uppercase, as in the approved mockup: it separates the
+		# subtitle from the title by texture rather than by size alone, so the
+		# subtitle can stay large enough to read.
+		s.text = sub.to_upper()
 		s.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		UITheme.style_label(s, "ui", 17, TILE_SUBINK)
+		UITheme.style_label(s, "ui", UITheme.FS_CAPTION, TILE_SUBINK,
+			UITheme.W_MEDIUM, 2)
 		col.add_child(s)
 
 	if not meta.is_empty():
@@ -1193,7 +1259,7 @@ func _add_tile_row(glyph: String, glyph_col: Color, title: String, sub: String,
 		m.text = meta
 		m.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		m.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		UITheme.style_label(m, "ui", 19, TILE_META)
+		UITheme.style_label(m, "ui", UITheme.FS_CAPTION, TILE_META, UITheme.W_SEMIBOLD)
 		row.add_child(m)
 
 	if banded:
@@ -1274,13 +1340,21 @@ func _add_seal_header(title: String, sub: String, seal_glyph: String) -> void:
 
 	var t := Label.new()
 	t.text = title
-	UITheme.style_label(t, "title", 40, UITheme.GOLD_CORE)
+	# UI face, not the brush face. Every seal header is Latin ("Settings",
+	# "Pearl Treasury", "Board Cleared"), and MaShanZheng draws Latin badly -
+	# it read as a handwritten scrawl next to crisp body text. The Chinese
+	# character in the cinnabar seal beside it carries the calligraphy.
+	UITheme.style_label(t, "ui", UITheme.FS_TITLE, UITheme.GOLD_CORE,
+		UITheme.W_SEMIBOLD, 1)
 	col.add_child(t)
 
 	if not sub.is_empty():
 		var s := Label.new()
 		s.text = sub
-		UITheme.style_label(s, "ui", 19, UITheme.IVORY_MUTED)
+		s.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		s.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		UITheme.style_label(s, "ui", UITheme.FS_CAPTION, UITheme.IVORY_MUTED,
+			UITheme.W_MEDIUM, 2)
 		col.add_child(s)
 
 	var seal := PanelContainer.new()
@@ -1295,7 +1369,7 @@ func _add_seal_header(title: String, sub: String, seal_glyph: String) -> void:
 
 	var sl := Label.new()
 	sl.text = seal_glyph
-	UITheme.style_label(sl, "cjk", 34, Color("#fff4ef"))
+	UITheme.style_label(sl, "cjk", 44, Color("#fff4ef"))
 	seal.add_child(sl)
 
 ## A tappable settings line: carved glyph, label, current value. Hairline rule
@@ -1304,7 +1378,7 @@ func _add_seal_header(title: String, sub: String, seal_glyph: String) -> void:
 func _add_toggle_row(glyph: String, label: String, value: String,
 		on_click: Callable, value_col: Color = UITheme.GOLD_CORE) -> void:
 	var b := Button.new()
-	b.custom_minimum_size = Vector2(0, 62)
+	b.custom_minimum_size = Vector2(0, UITheme.TOUCH_MIN)
 	var flat := StyleBoxEmpty.new()
 	var hov := StyleBoxFlat.new()
 	hov.bg_color = Color(1, 1, 1, 0.045)
@@ -1324,11 +1398,11 @@ func _add_toggle_row(glyph: String, label: String, value: String,
 
 	var g := Label.new()
 	g.text = glyph
-	g.custom_minimum_size = Vector2(40, 0)
+	g.custom_minimum_size = Vector2(56, 0)
 	g.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	g.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	g.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	UITheme.style_label(g, "cjk", 28, UITheme.GOLD_MUTED)
+	UITheme.style_label(g, "cjk", 44, UITheme.GOLD_MUTED)
 	row.add_child(g)
 
 	var l := Label.new()
@@ -1336,14 +1410,14 @@ func _add_toggle_row(glyph: String, label: String, value: String,
 	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	UITheme.style_label(l, "ui", 23, UITheme.IVORY_BASE)
+	UITheme.style_label(l, "ui", UITheme.FS_BODY_LG, UITheme.IVORY_BASE, UITheme.W_MEDIUM)
 	row.add_child(l)
 
 	var v := Label.new()
 	v.text = value
 	v.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	UITheme.style_label(v, "ui", 22, value_col)
+	UITheme.style_label(v, "ui", UITheme.FS_BODY, value_col, UITheme.W_SEMIBOLD)
 	row.add_child(v)
 
 	card_container.add_child(b)
@@ -1355,44 +1429,53 @@ func _add_purse_line(text: String) -> void:
 	var l := Label.new()
 	l.text = text
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	UITheme.style_label(l, "ui", 21, UITheme.GOLD_MUTED)
+	UITheme.style_label(l, "ui", UITheme.FS_CAPTION, UITheme.GOLD_MUTED)
 	card_container.add_child(l)
 
 ## A key/value line on the rice-paper sheet: hairline rule, no boxes.
 func _add_sheet_row(key: String, val: String, val_col: Color = UITheme.IVORY_BASE) -> void:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 16)
-	row.custom_minimum_size = Vector2(0, 54)
+	# Read-only, so it needs legible height rather than a full touch target.
+	row.custom_minimum_size = Vector2(0, 96)
 	card_container.add_child(row)
 
 	var k := Label.new()
 	k.text = key
 	k.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	k.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	UITheme.style_label(k, "ui", 22, UITheme.IVORY_MUTED)
+	# Wraps rather than pushing the value off the edge; the key is the half of
+	# the pair that can afford a second line.
+	k.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	UITheme.style_label(k, "ui", UITheme.FS_BODY, UITheme.IVORY_MUTED)
 	row.add_child(k)
 
 	var v := Label.new()
 	v.text = val
 	v.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	v.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	UITheme.style_label(v, "ui", 23, val_col)
+	UITheme.style_label(v, "ui", UITheme.FS_BODY, val_col, UITheme.W_SEMIBOLD)
 	row.add_child(v)
 
 	_add_hairline()
 
+## The Latin half of the wordmark. It deliberately does NOT use the title face:
+## MaShanZheng is a Chinese brush font whose Latin glyphs are an afterthought,
+## and set in caps they came out uneven and collided with the 九河 above them.
+## Tracked caps in the UI face is what the mockup shows anyway.
 func _add_title(text: String) -> void:
 	var l := Label.new()
 	l.text = text
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	UITheme.style_label(l, "title", 42, UITheme.GOLD_CORE)
+	UITheme.style_label(l, "ui", UITheme.FS_TITLE, UITheme.GOLD_CORE,
+		UITheme.W_SEMIBOLD, 8)
 	card_container.add_child(l)
 
 func _add_subtitle(text: String) -> void:
 	var l := Label.new()
 	l.text = text
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	UITheme.style_label(l, "ui", 23, UITheme.IVORY_MUTED)
+	UITheme.style_label(l, "ui", UITheme.FS_BODY, UITheme.IVORY_MUTED, UITheme.W_MEDIUM)
 	card_container.add_child(l)
 
 func _add_description(text: String) -> void:
@@ -1400,7 +1483,7 @@ func _add_description(text: String) -> void:
 	l.text = text
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	UITheme.style_label(l, "ui", 21, Color(0.85, 0.90, 0.88))
+	UITheme.style_label(l, "ui", UITheme.FS_BODY, Color(0.85, 0.90, 0.88))
 	card_container.add_child(l)
 
 func _add_separator() -> void:
@@ -1413,11 +1496,11 @@ func _add_tally(key: String, val: String) -> void:
 	var l_k := Label.new()
 	l_k.text = key
 	l_k.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	UITheme.style_label(l_k, "ui", 24, Color(0.72, 0.82, 0.77))
+	UITheme.style_label(l_k, "ui", UITheme.FS_BODY, Color(0.72, 0.82, 0.77))
 	
 	var l_v := Label.new()
 	l_v.text = val
-	UITheme.style_label(l_v, "ui", 26, UITheme.GOLD_BRIGHT)
+	UITheme.style_label(l_v, "ui", UITheme.FS_BODY_LG, UITheme.GOLD_BRIGHT, UITheme.W_SEMIBOLD)
 	
 	box.add_child(l_k)
 	box.add_child(l_v)
@@ -1429,12 +1512,12 @@ func _add_feature_row(key: String, val: String) -> void:
 	
 	var l_k := Label.new()
 	l_k.text = key
-	UITheme.style_label(l_k, "ui", 22, UITheme.GOLD_CORE)
+	UITheme.style_label(l_k, "ui", UITheme.FS_BODY, UITheme.GOLD_CORE, UITheme.W_SEMIBOLD)
 	
 	var l_v := Label.new()
 	l_v.text = val
 	l_v.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	UITheme.style_label(l_v, "ui", 20, Color(0.82, 0.90, 0.86))
+	UITheme.style_label(l_v, "ui", UITheme.FS_CAPTION, Color(0.82, 0.90, 0.86))
 	
 	v_box.add_child(l_k)
 	v_box.add_child(l_v)
@@ -1506,7 +1589,7 @@ func _add_palette_preview_card(theme_data: Dictionary) -> void:
 		
 		var lbl := Label.new()
 		lbl.text = c_info["name"]
-		UITheme.style_label(lbl, "ui", 16, UITheme.IVORY_MUTED)
+		UITheme.style_label(lbl, "ui", UITheme.FS_CAPTION, UITheme.IVORY_MUTED)
 		lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		
 		v_item.add_child(swatch)
@@ -1521,8 +1604,8 @@ func _add_palette_preview_card(theme_data: Dictionary) -> void:
 func _add_button(text: String, on_click: Callable, is_gold: bool = false) -> void:
 	var b := Button.new()
 	b.text = text
-	b.custom_minimum_size = Vector2(0, 84)
+	b.custom_minimum_size = Vector2(0, UITheme.TOUCH_MIN)
 	UITheme.style_button(b, is_gold, 16)
-	b.add_theme_font_size_override("font_size", 26)
+	b.add_theme_font_size_override("font_size", UITheme.FS_BODY_LG)
 	b.pressed.connect(on_click)
 	card_container.add_child(b)
