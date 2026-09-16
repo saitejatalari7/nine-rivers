@@ -221,7 +221,16 @@ func _ready() -> void:
 	sb_card.content_margin_bottom = 28
 	card_panel.add_theme_stylebox_override("panel", sb_card)
 
+## hide_modal() only clears `visible` from a tween callback, so a screen that
+## hides and immediately re-shows (back out of Board Cleared, which hides the
+## card and then asks main.gd for the home screen) would be switched off again a
+## frame later, leaving the player staring at an empty pond.
+var _hide_tween: Tween = null
+
 func show_modal() -> void:
+	if _hide_tween != null and _hide_tween.is_valid():
+		_hide_tween.kill()
+	_hide_tween = null
 	visible = true
 	_sync_background_load()
 	_fit_scroll()
@@ -232,10 +241,13 @@ func show_modal() -> void:
 	tween.tween_property(card_panel, "modulate:a", 1.0, 0.16)
 
 func hide_modal() -> void:
-	var tween := create_tween()
-	tween.tween_property(card_panel, "modulate:a", 0.0, 0.12)
-	tween.tween_callback(func():
+	if _hide_tween != null and _hide_tween.is_valid():
+		_hide_tween.kill()
+	_hide_tween = create_tween()
+	_hide_tween.tween_property(card_panel, "modulate:a", 0.0, 0.12)
+	_hide_tween.tween_callback(func():
 		visible = false
+		_hide_tween = null
 		_sync_background_load())
 
 func show_main_menu() -> void:
@@ -598,7 +610,11 @@ func show_boon_draft() -> void:
 		)
 		
 		card_container.add_child(card)
-		
+
+	_add_separator()
+	_add_toggle_row("戻", "Abandon Run · Main Menu", "›", func():
+		return_home_requested.emit()
+	, UITheme.IVORY_MUTED)
 	show_modal()
 
 func show_game_over(reason: String) -> void:
@@ -656,6 +672,7 @@ func show_sanctuary_menu() -> void:
 	_add_button("Back", func():
 		show_main_menu()
 	)
+	show_modal()
 
 func show_bazaar_modal() -> void:
 	_current_screen = "bazaar"
@@ -1086,8 +1103,9 @@ func handle_back_pressed() -> void:
 		"pause":
 			hide_modal()
 			resume_game_requested.emit()
-		"level_clear", "daily_clear", "game_over":
-			hide_modal()
+		"level_clear", "daily_clear", "game_over", "boon_draft":
+			# No hide_modal(): _return_home() puts the main menu up in its place,
+			# and hiding first would race the fade against it.
 			return_home_requested.emit()
 		_:
 			pass
