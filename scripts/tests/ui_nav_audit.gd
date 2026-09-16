@@ -182,6 +182,10 @@ func _apply_pre(mode: String) -> void:
 			main._start_daily_mode()
 	if not mode.is_empty():
 		await _settle()
+		# _on_board_cleared() hides the HUD before a reward screen, so seeding
+		# one with the HUD still up gave it seven buttons where the player sees
+		# two, and reachability was then computed over edges that do not exist.
+		hud.visible = false
 
 ## The seed screens. Anything else reachable from them is discovered and
 ## explored by the worklist below.
@@ -445,15 +449,17 @@ func _audit_live_flows() -> void:
 			"go_on": "next stage"},
 		{"name": "Timed Rapids (Run)", "pre": "run", "expect": "modal:boon_draft",
 			"go_on": ""},
+		# The daily has no continue row by design - it is one board a day - so
+		# the check is that it lands home, not that it carries on.
 		{"name": "The Daily Tide", "pre": "daily", "expect": "modal:daily_clear",
-			"go_on": ""},
+			"go_on": "", "ends_run": true},
 	]:
 		await _reset()
 		await _apply_pre(String(flow["pre"]))
 		var tiles: int = board.live_tiles.size()
 		var ok: bool = await _clear_board()
 		if not ok:
-			_note("%s: could not be cleared by greedy play; reward screen not exercised." % flow["name"])
+			_fail("%s: greedy play could not clear the board, so the reward screen and the carry-on path were never exercised." % flow["name"])
 			continue
 		await _settle()
 		var reward: String = _state_key()
@@ -464,6 +470,18 @@ func _audit_live_flows() -> void:
 			continue
 
 		# Carry on the way a player would, then check they are not stranded.
+		if bool(flow.get("ends_run", false)):
+			# Terminal screen: assert the player can get home rather than on.
+			var home: bool = await _press_labelled("main menu")
+			if not home:
+				_fail("%s: the reward screen has no way back to the main menu." % flow["name"])
+			else:
+				await _settle()
+				print("        ends run -> %s" % _state_key())
+				if _state_key() != "modal:main":
+					_fail("%s: leaving the reward screen did not land on the main menu." % flow["name"])
+			continue
+
 		var carried: bool = false
 		if not String(flow["go_on"]).is_empty():
 			carried = await _press_labelled(String(flow["go_on"]))
@@ -476,6 +494,7 @@ func _audit_live_flows() -> void:
 				await _settle()
 				carried = true
 		if not carried:
+			_fail("%s: nothing on the reward screen carried the player onward, so the state after continuing was never checked." % flow["name"])
 			continue
 
 		var after: String = _state_key()

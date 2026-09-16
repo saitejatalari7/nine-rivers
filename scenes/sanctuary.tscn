@@ -20,6 +20,8 @@ grow_horizontal = 2
 grow_vertical = 2
 color = Color(0.0156863, 0.0941176, 0.0823529, 1)
 
+mouse_filter = 2
+
 [node name="PondArea" type="Control" parent="."]
 layout_mode = 1
 anchors_preset = 15

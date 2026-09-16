@@ -105,6 +105,15 @@ func start_timed_run() -> void:
 	time_updated.emit(time_left, max_time)
 	on_stage_started()
 
+## The daily was a fixed 40-tile board when 120s was chosen; it now deals
+## 100-144, which quietly cut the time per match by more than half. Called once
+## the layout is known, since the date seed has to pick that first.
+func apply_daily_time(board_tiles: int) -> void:
+	time_left = clampf(60.0 + float(board_tiles) * 1.5, 100.0, 260.0)
+	max_time = maxf(180.0, time_left + 60.0)
+	time_updated.emit(time_left, max_time)
+
+
 func start_daily_tide() -> void:
 	current_mode = GameMode.DAILY
 	# Seed based on current UTC year/month/day

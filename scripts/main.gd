@@ -137,6 +137,10 @@ func _handle_back_action() -> void:
 		hud.visible = true
 		_return_home()
 	elif sanctuary.visible:
+		# Close the drawer first; dropping two levels on one press also left the
+		# drawer open for the next visit.
+		if sanctuary.has_method("close_shop_drawer") and sanctuary.close_shop_drawer():
+			return
 		_return_home_from_sanctuary()
 	elif modal.visible:
 		modal.handle_back_pressed()
@@ -244,8 +248,14 @@ static func daily_layout_for_seed(seed_value: int) -> String:
 	var pool: Array[String] = daily_layout_pool()
 	if pool.is_empty():
 		return BoardGenerator.LADDER[1]
-	var mixed: int = (seed_value * 1103515245 + 12345) & 0x7fffffff
-	return pool[mixed % pool.size()]
+	# A single LCG step leaves consecutive dates striding the pool by a fixed
+	# alternating amount (17, 13, 17, 13...), so a whole year is predictable
+	# from one day. Mix properly before taking the modulo.
+	var h: int = seed_value * 2654435761
+	h = (h ^ (h >> 15)) * 2246822519
+	h = (h ^ (h >> 13)) * 3266489917
+	h = absi(h ^ (h >> 16))
+	return pool[h % pool.size()]
 
 func _start_daily_mode() -> void:
 	board.visible = true
@@ -254,6 +264,7 @@ func _start_daily_mode() -> void:
 	hud.setup_hud(GameManager.GameMode.DAILY, 1)
 	var layout_name: String = daily_layout_for_seed(GameManager.daily_seed)
 	GameManager.current_layout_name = layout_name
+	GameManager.apply_daily_time(BoardGenerator.get_layout_positions(layout_name).size())
 	
 	if zen_background and zen_background.has_method("set_level"):
 		var daily_level: int = (abs(GameManager.daily_seed) % 25) + 1

@@ -96,7 +96,19 @@ func _apply_luxury_styling() -> void:
 	sb_shop.content_margin_bottom = 24
 	shop_panel.add_theme_stylebox_override("panel", sb_shop)
 
+## Returns true if it actually closed something, so the back gesture can stop
+## there instead of leaving the Sanctuary.
+func close_shop_drawer() -> bool:
+	if is_instance_valid(shop_panel) and shop_panel.visible:
+		shop_panel.visible = false
+		return true
+	return false
+
+
 func refresh_sanctuary() -> void:
+	# Not saved state: leaving it open meant a player who opened the shop once
+	# never saw the pond again.
+	shop_panel.visible = false
 	lbl_jade.text = "%d 玉" % SaveManager.get_jade()
 	
 	# Spawn all unlocked Koi fish
@@ -230,7 +242,8 @@ func _build_shop_card(item: Dictionary, is_koi: bool, user_jade: int) -> PanelCo
 	# lines, and a Button's height comes from its own text, so wrapped rows were
 	# cut off at the tile's lip.
 	var card := PanelContainer.new()
-	card.custom_minimum_size = Vector2(0, UITheme.TOUCH_MIN)
+	# +32 for the tile stylebox margins, which the inner Button does not get.
+	card.custom_minimum_size = Vector2(0, UITheme.TOUCH_MIN + 32.0)
 	card.add_theme_stylebox_override("panel", ModalController._make_tile_box())
 
 	var row := HBoxContainer.new()
