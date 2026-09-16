@@ -161,8 +161,22 @@ const BG_THEME_DETAILS: Dictionary = {
 
 var _current_screen: String = "main"
 
+## The modal had no safe-area handling at all. Centred content usually
+## survives, but Settings and Level Select nearly fill the height, and under
+## the forced edge-to-edge of targetSdk 35 their content runs under the status
+## bar and the gesture pill.
+func _apply_safe_area() -> void:
+	var insets: Vector2 = UITheme.get_safe_insets(get_viewport())
+	var c := $Center
+	c.offset_top = insets.x
+	c.offset_bottom = -insets.y
+
 func _ready() -> void:
 	visible = false
+	_apply_safe_area()
+	get_tree().get_root().size_changed.connect(_apply_safe_area)
+	await get_tree().process_frame
+	_apply_safe_area()
 	# Transparent card: the tiles ARE the interface, floating on the live pond.
 	# A bordered box around them would be exactly the "boxes inside boxes" the
 	# design brief set out to remove.

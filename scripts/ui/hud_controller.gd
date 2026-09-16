@@ -59,6 +59,14 @@ func _ready() -> void:
 	
 	flow_banner.modulate.a = 0.0
 	toast_panel.modulate.a = 0.0
+
+	# Android delivers window insets after the first frame, so a call during
+	# _ready() reports the full screen and reserves nothing. Apply now for the
+	# floor, again next frame for the real values, and on every resize
+	# thereafter (rotation, split screen, keyboard).
+	_apply_safe_area()
+	get_tree().get_root().size_changed.connect(_apply_safe_area)
+	await get_tree().process_frame
 	_apply_safe_area()
 
 func _init_dynamic_hud_elements() -> void:
@@ -160,20 +168,19 @@ func _apply_luxury_theme() -> void:
 	if is_instance_valid(calm_goals_label):
 		UITheme.style_label(calm_goals_label, "ui", 20, Color(0.78, 0.90, 0.84, 0.95))
 
+## Previously applied insets, so re-applying is idempotent. The old version
+## did `position.y += inset` once in _ready(); running it a second time would
+## have pushed the bar twice as far down.
+var _applied_insets: Vector2 = Vector2.ZERO
+
 func _apply_safe_area() -> void:
-	if not OS.has_feature("mobile"):
+	var insets: Vector2 = UITheme.get_safe_insets(get_viewport())
+	if insets.is_equal_approx(_applied_insets):
 		return
-	var safe_area := DisplayServer.get_display_safe_area()
-	var screen_size := DisplayServer.screen_get_size()
-	var vp_size := get_viewport().get_visible_rect().size
-	if screen_size.y > 0 and safe_area.size.y > 0 and vp_size.y > 0:
-		var scale_factor := vp_size.y / float(screen_size.y)
-		var top_inset := float(safe_area.position.y) * scale_factor
-		if top_inset > 0:
-			$TopBar.position.y += top_inset
-		var bot_inset := float(screen_size.y - (safe_area.position.y + safe_area.size.y)) * scale_factor
-		if bot_inset > 0:
-			$PropsBar.position.y -= bot_inset
+	var delta := insets - _applied_insets
+	_applied_insets = insets
+	$TopBar.position.y += delta.x
+	$PropsBar.position.y -= delta.y
 
 func _process(delta: float) -> void:
 	if display_score != target_score:

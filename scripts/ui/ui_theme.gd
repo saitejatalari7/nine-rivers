@@ -243,3 +243,41 @@ static func _on_button_hover(btn: Button) -> void:
 static func _on_button_unhover(btn: Button) -> void:
 	var tween := btn.create_tween()
 	tween.tween_property(btn, "scale", Vector2.ONE, 0.12).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+
+# ================= SAFE AREA =================
+## Top and bottom insets in VIEWPORT pixels, for notches, status bars and
+## gesture pills.
+##
+## Two things make this harder than it looks:
+##
+## 1. targetSdk 35 forces edge-to-edge on Android 15, so the window extends
+##    behind both system bars. Content that used a small fixed inset now sits
+##    underneath them.
+## 2. Android delivers insets via onApplyWindowInsets AFTER the first frame,
+##    so querying during _ready() usually reports the full screen and yields
+##    zero inset. Callers must re-apply on size_changed as well.
+##
+## A floor is applied because a reported inset of zero is more often "not
+## delivered yet" than "genuinely no inset". Reserving space that turns out to
+## be unnecessary costs a little layout; not reserving it puts the UI under the
+## status bar.
+const SAFE_TOP_FLOOR: float = 72.0      # 24dp at the 1080-wide design scale
+const SAFE_BOTTOM_FLOOR: float = 144.0  # 48dp - the gesture pill
+
+static func get_safe_insets(viewport: Viewport) -> Vector2:
+	if viewport == null:
+		return Vector2(SAFE_TOP_FLOOR, SAFE_BOTTOM_FLOOR)
+	var vp_size: Vector2 = viewport.get_visible_rect().size
+	if not OS.has_feature("mobile"):
+		return Vector2.ZERO
+	var screen_size := DisplayServer.screen_get_size()
+	var safe := DisplayServer.get_display_safe_area()
+	var top := SAFE_TOP_FLOOR
+	var bottom := SAFE_BOTTOM_FLOOR
+	if screen_size.y > 0 and safe.size.y > 0 and vp_size.y > 0:
+		# The viewport is a scaled copy of the screen; convert device pixels
+		# into design pixels before using them as offsets.
+		var k := vp_size.y / float(screen_size.y)
+		top = maxf(top, float(safe.position.y) * k)
+		bottom = maxf(bottom, float(screen_size.y - (safe.position.y + safe.size.y)) * k)
+	return Vector2(top, bottom)

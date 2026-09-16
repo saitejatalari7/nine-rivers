@@ -28,3 +28,7 @@ Thumbs.db
 # Blender autosave backups
 *.blend1
 Godot_Devs.lnk
+
+# Original unsubset CJK fonts (30MB). Kept locally for regeneration only;
+# assets/fonts/ ships the subsets. See tools/subset_fonts.sh
+assets/fonts/original/
