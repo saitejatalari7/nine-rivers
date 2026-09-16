@@ -4,7 +4,9 @@ const BoardGenerator = preload("res://scripts/core/board_generator.gd")
 const RiverTile = preload("res://scripts/core/river_tile.gd")
 
 func _init() -> void:
-	print("--- Running Nine Rivers Board Solver Test ---")
+	# Counts tiles and set composition only - it does NOT prove a board can be
+	# cleared, despite the historical name. layout_validator does that.
+	print("--- Running Nine Rivers Board Deal Test (counts only) ---")
 	var layouts: Array[String] = [
 		"quick", "gate", "steps", "garden", "lotus", "bridges", "keep", "waterfall", "dragon_gate", "citadel", "turtle"
 	]
@@ -26,12 +28,12 @@ func _init() -> void:
 					triples += 1
 				if t.is_wild_suit():
 					wilds += 1
-			print("PASSED layout: %s (%s) -> %d tiles, %d triple members, %d natural wilds" % [
+			print("DEALT layout: %s (%s) -> %d tiles, %d triple members, %d natural wilds" % [
 				l_name, BoardGenerator.LAYOUT_NAMES.get(l_name, ""), tiles.size(), triples, wilds
 			])
 			total_passed += 1
 			
-	print("--- Test Complete: %d / %d Layouts Solved Successfully ---" % [total_passed, total_tested])
+	print("--- Test Complete: %d / %d Layouts Dealt Correctly ---" % [total_passed, total_tested])
 	if total_passed == total_tested:
 		quit(0)
 	else:

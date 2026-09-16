@@ -1,0 +1,4 @@
+[gd_scene load_steps=2 format=3]
+[ext_resource type="Script" path="res://scripts/tests/layout_validator.gd" id="1"]
+[node name="LayoutValidator" type="Node"]
+script = ExtResource("1")

@@ -4,6 +4,8 @@ extends RefCounted
 const RiverTile = preload("res://scripts/core/river_tile.gd")
 const LayoutData = preload("res://scripts/core/layout_data.gd")
 
+static var last_deal_order: Array = []
+
 const LAYOUT_NAMES: Dictionary = {
 	"quick": "Courtyard",
 	"gate": "Gate House",
@@ -291,6 +293,9 @@ static func deal_board(layout_name: String, rng: RandomNumberGenerator = null) -
 	_shuffle_array(pair_sets, rng)
 	
 	var order := peel_dynamic(positions, triples_count, total_pairs_count, rng)
+	# Exposed for layout_validator: the peel order IS a valid clearing sequence,
+	# so replaying it proves the dealt board can be finished.
+	last_deal_order = order
 	
 	var tiles: Array[RiverTile] = []
 	if not order.is_empty():
