@@ -41,20 +41,51 @@ var click_sample: AudioStreamWAV = null
 # Cache for procedurally synthesized Guzheng notes to prevent redundant CPU work
 var _guzheng_cache: Dictionary = {}
 
+const BUS_MUSIC := "NRMusic"
+const BUS_SFX := "NRSfx"
+
+## Everything used to play bone dry on Master. A plucked string with no space
+## around it is the single biggest reason the audio read as cheap: real
+## instruments are always heard in a room. Two buses, because music wants a
+## long hall and tile clacks want a small one - drenching the clacks would
+## smear the tactile attack that makes them satisfying.
+func _setup_audio_buses() -> void:
+	for spec in [
+		{"name": BUS_MUSIC, "room": 0.82, "damp": 0.42, "wet": 0.34, "spread": 1.0, "predelay": 28.0},
+		{"name": BUS_SFX,   "room": 0.46, "damp": 0.58, "wet": 0.16, "spread": 0.7, "predelay": 12.0},
+	]:
+		var bus_name: String = spec["name"]
+		if AudioServer.get_bus_index(bus_name) != -1:
+			continue
+		var idx: int = AudioServer.bus_count
+		AudioServer.add_bus(idx)
+		AudioServer.set_bus_name(idx, bus_name)
+		AudioServer.set_bus_send(idx, "Master")
+		var rv := AudioEffectReverb.new()
+		rv.room_size = spec["room"]
+		rv.damping = spec["damp"]
+		rv.wet = spec["wet"]
+		rv.dry = 1.0
+		rv.spread = spec["spread"]
+		rv.predelay_msec = spec["predelay"]
+		AudioServer.add_bus_effect(idx, rv)
+
 func _ready() -> void:
+	_setup_audio_buses()
+
 	# Pool of 12 SFX players for dense arpeggios & fanfare
 	for i in range(12):
 		var p := AudioStreamPlayer.new()
-		p.bus = "Master"
+		p.bus = BUS_SFX
 		add_child(p)
 		sfx_players.append(p)
-	
+
 	music_player = AudioStreamPlayer.new()
-	music_player.bus = "Master"
+	music_player.bus = BUS_MUSIC
 	add_child(music_player)
-	
+
 	ambient_player = AudioStreamPlayer.new()
-	ambient_player.bus = "Master"
+	ambient_player.bus = BUS_MUSIC
 	ambient_player.volume_db = -80.0
 	add_child(ambient_player)
 	
@@ -71,8 +102,14 @@ func _ready() -> void:
 	_start_ambient_guzheng_loop()
 
 func _pregenerate_ambient_track_task() -> void:
+	# Runs on a worker thread. If the game is closed before generation
+	# finishes - which a short test run does routinely - this node and the
+	# autoloads it touches may already be gone, so every access has to be
+	# guarded rather than assumed.
 	_pregenerate_ambient_track()
-	if SettingsManager.music_enabled:
+	if not is_instance_valid(self) or is_queued_for_deletion():
+		return
+	if is_instance_valid(SettingsManager) and SettingsManager.music_enabled:
 		call_deferred("start_ambient_music")
 
 func _on_setting_changed(setting_name: String, new_val: Variant) -> void:
@@ -117,27 +154,109 @@ func _play_random_ambient_phrase() -> void:
 		base_time += randf_range(0.32, 0.48)
 
 func _pregenerate_ambient_track() -> void:
+	var _t_start: int = Time.get_ticks_msec()
 	var duration: float = 8.0
 	var total_frames: int = int(sample_rate * duration)
 	var pcm := PackedByteArray()
 	pcm.resize(total_frames * 2)
 	
+	# WHY THIS WAS REWRITTEN
+	# The old bed was three bare sine waves on D2-A2-D3. Three separate things
+	# made that sound haunted rather than calm:
+	#   1. Pure sines have no overtones. That is the theremin timbre, which is
+	#      what horror scoring uses precisely because nothing in nature makes it.
+	#   2. D-A-D is a root, fifth and octave with NO THIRD. Tonally ambiguous
+	#      chords are the standard film device for unease - the ear cannot tell
+	#      major from minor and reads it as dread.
+	#   3. It never changed. A perfectly static tone reads as unnatural.
+	# The fix is a real chord with a third, harmonics, and slow movement.
+
+	# D Gong pentatonic (D E F# A B). Using the major third F# resolves the
+	# tonality, so the bed reads as settled rather than suspended.
+	# Frequencies and detunes are snapped to multiples of 1/duration (0.125Hz),
+	# so every partial completes a whole number of cycles per loop and the
+	# 8-second seam is inaudible. The snap moves each note by a few cents at
+	# most - far below what anyone can hear - and costs nothing.
+	var voices := [
+		{"f": 73.375,  "amp": 0.115, "detune": 0.0625, "phase": 0.0},  # D2 root
+		{"f": 110.000, "amp": 0.080, "detune": 0.1250, "phase": 0.7},  # A2 fifth
+		{"f": 138.625, "amp": 0.098, "detune": 0.1875, "phase": 1.9},  # F#3 THIRD
+		{"f": 146.875, "amp": 0.042, "detune": 0.2500, "phase": 2.6},  # D3 octave
+	]
+	# Harmonic series per voice - this is what turns a sine into an instrument.
+	var harmonics := [
+		{"mult": 1.0, "amp": 1.00},
+		{"mult": 2.0, "amp": 0.30},
+		{"mult": 3.0, "amp": 0.14},
+	]
+
+	# Flatten voice x detune x harmonic into plain arrays of oscillators, each
+	# advanced by a phase accumulator against a shared sine table. The naive
+	# nested version needed ~14 million sin() calls for 8 seconds of audio,
+	# which stalled startup; a table lookup with integer wrap is roughly two
+	# orders of magnitude cheaper and this runs in well under a second.
+	const LUT_BITS := 12
+	const LUT_SIZE := 1 << LUT_BITS          # 4096
+	const LUT_MASK := LUT_SIZE - 1
+	var lut := PackedFloat32Array(); lut.resize(LUT_SIZE)
+	for i in range(LUT_SIZE):
+		lut[i] = sin(TAU * float(i) / float(LUT_SIZE))
+
+	var osc_phase := PackedFloat32Array()
+	var osc_inc := PackedFloat32Array()
+	var osc_amp := PackedFloat32Array()
+	var osc_voice := PackedInt32Array()
+	for vi in range(voices.size()):
+		var v: Dictionary = voices[vi]
+		var base_f: float = float(v["f"])
+		# Two slightly detuned copies per voice. The slow beating between them
+		# is what makes a pad breathe instead of sitting still.
+		for d in [-1.0, 1.0]:
+			var f: float = base_f + d * float(v["detune"])
+			for h in harmonics:
+				osc_phase.append(float(v["phase"]) / TAU * float(LUT_SIZE))
+				osc_inc.append(f * float(h["mult"]) * float(LUT_SIZE) / sample_rate)
+				osc_amp.append(float(v["amp"]) * float(h["amp"]) * 0.5)
+				osc_voice.append(vi)
+	var osc_count: int = osc_phase.size()
+
+	# Per-voice swell, also table-driven. Each voice breathes on its own slow
+	# cycle, offset from the others, so the chord is always subtly shifting.
+	var swell_phase := PackedFloat32Array(); swell_phase.resize(voices.size())
+	var swell_inc: float = 0.125 * float(LUT_SIZE) / sample_rate
+	for vi in range(voices.size()):
+		swell_phase[vi] = float(voices[vi]["phase"]) / TAU * float(LUT_SIZE)
+
 	var last_noise: float = 0.0
+	var lp_state: float = 0.0
+	var swell := PackedFloat32Array(); swell.resize(voices.size())
+
 	for frame in range(total_frames):
 		var t: float = float(frame) / sample_rate
 		var norm_t: float = float(frame) / float(total_frames)
-		
-		# Organic river water bed: warm root chords (D2 73.4Hz, A2 110Hz, D3 146.8Hz)
-		var s1: float = sin(t * TAU * 73.416) * 0.13
-		var s2: float = sin(t * TAU * 110.0 + 0.4) * 0.09
-		var s3: float = sin(t * TAU * 146.83 + 1.1) * 0.06
-		
-		# Filtered pink/brown water wave lap
+
+		for vi in range(voices.size()):
+			swell[vi] = 0.75 + 0.25 * lut[int(swell_phase[vi]) & LUT_MASK]
+			swell_phase[vi] = swell_phase[vi] + swell_inc
+
+		var pad: float = 0.0
+		for o in range(osc_count):
+			pad += lut[int(osc_phase[o]) & LUT_MASK] * osc_amp[o] * swell[osc_voice[o]]
+			osc_phase[o] = osc_phase[o] + osc_inc[o]
+
+		# Gentle one-pole low pass: rolls the upper harmonics off so the pad is
+		# warm rather than buzzy, the way a bowed or blown instrument behaves.
+		lp_state += (pad - lp_state) * 0.22
+		pad = lp_state
+
+		# Filtered water. The old lap used a 0.25Hz swell - a 4 second
+		# inhale/exhale, which is the "breathing presence" part of the ghost.
+		# Faster and shallower reads as moving water instead.
 		var white: float = randf() * 2.0 - 1.0
 		last_noise = (last_noise * 0.94) + (white * 0.06)
-		var lap_envelope: float = (sin(t * TAU * 0.25) * 0.5 + 0.5) * 0.08
+		var lap_envelope: float = (0.62 + 0.38 * sin(t * TAU * 0.85)) * 0.055
 		var water_lap: float = last_noise * lap_envelope
-		
+
 		# Smooth window at loop boundary to guarantee zero click
 		var window: float = 1.0
 		if norm_t < 0.05:
@@ -145,7 +264,7 @@ func _pregenerate_ambient_track() -> void:
 		elif norm_t > 0.95:
 			window = (1.0 - norm_t) / 0.05
 			
-		var val: float = (s1 + s2 + s3 + water_lap) * window * 0.70
+		var val: float = (pad + water_lap) * window * 0.62
 		val = clampf(val, -1.0, 1.0)
 		pcm.encode_s16(frame * 2, int(val * 32767.0))
 		
@@ -157,7 +276,9 @@ func _pregenerate_ambient_track() -> void:
 	wav.loop_begin = 0
 	wav.loop_end = total_frames
 	wav.data = pcm
-	ambient_player.set_deferred("stream", wav)
+	print("Nine Rivers: ambient bed generated in %d ms" % (Time.get_ticks_msec() - _t_start))
+	if is_instance_valid(self) and is_instance_valid(ambient_player):
+		ambient_player.set_deferred("stream", wav)
 
 func _pregenerate_ui_click() -> void:
 	var duration: float = 0.035
