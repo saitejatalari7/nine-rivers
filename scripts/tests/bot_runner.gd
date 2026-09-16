@@ -277,6 +277,8 @@ func _report() -> void:
 	print("Final saved level   : %s" % str(SaveManager.prog.get("level")))
 	print("Final River Jade    : %s" % str(SaveManager.prog.get("river_jade")))
 	print("Assertion failures  : %d" % _failures.size())
+	if not _failures.is_empty():
+		print("Reproduce with     : --fixed-fps 60 ... -- --seed=%d" % BASE_SEED)
 	for f in _failures:
 		print("   - " + f)
 	print("=====================================================")
