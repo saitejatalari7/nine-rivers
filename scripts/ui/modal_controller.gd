@@ -1104,7 +1104,7 @@ static func _make_tile_box(pressed: bool = false) -> StyleBoxFlat:
 func _add_tile_row(glyph: String, glyph_col: Color, title: String, sub: String,
 		meta: String, on_click: Callable, banded: bool = false) -> void:
 	var b := Button.new()
-	b.custom_minimum_size = Vector2(0, 96)
+	b.custom_minimum_size = Vector2(0, 104 if banded else 96)
 	b.focus_mode = Control.FOCUS_ALL
 	b.add_theme_stylebox_override("normal", _make_tile_box())
 	b.add_theme_stylebox_override("hover", _make_tile_box())
@@ -1117,7 +1117,11 @@ func _add_tile_row(glyph: String, glyph_col: Color, title: String, sub: String,
 	row.offset_left = 24; row.offset_right = -24
 	# -12 at the bottom leaves the biscuit lip exposed; that lip is the whole
 	# reason this reads as a tile rather than a list row.
-	row.offset_top = 0; row.offset_bottom = -12
+	# A banded tile needs more clearance still: the gold band sits inside the
+	# face, and at -12 it ran straight through the subtitle's descenders, so
+	# the text read as struck through.
+	row.offset_top = 0
+	row.offset_bottom = -26 if banded else -12
 	row.add_theme_constant_override("separation", 18)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	b.add_child(row)
