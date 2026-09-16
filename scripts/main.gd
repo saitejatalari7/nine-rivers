@@ -77,11 +77,8 @@ func _show_intro_splash() -> void:
 	board.visible = false
 	hud.visible = false
 	AudioManager.play_win()
-	# The engine already shows boot_splash/image - the same artwork - for the
-	# whole of engine init. This layer only exists to dissolve it into the pond
-	# instead of cutting. It used to hold for a further 1.0s and fade for 0.5s,
-	# so the player looked at a finished, interactive game behind a static
-	# image for a second and a half of every launch.
+	# The engine already shows the same artwork during init; this only dissolves
+	# it into the pond. Keep it short.
 	var tween := create_tween()
 	tween.tween_interval(0.15)
 	tween.tween_property($SplashScreen/SplashTexture, "modulate:a", 0.0, 0.4)

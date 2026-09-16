@@ -449,17 +449,12 @@ func _pregenerate_glass_shatter_sounds() -> void:
 
 # ================= PUBLIC SFX PLAY METHODS =================
 
-## Vibration is a separate accessibility setting from sound, so it must not sit
-## behind the sfx gate. Every haptic in this file used to be written after an
-## early return on sfx_enabled, which meant muting the game also killed
-## vibration - while Settings still showed "Haptic Vibration: On". Each play_*
-## method now fires this FIRST, before any sound decision.
+## Must be called BEFORE any sfx_enabled early return: vibration is a separate
+## setting from sound, and muting the game must not silence it.
 func haptic(ms: int) -> void:
 	if SettingsManager.haptics_enabled:
 		Input.vibrate_handheld(ms)
 
-## A UI tap. Lighter and shorter than a tile clack so a menu does not sound
-## like gameplay.
 func play_ui_tap() -> void:
 	haptic(4)
 	if not SettingsManager.sfx_enabled or click_sample == null:

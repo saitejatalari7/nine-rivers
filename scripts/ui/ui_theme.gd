@@ -29,35 +29,20 @@ const INK_BLACK := Color("#0d1411")      # Deepest lacquer/ink
 const CARD_BG := Color(0.043, 0.118, 0.098, 0.96) # Frosted card background
 
 # ================= TYPE SCALE =================
-## Sizes are in the 1080-wide DESIGN space, not device pixels.
-##
-## The stretch mode is canvas_items with aspect "expand", which is WIDTH-bound:
-## the 1080 design width is mapped onto the device width whatever the height.
-## Android pins usable width to roughly 360-412dp across nearly every phone in
-## the market, so 1080 design px lands on ~360dp - i.e. 3 design px per dp, and
-## a design size divided by 3 gives you sp. This is a property of the stretch
-## mode, not of screen density: a 1080p phone and a 1440p phone both land here.
-##
-## Below FS_CAPTION, text stops being reliably readable at arm's length, and
-## Android accessibility guidance treats 12sp as the floor for any text a user
-## has to act on.
+## Design-space px. canvas_items + "expand" is width-bound and Android pins
+## width to ~360-412dp, so 3 design px = 1dp; divide by 3 for sp.
 const FS_CAPTION: int = 36    # 12sp - units, counts, secondary metadata
 const FS_BODY: int = 42       # 14sp - default body copy
 const FS_BODY_LG: int = 48    # 16sp - primary row text and button labels
 const FS_TITLE: int = 60      # 20sp - screen and section headers
 const FS_DISPLAY: int = 84    # 28sp - hero numerals
 
-## Minimum size for anything tappable. Both Material and the Apple HIG land on
-## the same ~48dp / 9mm figure, which is the width of an adult fingertip's
-## contact patch; below it, miss rates climb sharply.
+## Minimum tappable size; Material and the Apple HIG both land on ~48dp.
 const TOUCH_MIN: float = 144.0   # 48dp
 
 # ================= FONTS =================
-## Weights we actually use. Outfit.ttf is a VARIABLE font whose default
-## instance is Thin (wght 100) - so every label in the game was rendering in
-## hairline Thin, which is most of why small text read as unreadable and why
-## the build never matched the design mockups. Asking for a weight explicitly
-## is not optional here; 400 is as much an override as 700 is.
+## Outfit.ttf is variable and defaults to Thin (100), so a weight must always
+## be requested explicitly - 400 is as much an override as 700.
 const W_REGULAR: int = 400
 const W_MEDIUM: int = 500
 const W_SEMIBOLD: int = 600
@@ -76,23 +61,49 @@ static func _wght_tag() -> int:
 	return _wght_tag_cached
 static var _cjk_font: Font = null
 static var _title_font: Font = null
+static var _glyph_font: Font = null
+
+## Inline UI symbols are in none of the bundled faces; without this they fall
+## through to whatever the device ships. Built by tools/make_ui_glyphs.py.
+static func get_glyph_font() -> Font:
+	if _glyph_font == null:
+		if ResourceLoader.exists("res://assets/fonts/NineRiversGlyphs.ttf"):
+			_glyph_font = load("res://assets/fonts/NineRiversGlyphs.ttf")
+	return _glyph_font
+
+## Chains the symbol and CJK faces behind `font` so a Latin label can render
+## 玉 and ◈ from bundled fonts.
+static func _with_fallbacks(font: Font, include_cjk: bool = true) -> Font:
+	if font == null:
+		return null
+	var chain: Array[Font] = []
+	var g := get_glyph_font()
+	if g != null:
+		chain.append(g)
+	if include_cjk:
+		var c := get_cjk_font()
+		if c != null:
+			chain.append(c)
+	font.fallbacks = chain
+	return font
 
 static func get_ui_font() -> Font:
 	if _ui_font == null:
 		if ResourceLoader.exists("res://assets/fonts/Outfit.ttf"):
-			_ui_font = load("res://assets/fonts/Outfit.ttf")
+			_ui_font = _with_fallbacks(load("res://assets/fonts/Outfit.ttf"))
 	return _ui_font
 
 static func get_cjk_font() -> Font:
 	if _cjk_font == null:
 		if ResourceLoader.exists("res://assets/fonts/NotoSerifSC.ttf"):
-			_cjk_font = load("res://assets/fonts/NotoSerifSC.ttf")
+			# include_cjk false: chaining the CJK face behind itself recurses.
+			_cjk_font = _with_fallbacks(load("res://assets/fonts/NotoSerifSC.ttf"), false)
 	return _cjk_font
 
 static func get_title_font() -> Font:
 	if _title_font == null:
 		if ResourceLoader.exists("res://assets/fonts/MaShanZheng-Regular.ttf"):
-			_title_font = load("res://assets/fonts/MaShanZheng-Regular.ttf")
+			_title_font = _with_fallbacks(load("res://assets/fonts/MaShanZheng-Regular.ttf"))
 		elif _cjk_font != null:
 			_title_font = _cjk_font
 	return _title_font
@@ -142,13 +153,7 @@ static func style_label(
 	lbl.add_theme_color_override("font_color", color)
 
 # ================= PRESS FEEDBACK =================
-## Touch has no hover. A control whose pressed state is drawn the same as its
-## hover state therefore gives a phone player nothing at all, which is what the
-## settings rows did - both states were the same 4.5% white wash.
-##
-## Feedback fires on button_down rather than on pressed, so it lands when the
-## finger touches rather than when it lifts. That difference is what makes a
-## tap feel connected to the control rather than lagging behind it.
+## Fires on button_down, not pressed, so feedback lands on touch not release.
 static func add_press_feedback(btn: BaseButton) -> void:
 	var cb := Callable(UITheme, "_on_press_feedback")
 	if not btn.is_connected("button_down", cb):
@@ -159,8 +164,7 @@ static func _on_press_feedback() -> void:
 		return
 	AudioManager.play_ui_tap()
 
-## A press wash for controls drawn without a full stylebox set - strong enough
-## to be visible under a fingertip, which the old 4.5% was not.
+## Press wash for controls without a full stylebox set.
 static func create_press_wash(corner_r: int = 5) -> StyleBoxFlat:
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = Color(1, 1, 1, 0.12)
@@ -327,28 +331,10 @@ static func style_circular_button(
 	add_press_feedback(btn)
 
 
-## Hover scale tweens were removed. There is no hover on a phone: Godot
-## synthesises mouse_entered from a touch, so a tap grew the button by 3.5%
-## and it STAYED grown until a later touch landed elsewhere. The press state
-## and the tap haptic carry the feedback instead.
-
 # ================= SAFE AREA =================
-## Top and bottom insets in VIEWPORT pixels, for notches, status bars and
-## gesture pills.
-##
-## Two things make this harder than it looks:
-##
-## 1. targetSdk 35 forces edge-to-edge on Android 15, so the window extends
-##    behind both system bars. Content that used a small fixed inset now sits
-##    underneath them.
-## 2. Android delivers insets via onApplyWindowInsets AFTER the first frame,
-##    so querying during _ready() usually reports the full screen and yields
-##    zero inset. Callers must re-apply on size_changed as well.
-##
-## A floor is applied because a reported inset of zero is more often "not
-## delivered yet" than "genuinely no inset". Reserving space that turns out to
-## be unnecessary costs a little layout; not reserving it puts the UI under the
-## status bar.
+## Top/bottom insets in viewport px. Android delivers insets after the first
+## frame, so callers must re-apply on size_changed; the floors exist because a
+## reported zero usually means "not delivered yet".
 const SAFE_TOP_FLOOR: float = 72.0      # 24dp at the 1080-wide design scale
 const SAFE_BOTTOM_FLOOR: float = 144.0  # 48dp - the gesture pill
 

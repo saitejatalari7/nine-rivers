@@ -161,30 +161,19 @@ const BG_THEME_DETAILS: Dictionary = {
 @onready var card_panel: PanelContainer = $Center/Card
 @onready var scroll_view: ScrollContainer = $Center/Card/Scroll
 
-## Backed by a setter so every screen change (18 assignment sites) reports the
-## new load to main.gd without each one having to remember to.
 var _current_screen: String = "main": set = _set_current_screen
 
-## "main" is The Rack, where the pond is the hero and stays at full frame rate.
-## Every other screen is a card laid over the water, so the pond behind it is
-## throttled - see ZenPondBackground.set_quiet.
+## The one screen where the pond is the hero, so it is not throttled.
 const LIGHT_SCREENS: Array[String] = ["main"]
 
 func _set_current_screen(value: String) -> void:
 	_current_screen = value
 	_sync_background_load()
-	# Screens are built synchronously right after this assignment, so a fit
-	# that waits one frame measures the finished content. Hooking it here means
-	# no individual screen has to remember to call it.
+	# Screens build synchronously after this, so a one-frame wait measures them.
 	_fit_scroll()
 
-## The card centres its content, so anything taller than the screen is clipped
-## at BOTH ends - the top of a long screen runs off the top edge and there is
-## no way to scroll back to it. A ScrollContainer fixes that, but it reports a
-## near-zero minimum size by design, which would collapse the card to nothing.
-## So we size the scroll view to its content and cap it at the space actually
-## available: short screens stay centred and look exactly as before, long ones
-## fill the height and scroll.
+## A ScrollContainer reports a near-zero minimum size, which would collapse the
+## card, so size it to its content and cap it at the space available.
 func _fit_scroll() -> void:
 	if not is_instance_valid(scroll_view):
 		return
@@ -195,9 +184,7 @@ func _fit_scroll() -> void:
 	if vp == null:
 		return
 	var insets: Vector2 = UITheme.get_safe_insets(vp)
-	# Measure the card's own top/bottom padding rather than assuming it:
-	# _set_card_backing swaps the stylebox between screens, so a hardcoded
-	# figure is wrong on exactly the screens that are tall enough to matter.
+	# Measured, not assumed: _set_card_backing swaps the stylebox per screen.
 	var chrome: float = 0.0
 	var sb: StyleBox = card_panel.get_theme_stylebox("panel")
 	if sb != null:
@@ -209,17 +196,11 @@ func _fit_scroll() -> void:
 func _sync_background_load() -> void:
 	background_quiet_changed.emit(visible and not (_current_screen in LIGHT_SCREENS))
 
-## The modal had no safe-area handling at all. Centred content usually
-## survives, but Settings and Level Select nearly fill the height, and under
-## the forced edge-to-edge of targetSdk 35 their content runs under the status
-## bar and the gesture pill.
 func _apply_safe_area() -> void:
 	var insets: Vector2 = UITheme.get_safe_insets(get_viewport())
 	var c := $Center
 	c.offset_top = insets.x
 	c.offset_bottom = -insets.y
-	# A rotation or an inset arriving late changes how much room the scroll
-	# view has, so it has to be re-measured against the new height.
 	_fit_scroll()
 
 func _ready() -> void:
@@ -341,10 +322,8 @@ func show_level_select() -> void:
 	_add_purse_line("%d / 150 ★  ·  Stage %d unlocked" % [total_stars, max_unlocked])
 	_add_hairline()
 
-	# No inner ScrollContainer here: the card itself scrolls now, and nesting
-	# two scroll regions makes a drag near the boundary ambiguous on touch.
-	# It also fixes the old bug where this was pinned to 400px tall while ~800px
-	# of card sat empty, clipping Chapter III mid-title.
+	# No inner ScrollContainer: the card scrolls, and nesting two is ambiguous
+	# on touch.
 	var vbox := VBoxContainer.new()
 	vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	vbox.add_theme_constant_override("separation", 16)
@@ -405,8 +384,7 @@ func show_level_select() -> void:
 		
 		for lvl in range(ch["start"], ch["end"] + 1):
 			var btn := Button.new()
-			# Square 48dp token. Five of these plus separation is 752 of the
-			# 812px the card gives us, so the grid still fits at full size.
+			# 5 x 144 + separation = 752 of the 812px available.
 			var tok: float = UITheme.TOUCH_MIN
 			btn.custom_minimum_size = Vector2(tok, tok)
 			btn.add_theme_font_size_override("font_size", UITheme.FS_BODY)
@@ -545,9 +523,7 @@ func show_boon_draft() -> void:
 		# A relic is a thing you pick up, so it is drawn as a tile you can lift
 		# off the rack, not as a bordered card in a stack of bordered cards.
 		var card := PanelContainer.new()
-		# The tappable Button sits INSIDE the tile stylebox, so it loses the
-		# 16px top and bottom content margins. The card has to carry those 32px
-		# on top of the touch minimum or the button itself comes out at 45dp.
+		# +32 for the tile stylebox margins the inner Button loses.
 		card.custom_minimum_size = Vector2(0, UITheme.TOUCH_MIN + 32.0)
 		card.add_theme_stylebox_override("panel", _make_tile_box())
 
@@ -581,10 +557,7 @@ func show_boon_draft() -> void:
 		row.add_child(vbox)
 		card.add_child(row)
 
-		# A real Button laid over the card rather than a raw gui_input handler:
-		# the handler had no pressed state, no keyboard or focus support, and
-		# relied on mouse emulation from touch. (The previous relic_btn here
-		# was built and then never added to the tree, so it did nothing.)
+		# A real Button, not a gui_input handler: gives it a pressed state.
 		var relic_btn := Button.new()
 		relic_btn.flat = true
 		relic_btn.focus_mode = Control.FOCUS_ALL
@@ -676,12 +649,12 @@ func show_bazaar_modal() -> void:
 	_add_hairline()
 
 	_add_tile_row("牌", GLYPH_JADE, "Artisan Tile Sets",
-		"Four collections · live previews", "4", func():
+		"Four collections", "4", func():
 			show_tile_catalog_modal()
 	, true)
 
 	_add_tile_row("池", GLYPH_JADE, "Zen Pond Backdrops",
-		"Living water · koi & flora", "6", func():
+		"Living water & koi", "6", func():
 			show_background_catalog_modal()
 	)
 
@@ -819,7 +792,8 @@ func show_background_catalog_modal() -> void:
 		elif is_unlocked:
 			tag = "Owned"
 		else:
-			tag = "1,500 玉 / 500 ◈"
+			# Jade only: the detail screen offers both, and both overflowed here.
+			tag = "1,500 玉"
 
 		var captured_id: String = bg_id
 		var parts := _split_name(detail["name"])
@@ -1207,8 +1181,6 @@ static func _make_tile_box(pressed: bool = false) -> StyleBoxFlat:
 func _add_tile_row(glyph: String, glyph_col: Color, title: String, sub: String,
 		meta: String, on_click: Callable, banded: bool = false) -> void:
 	var b := Button.new()
-	# UITheme.TOUCH_MIN (48dp) is the floor; a banded tile needs a little more
-	# because the gold band eats into the bottom of the face.
 	b.custom_minimum_size = Vector2(0, UITheme.TOUCH_MIN + (8.0 if banded else 0.0))
 	b.focus_mode = Control.FOCUS_ALL
 	b.add_theme_stylebox_override("normal", _make_tile_box())
@@ -1257,9 +1229,6 @@ func _add_tile_row(glyph: String, glyph_col: Color, title: String, sub: String,
 
 	if not sub.is_empty():
 		var s := Label.new()
-		# Tracked uppercase, as in the approved mockup: it separates the
-		# subtitle from the title by texture rather than by size alone, so the
-		# subtitle can stay large enough to read.
 		s.text = sub.to_upper()
 		s.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		UITheme.style_label(s, "ui", UITheme.FS_CAPTION, TILE_SUBINK,
@@ -1353,10 +1322,7 @@ func _add_seal_header(title: String, sub: String, seal_glyph: String) -> void:
 
 	var t := Label.new()
 	t.text = title
-	# UI face, not the brush face. Every seal header is Latin ("Settings",
-	# "Pearl Treasury", "Board Cleared"), and MaShanZheng draws Latin badly -
-	# it read as a handwritten scrawl next to crisp body text. The Chinese
-	# character in the cinnabar seal beside it carries the calligraphy.
+	# UI face: MaShanZheng draws Latin badly; the seal carries the calligraphy.
 	UITheme.style_label(t, "ui", UITheme.FS_TITLE, UITheme.GOLD_CORE,
 		UITheme.W_SEMIBOLD, 1)
 	col.add_child(t)
@@ -1458,8 +1424,6 @@ func _add_sheet_row(key: String, val: String, val_col: Color = UITheme.IVORY_BAS
 	k.text = key
 	k.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	k.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	# Wraps rather than pushing the value off the edge; the key is the half of
-	# the pair that can afford a second line.
 	k.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	UITheme.style_label(k, "ui", UITheme.FS_BODY, UITheme.IVORY_MUTED)
 	row.add_child(k)
@@ -1473,10 +1437,7 @@ func _add_sheet_row(key: String, val: String, val_col: Color = UITheme.IVORY_BAS
 
 	_add_hairline()
 
-## The Latin half of the wordmark. It deliberately does NOT use the title face:
-## MaShanZheng is a Chinese brush font whose Latin glyphs are an afterthought,
-## and set in caps they came out uneven and collided with the 九河 above them.
-## Tracked caps in the UI face is what the mockup shows anyway.
+## Tracked caps in the UI face, not the brush face - see _add_seal_header.
 func _add_title(text: String) -> void:
 	var l := Label.new()
 	l.text = text

@@ -174,9 +174,8 @@ func _ensure_containers() -> void:
 		motes_container.name = "MotesContainer"
 		add_child(motes_container)
 
-## Modals cover most of the screen but the pond stays visible around the card,
-## so we throttle the simulation instead of freezing it - motion speed is
-## unchanged, we just simulate and redraw at ~20fps while a modal is up.
+## Throttled, not frozen: the pond stays visible around the card, so frozen koi
+## would read as a hang. Motion speed is unchanged.
 const QUIET_STEP: float = 1.0 / 20.0
 
 func set_quiet(quiet: bool) -> void:
@@ -373,7 +372,6 @@ func _refresh_koi(theme_data: Dictionary) -> void:
 		)
 		koi.setup(species_list[i], spawn_pos)
 		koi.set_pond_bounds(pond_rect)
-		# A theme swap can happen mid-modal; new fish must inherit the throttle.
 		koi.set_quiet(_quiet)
 
 func _setup_flora(theme_data: Dictionary) -> void:

@@ -1,16 +1,13 @@
 extends Node
 
-## Walks every modal screen and measures the built layout, because the logic
-## suites never look at geometry - which is how 11dp tap targets and clipped
-## content survived 32 passing suites.
+## Measures built layout across every modal screen; the logic suites never look
+## at geometry.
 
 const UITheme = preload("res://scripts/ui/ui_theme.gd")
 
 const TOUCH_MIN: float = 144.0
-## The card's declared width, from modal.tscn. The budget has to be measured
-## against THIS and not against the card's actual size: a child wider than the
-## card simply stretches the card, so comparing to the measured width always
-## passes and hides the overflow. Ask for the design width instead.
+## From modal.tscn. Measure against this, not the card's actual size: a child
+## wider than the card just stretches it, so that check can never fail.
 const CARD_W: float = 920.0
 const DESIGN_W: float = 1080.0
 ## Buttons that are deliberately smaller than a finger target and are not the
@@ -25,11 +22,8 @@ func _ready() -> void:
 	add_child(main)
 	await get_tree().process_frame
 	await get_tree().process_frame
-	# main.tscn runs its intro splash on boot, and the splash tween ends by
-	# calling _return_home(), which forces the main menu. If that lands while
-	# the probe is part-way through, it silently replaces whatever screen is
-	# being measured - and the measurement still reports "ok". Wait it out
-	# before touching anything.
+	# The splash tween ends by calling _return_home(), which would replace the
+	# screen being measured part-way through. Wait it out.
 	var splash: Node = main.get_node_or_null("SplashScreen")
 	if splash != null:
 		splash.visible = false
@@ -95,6 +89,18 @@ func _audit_screen(name: String, modal: Node, vp_h: float) -> void:
 	var wide: Array[String] = []
 	_walk(content, small, wide, budget)
 
+	# Minimum-size checks miss row insets, and containers overflow rather than
+	# clip, so measure where the text actually landed.
+	var card_left: float = card.global_position.x
+	var card_right: float = card_left + card.size.x
+	if sb != null:
+		card_left += sb.get_margin(SIDE_LEFT)
+		card_right -= sb.get_margin(SIDE_RIGHT)
+	var spilled: Array[String] = []
+	_walk_bounds(content, spilled, card_left, card_right)
+	for sp in spilled:
+		wide.append(sp)
+
 	var status := "ok"
 	if card.get_combined_minimum_size().x > DESIGN_W:
 		status = "CARD WIDER THAN SCREEN (%d)" % int(card.get_combined_minimum_size().x)
@@ -112,9 +118,7 @@ func _audit_screen(name: String, modal: Node, vp_h: float) -> void:
 		status = "HORIZONTAL OVERFLOW"
 		fails += 1
 
-	# Headless pins the root viewport square, so scroll_h above is measured
-	# against more height than a phone has. This is the real budget: 1920 design
-	# px minus the status bar and the gesture pill, minus the card's padding.
+	# Headless pins the viewport square, so measure against a real phone.
 	var chrome: float = card_h - scroll_h
 	var phone_budget: float = 1920.0 - UITheme.SAFE_TOP_FLOOR - UITheme.SAFE_BOTTOM_FLOOR - chrome
 	var on_phone: String = "SCROLLS" if content_h > phone_budget else "fits"
@@ -148,8 +152,6 @@ func _walk(node: Node, small: Array[String], wide: Array[String], max_w: float) 
 					c.name, cw, max_w, _describe(c)])
 		_walk(c, small, wide, max_w)
 
-## Names the text inside a container so an overflow report points at the row
-## that is actually too wide, not at an anonymous HBoxContainer.
 func _describe(node: Node) -> String:
 	var bits: Array[String] = []
 	_collect_text(node, bits)
@@ -168,3 +170,48 @@ func _collect_text(node: Node, bits: Array[String]) -> void:
 ", " "),
 				(c as Button).get_combined_minimum_size().x])
 		_collect_text(c, bits)
+
+## Measures the INK, not the label rect: a centred full-width label has a rect
+## as wide as the card while its text sits in the middle.
+const EDGE_TOLERANCE: float = 1.5
+
+func _walk_bounds(node: Node, out: Array[String], card_left: float, card_right: float) -> void:
+	for c in node.get_children():
+		if c is Label and c.visible and not (c as Label).text.is_empty():
+			_check_label(c as Label, out, card_left, card_right)
+		_walk_bounds(c, out, card_left, card_right)
+
+func _check_label(lbl: Label, out: Array[String], card_left: float, card_right: float) -> void:
+	var font: Font = lbl.get_theme_font("font")
+	if font == null:
+		return
+	var fs: int = lbl.get_theme_font_size("font_size")
+	var text_w: float = font.get_string_size(
+		lbl.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+	if lbl.autowrap_mode != TextServer.AUTOWRAP_OFF:
+		text_w = minf(text_w, lbl.size.x)
+
+	var left: float = lbl.global_position.x
+	match lbl.horizontal_alignment:
+		HORIZONTAL_ALIGNMENT_CENTER:
+			left += (lbl.size.x - text_w) * 0.5
+		HORIZONTAL_ALIGNMENT_RIGHT:
+			left += lbl.size.x - text_w
+	var right: float = left + text_w
+	var label: String = lbl.text.replace("
+", " ")
+
+	if right > card_right + EDGE_TOLERANCE or left < card_left - EDGE_TOLERANCE:
+		out.append("'%s' clipped by the card (ink %.0f..%.0f vs %.0f..%.0f)" % [
+			label, left, right, card_left, card_right])
+		return
+
+	var row := lbl.get_parent()
+	while row != null and not (row is BoxContainer):
+		row = row.get_parent()
+	if row is Control:
+		var rc: Control = row
+		var row_right: float = rc.global_position.x + rc.size.x
+		if right > row_right + EDGE_TOLERANCE:
+			out.append("'%s' pushed out of its row (ink ends %.0f, row ends %.0f)" % [
+				label, right, row_right])

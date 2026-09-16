@@ -74,7 +74,6 @@ const QUIET_STEP: float = 1.0 / 20.0
 var _quiet: bool = false
 var _quiet_accum: float = 0.0
 
-## Throttled (not frozen) while a modal is open - see ZenPondBackground.set_quiet.
 func set_quiet(quiet: bool) -> void:
 	_quiet = quiet
 	_quiet_accum = 0.0
