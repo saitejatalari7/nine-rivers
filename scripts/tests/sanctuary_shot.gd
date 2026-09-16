@@ -10,7 +10,7 @@ func _ready() -> void:
 	SaveManager.add_jade(4000)
 	await get_tree().create_timer(1.4).timeout
 
-	var sanc = main.get_node("Sanctuary")
+	var sanc = main.get_node("SanctuaryLayer/Sanctuary")
 	main._open_sanctuary()
 	await get_tree().create_timer(0.8).timeout
 	await _shot("sanc_1_pond")

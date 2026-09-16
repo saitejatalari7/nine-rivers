@@ -182,10 +182,6 @@ func _apply_pre(mode: String) -> void:
 			main._start_daily_mode()
 	if not mode.is_empty():
 		await _settle()
-		# _on_board_cleared() hides the HUD before a reward screen, so seeding
-		# one with the HUD still up gave it seven buttons where the player sees
-		# two, and reachability was then computed over edges that do not exist.
-		hud.visible = false
 
 ## The seed screens. Anything else reachable from them is discovered and
 ## explored by the worklist below.
@@ -194,10 +190,10 @@ func _seed_paths() -> Array:
 		{"builder": "show_main_menu", "args": []},
 		{"builder": "show_level_select", "args": []},
 		{"builder": "show_pause_menu", "args": [], "pre": "calm"},
-		{"builder": "show_level_clear", "args": [12, 4820, 3], "pre": "calm"},
-		{"builder": "show_daily_clear", "args": [3100, 7, 4], "pre": "daily"},
-		{"builder": "show_boon_draft", "args": [], "pre": "run"},
-		{"builder": "show_game_over", "args": ["No moves remain"], "pre": "run"},
+		{"builder": "show_level_clear", "args": [12, 4820, 3], "pre": "calm", "after_clear": true},
+		{"builder": "show_daily_clear", "args": [3100, 7, 4], "pre": "daily", "after_clear": true},
+		{"builder": "show_boon_draft", "args": [], "pre": "run", "after_clear": true},
+		{"builder": "show_game_over", "args": ["No moves remain"], "pre": "run", "after_clear": true},
 		{"builder": "show_sanctuary_menu", "args": []},
 		{"builder": "show_bazaar_modal", "args": []},
 		{"builder": "show_tile_catalog_modal", "args": []},
@@ -215,6 +211,12 @@ func _seed_paths() -> Array:
 func _goto(path: Dictionary) -> bool:
 	await _reset()
 	await _apply_pre(String(path.get("pre", "")))
+	# Only the reward screens follow _on_board_cleared(), which hides the HUD.
+	# Seeding them with it up gave daily_clear seven buttons where a player sees
+	# two; hiding it everywhere instead invented a pause->resume state with no
+	# HUD, which no player can reach either.
+	if bool(path.get("after_clear", false)):
+		hud.visible = false
 	modal.callv(path["builder"], path["args"])
 	await _settle()
 	for idx in path.get("presses", []):

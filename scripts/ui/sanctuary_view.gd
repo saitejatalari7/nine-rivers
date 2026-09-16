@@ -29,7 +29,7 @@ func _ready() -> void:
 
 	$TopBar/BtnBack.pressed.connect(func(): back_requested.emit())
 	$BottomBar/BtnShop.pressed.connect(_toggle_shop)
-	$ShopDrawer/Body/DrawerHead/BtnCloseShop.pressed.connect(func(): shop_panel.visible = false)
+	$ShopDrawer/Body/DrawerHead/BtnCloseShop.pressed.connect(func(): _set_shop_open(false))
 	shop_panel.visible = false
 	ripples_container.draw.connect(_on_ripples_draw)
 
@@ -54,7 +54,17 @@ func _apply_safe_area() -> void:
 	bottom_bar.offset_bottom = -bottom
 	bottom_bar.offset_top = bottom_bar.offset_bottom - 160.0
 
-	shop_panel.offset_bottom = bottom_bar.offset_top - 20.0
+	_layout_drawer()
+
+
+## The drawer takes the bottom bar's space while it is open, since the bar
+## stands down; pinning it above the bar left a dead strip and clipped the last
+## row mid-sentence.
+func _layout_drawer() -> void:
+	var insets: Vector2 = UITheme.get_safe_insets(get_viewport())
+	var bottom: float = maxf(insets.y, UITheme.SAFE_BOTTOM_FLOOR)
+	var title: Control = $TitleBlock
+	shop_panel.offset_bottom = -bottom
 	shop_panel.offset_top = minf(shop_panel.offset_bottom - 640.0,
 		-(size.y - title.offset_bottom - 24.0))
 
@@ -100,7 +110,7 @@ func _apply_luxury_styling() -> void:
 ## there instead of leaving the Sanctuary.
 func close_shop_drawer() -> bool:
 	if is_instance_valid(shop_panel) and shop_panel.visible:
-		shop_panel.visible = false
+		_set_shop_open(false)
 		return true
 	return false
 
@@ -108,7 +118,7 @@ func close_shop_drawer() -> bool:
 func refresh_sanctuary() -> void:
 	# Not saved state: leaving it open meant a player who opened the shop once
 	# never saw the pond again.
-	shop_panel.visible = false
+	_set_shop_open(false)
 	lbl_jade.text = "%d 玉" % SaveManager.get_jade()
 	
 	# Spawn all unlocked Koi fish
@@ -206,8 +216,15 @@ func _on_ripples_draw() -> void:
 		ripples_container.draw_arc(r["pos"], maxf(1.0, r["r"] * 0.65), 0.0, TAU, 28, Color(col.r, col.g, col.b, r["a"] * 0.45), 1.6)
 
 func _toggle_shop() -> void:
-	shop_panel.visible = not shop_panel.visible
-	if shop_panel.visible:
+	_set_shop_open(not shop_panel.visible)
+
+## The bottom bar sits on top of the open drawer and clipped its last row
+## mid-sentence, so it stands down while the drawer is up.
+func _set_shop_open(open: bool) -> void:
+	shop_panel.visible = open
+	$BottomBar.visible = not open
+	if open:
+		_layout_drawer()
 		_populate_shop()
 
 func _populate_shop() -> void:
