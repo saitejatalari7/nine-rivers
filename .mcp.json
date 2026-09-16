@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "blender": {
+      "command": "C:/Users/saite/AppData/Roaming/Python/Python313/Scripts/blender-mcp.exe",
+      "args": [],
+      "env": {}
+    }
+  }
+}

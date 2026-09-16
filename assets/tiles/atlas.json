@@ -1,0 +1,52 @@
+{
+  "_comment": "Rendered in Blender 5.2.1 (Cycles, Standard view transform, exposure -1.45). Source scene: nine_rivers_tiles.blend, in this folder. Light is a fixed key from the upper-LEFT; any Godot shader that fake-lights these sprites, and the existing code-side depth extrusion and drop shadow, must assume that same direction or the art and the runtime will disagree.",
+
+  "lighting": {
+    "key_direction": "upper-left",
+    "verified": "All four themes measure brighter on the LEFT rim than the right, and fall off from top-left to bottom-right, so the set is internally consistent. Independently checked at 4, 8, 12, 20 and 32px rim widths. Exact figures are deliberately not quoted here because they depend on the rim width and colour space used to measure them - measure with your own metric rather than trusting a number in this file.",
+    "history": "An earlier gold render measured right-brighter because the fill light sat off to the +X side and polished metal mirrored it, while the dielectric themes merely diffused it. The fill is now centred in X."
+  },
+
+  "tile": {
+    "size": [256, 336],
+    "logical_size": [64, 84],
+    "note": "4x the logical tile size in tile_view.gd (TILE_W 64, TILE_H 84). Face-on orthographic, so the sprite maps 1:1 onto the face rect. Depth extrusion and drop shadow stay in code.",
+    "files": {
+      "classic_jade": "tile_classic_jade.png",
+      "theme_imperial_gold": "tile_imperial_gold.png",
+      "theme_obsidian_ink": "tile_obsidian_ink.png",
+      "theme_cherry_blossom": "tile_cherry_blossom.png"
+    }
+  },
+
+  "shards": {
+    "atlas_size": [960, 480],
+    "cols": 6,
+    "rows": 3,
+    "cell": [160, 160],
+    "count": 18,
+    "seed": 20260916,
+    "min_margin_px": 29,
+    "area_ratio": "2.74:1",
+    "note": "Voronoi fracture of one tile with 3 Lloyd relaxation passes, built procedurally rather than via the cell-fracture addon so it is reproducible. Each shard is centred on its own cell and no shard comes within 29px of a cell boundary. Spawn with individual velocity, spin and gravity for burst-and-fade; every shatter then differs.",
+    "cell_rect": "x = col * 160, y = row * 160, w = 160, h = 160",
+    "files": {
+      "classic_jade": "shards_classic_jade.png",
+      "theme_imperial_gold": "shards_imperial_gold.png",
+      "theme_obsidian_ink": "shards_obsidian_ink.png",
+      "theme_cherry_blossom": "shards_cherry_blossom.png"
+    }
+  },
+
+  "known_tradeoffs": [
+    "shards_imperial_gold clips the RED channel on ~3.5% of opaque pixels (never all three, so hue is preserved - clipped pixels stay a saturated amber). Down from 11%. Accepted because it is single-channel and hue-preserving on debris that spins and fades at ~40px. Note the clipping is NOT evenly distributed glint: roughly 70% of it sits in one shard, cell (0,1), whose upper facet mirrors the key back as a flat blown slab. That same cell also produces the only pure-white pixels in shards_classic_jade (43 px). One normal tweak on that shard fixes both - worth doing on the next art pass.",
+    "Store copy promises 'chased gold filigree' and 'vermilion engravings'. Neither exists as real surface structure - gold carries fine grain, cherry carries a vermilion border. Either add the detail or soften the copy before the store listing.",
+    "Obsidian has the least contrast headroom of the four, and has NO margin to spare. Its body measures mean luma ~40 (L* 16.3), only about 1.2:1 against the L*10 felt - far below a 3:1 floor. It reads on the board because its top bevel peaks near 3.5:1 and the stone is blue-shifted, so the silhouette is carried by the bevel, not the body. If Flow Overdrive brightens the felt, or the code-side drop shadow lands under the top edge, obsidian will start to disappear. Re-check it in-game before relying on it."
+  ],
+
+  "not_yet_done": [
+    "Normal maps are not rendered yet; the shader plan assumes one per theme.",
+    "Nothing is wired into Godot. tile_view.gd still draws everything procedurally.",
+    "Symbols stay vector in code by design - they are crisp at any zoom and cost nothing."
+  ]
+}

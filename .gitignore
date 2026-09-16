@@ -24,3 +24,6 @@ export_presets.cfg
 .DS_Store
 Thumbs.db
 *.tmp
+
+# Blender autosave backups
+*.blend1
