@@ -6,6 +6,10 @@ const LayoutData = preload("res://scripts/core/layout_data.gd")
 
 static var last_deal_order: Array = []
 
+## Test-only. Non-zero makes an unseeded deal_board reproducible, so a failing
+## bot run can be replayed. Never set in normal play.
+static var forced_seed: int = 0
+
 const LAYOUT_NAMES: Dictionary = {
 	"quick": "Courtyard",
 	"gate": "Gate House",
@@ -265,7 +269,10 @@ static func peel_dynamic(positions: Array[Dictionary], num_triples: int, num_pai
 static func deal_board(layout_name: String, rng: RandomNumberGenerator = null) -> Array[RiverTile]:
 	if rng == null:
 		rng = RandomNumberGenerator.new()
-		rng.randomize()
+		if forced_seed != 0:
+			rng.seed = forced_seed
+		else:
+			rng.randomize()
 		
 	var positions := get_layout_positions(layout_name)
 	var total: int = positions.size()

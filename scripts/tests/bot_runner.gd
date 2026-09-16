@@ -10,6 +10,8 @@ extends Node
 const BoardGenerator = preload("res://scripts/core/board_generator.gd")
 
 const TARGET_LEVEL: int = 25
+## Override with: godot ... scenes/bot_runner.tscn -- --seed=12345
+var BASE_SEED: int = 700001
 const MAX_CLICKS_PER_LEVEL: int = 4000
 const MAX_RESTARTS_PER_LEVEL: int = 6
 
@@ -22,6 +24,10 @@ var _failures: Array[String] = []
 var _level_reports: Array[Dictionary] = []
 
 func _ready() -> void:
+	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with("--seed="):
+			BASE_SEED = int(arg.substr(7))
+	print("bot seed: %d" % BASE_SEED)
 	await get_tree().process_frame
 	await _boot()
 	await _run()
@@ -87,6 +93,9 @@ func _play_level(lvl: int, jade_before: int) -> Dictionary:
 
 	while restarts <= MAX_RESTARTS_PER_LEVEL:
 		_cleared_flag = false
+		# Varies per restart so a retry gets a different board, but is the same
+		# board on every run of the same BASE_SEED.
+		BoardGenerator.forced_seed = BASE_SEED + lvl * 1000 + restarts
 		main._start_calm_mode(lvl)
 		await get_tree().process_frame
 		tiles_total = board.live_tiles.size()
