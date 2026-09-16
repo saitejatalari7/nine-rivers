@@ -2,6 +2,7 @@ class_name BoardGenerator
 extends RefCounted
 
 const RiverTile = preload("res://scripts/core/river_tile.gd")
+const LayoutData = preload("res://scripts/core/layout_data.gd")
 
 const LAYOUT_NAMES: Dictionary = {
 	"quick": "Courtyard",
@@ -21,7 +22,32 @@ const LADDER: Array[String] = [
 	"quick", "gate", "steps", "garden", "lotus", "bridges", "keep", "waterfall", "dragon_gate", "citadel", "turtle"
 ]
 
+## Data-driven where a shape exists in LayoutData, falling back to the original
+## hardcoded builders otherwise. layout_parity_test asserts the two agree.
 static func get_layout_positions(name: String) -> Array[Dictionary]:
+	if LayoutData.LAYOUTS.has(name):
+		return positions_from_ascii(LayoutData.LAYOUTS[name])
+	return legacy_layout_positions(name)
+
+static func positions_from_ascii(entry: Dictionary) -> Array[Dictionary]:
+	var pos: Array[Dictionary] = []
+	var layers: Array = entry.get("layers", [])
+	for z in range(layers.size()):
+		var rows: PackedStringArray = String(layers[z]).split("
+")
+		var r := 0
+		for line in rows:
+			if line.strip_edges().is_empty():
+				continue
+			for c in range(line.length()):
+				if line[c] != "." and line[c] != " ":
+					pos.append({"x": c * 2, "y": r * 2, "z": z})
+			r += 1
+	for e in entry.get("extras", []):
+		pos.append({"x": int(e[0]), "y": int(e[1]), "z": int(e[2])})
+	return pos
+
+static func legacy_layout_positions(name: String) -> Array[Dictionary]:
 	var pos: Array[Dictionary] = []
 	match name:
 		"quick":

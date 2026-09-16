@@ -85,7 +85,8 @@ func _init_dynamic_hud_elements() -> void:
 	calm_goals_label.name = "CalmGoals"
 	calm_goals_label.anchors_preset = Control.PRESET_TOP_WIDE
 	calm_goals_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	calm_goals_label.position = Vector2(28, 176)
+	# Below TopBar, which now ends at 208; at 176 it sat on top of the readout.
+	calm_goals_label.position = Vector2(28, 224)
 	calm_goals_label.size = Vector2(get_viewport().get_visible_rect().size.x - 56, 38)
 	calm_goals_label.add_theme_font_size_override("font_size", UITheme.FS_CAPTION)
 	calm_goals_label.add_theme_color_override("font_color", Color(0.78, 0.90, 0.84, 0.95))
@@ -182,6 +183,12 @@ func _apply_safe_area() -> void:
 	_applied_insets = insets
 	$TopBar.position.y += delta.x
 	$PropsBar.position.y -= delta.y
+	if is_instance_valid(calm_goals_label):
+		calm_goals_label.position.y += delta.x
+	for n in ["TimerWrap", "FlowBanner"]:
+		var c := get_node_or_null(n)
+		if c is Control:
+			(c as Control).position.y += delta.x
 
 func _process(delta: float) -> void:
 	if display_score != target_score:

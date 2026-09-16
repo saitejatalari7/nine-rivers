@@ -13,6 +13,8 @@ var initial_pinch_zoom: Vector2 = Vector2.ONE
 
 var last_tap_time: float = 0.0
 
+const UITheme = preload("res://scripts/ui/ui_theme.gd")
+
 var board_bounds := Rect2()
 
 func _ready() -> void:
@@ -23,9 +25,14 @@ func frame_board(bounds: Rect2, viewport_size: Vector2) -> void:
 	if bounds.size.x <= 0 or bounds.size.y <= 0:
 		return
 		
-	# Top HUD is ~190px (including safe area notch), Bottom Props is ~230px
-	var top_hud_h: float = 190.0
-	var bot_props_h: float = 230.0
+	# Derived from the HUD, not guessed: TopBar now ends at 208 and PropsBar
+	# starts 219 from the bottom, and both move again by the safe-area insets.
+	# The old fixed 190/230 predate that and put the board under both bars.
+	const TOP_BAR_END: float = 208.0
+	const PROPS_BAR_H: float = 219.0
+	var insets: Vector2 = UITheme.get_safe_insets(get_viewport())
+	var top_hud_h: float = insets.x + TOP_BAR_END
+	var bot_props_h: float = insets.y + PROPS_BAR_H
 	var padding := Vector2(70.0, top_hud_h + bot_props_h + 40.0)
 	var avail := viewport_size - padding
 	var fit_x: float = avail.x / bounds.size.x
