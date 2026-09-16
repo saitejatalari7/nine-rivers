@@ -156,7 +156,9 @@ static func get_col_red(theme_id: String = "") -> Color:
 	if th == "theme_obsidian_ink":
 		return Color("#ff4757") # Radiant neon vermilion for dark basalt
 	elif th == "theme_imperial_gold":
-		return Color("#b22222") # Imperial royal crimson
+		# Deep enough to clear 3:1 against the gilt face. The previous #b22222
+		# measured 2.4:1 and the glyphs sank into the tile.
+		return Color("#8c1c13") # Deep imperial crimson
 	elif th == "theme_cherry_blossom":
 		return Color("#cf3b5b") # Sakura rose cinnabar
 	var mode: String = SettingsManager.color_blind_mode
@@ -171,7 +173,8 @@ static func get_col_green(theme_id: String = "") -> Color:
 	if th == "theme_obsidian_ink":
 		return Color("#00d2d3") # Radiant electric turquoise
 	elif th == "theme_imperial_gold":
-		return Color("#c69214") # Gilded antique bronze-gold
+		# Was #c69214 - gold glyphs on a gold face. Bamboo simply vanished.
+		return Color("#17503a") # Deep malachite
 	elif th == "theme_cherry_blossom":
 		return Color("#38a169") # Tender spring tea bud green
 	var mode: String = SettingsManager.color_blind_mode
@@ -186,7 +189,8 @@ static func get_col_blue(theme_id: String = "") -> Color:
 	if th == "theme_obsidian_ink":
 		return Color("#54a0ff") # Radiant sapphire cyan
 	elif th == "theme_imperial_gold":
-		return Color("#b8860b") # Chased goldenrod
+		# Was #b8860b - goldenrod dots on gold. Invisible at tile size.
+		return Color("#1b3a5c") # Deep cobalt
 	elif th == "theme_cherry_blossom":
 		return Color("#6c5ce7") # Soft wisteria iris
 	var mode: String = SettingsManager.color_blind_mode
@@ -645,11 +649,13 @@ func _draw() -> void:
 		hint_sb.anti_aliasing = true
 		draw_style_box(hint_sb, face_rect)
 	
-	# 7. Clean Canonical Artwork or Fog Shroud
+	# 7. Canonical artwork, veiled by fog when the tile is still blocked.
+	# The face is drawn FIRST and the mist laid over it, rather than the mist
+	# replacing it. That is what lets the artwork ghost through as a shape
+	# while the rank stays unreadable.
+	draw_canonical_face(face_rect)
 	if StageModifiers.is_fog_active() and not is_free and not is_revealed:
 		_draw_fog_shroud(face_rect)
-	else:
-		draw_canonical_face(face_rect)
 	
 	# 8. Frost Encasement
 	if tile_data.is_frozen:
@@ -667,9 +673,21 @@ func _draw_atmospheric_blocked_tint(face_r: Rect2) -> void:
 	draw_rect(top_shadow, Color(0.06, 0.08, 0.07, 0.10), true)
 
 func _draw_fog_shroud(face_r: Rect2) -> void:
-	var mist_col := Color(0.86, 0.91, 0.93, 0.92)
+	# Softened. At alpha 0.92 the mist was near-opaque, so on a 144-tile board
+	# roughly a hundred tiles became identical blank rectangles at once - the
+	# board stopped reading as a board. Fog is meant to hide a tile's IDENTITY,
+	# not erase the tile.
+	#
+	# Now the mist is translucent enough that the artwork ghosts through as a
+	# shape, and a faint wash of the suit's colour bleeds in. The player can see
+	# something is there and roughly what family it belongs to, but not the
+	# rank - so the tactical concealment survives while the board stays legible.
+	var mist_col := Color(0.86, 0.91, 0.93, 0.80)
 	var mist_rect := Rect2(face_r.position + Vector2(2, 2), face_r.size - Vector2(4, 4))
 	draw_rect(mist_rect, mist_col, true)
+
+	var hint := get_accent_color()
+	draw_rect(mist_rect, Color(hint.r, hint.g, hint.b, 0.10), true)
 	var line_col := Color(0.68, 0.77, 0.82, 0.45)
 	for y_pos in range(int(mist_rect.position.y) + 8, int(mist_rect.position.y + mist_rect.size.y) - 6, 8):
 		draw_line(Vector2(mist_rect.position.x + 6, y_pos), Vector2(mist_rect.position.x + mist_rect.size.x - 6, y_pos), line_col, 1.2)
