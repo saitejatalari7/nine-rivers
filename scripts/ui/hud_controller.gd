@@ -87,7 +87,7 @@ func _init_dynamic_hud_elements() -> void:
 	btn_pearls = Button.new()
 	btn_pearls.name = "BtnPearls"
 	btn_pearls.custom_minimum_size = Vector2(144, 72)
-	btn_pearls.text = "🦪 %d" % MonetizationManager.get_pearls()
+	btn_pearls.text = "◈ %d" % MonetizationManager.get_pearls()
 	UITheme.style_button(btn_pearls, true, 16)
 	btn_pearls.add_theme_font_size_override("font_size", 25)
 	btn_pearls.pressed.connect(func(): pearls_clicked.emit())
@@ -96,7 +96,7 @@ func _init_dynamic_hud_elements() -> void:
 	
 	MonetizationManager.pearls_updated.connect(func(bal):
 		if is_instance_valid(btn_pearls):
-			btn_pearls.text = "🦪 %d" % bal
+			btn_pearls.text = "◈ %d" % bal
 	)
 
 func _apply_luxury_theme() -> void:
@@ -210,8 +210,8 @@ func update_calm_goals() -> void:
 	if not is_instance_valid(calm_goals_label) or not calm_goals_label.visible:
 		return
 	var s1 := "★ Clear Board"
-	var s2 := "★ ≤2 Misplays" if GameManager.misplays <= 2 else "✖ >2 Misplays"
-	var s3 := "★ No Props" if GameManager.props_used == 0 else "✖ Props Used"
+	var s2 := "★ ≤2 Misplays" if GameManager.misplays <= 2 else "☆ >2 Misplays"
+	var s3 := "★ No Props" if GameManager.props_used == 0 else "☆ Props Used"
 	calm_goals_label.text = "%s   ·   %s   ·   %s" % [s1, s2, s3]
 
 func refresh_relics_bar() -> void:
@@ -231,9 +231,14 @@ func refresh_relics_bar() -> void:
 			
 		var b_token := Button.new()
 		b_token.custom_minimum_size = Vector2(34, 34)
-		b_token.text = relic_info.get("icon", "✨")
+		b_token.text = relic_info.get("icon", "宝")
 		b_token.tooltip_text = "%s: %s" % [relic_info.get("name", ""), relic_info.get("desc", "")]
 		UITheme.style_circular_button(b_token, UITheme.GOLD_CORE)
+		# Relic tokens are carved characters now, so they need the serif that
+		# was cut for them rather than the Latin UI face.
+		var cjk_font := UITheme.get_cjk_font()
+		if cjk_font != null:
+			b_token.add_theme_font_override("font", cjk_font)
 		var b_name: String = relic_info.get("name", "")
 		var b_desc: String = relic_info.get("desc", "")
 		b_token.pressed.connect(func():
@@ -263,15 +268,15 @@ func _on_flow_updated(flow: int, suit_name: String, is_overdrive: bool) -> void:
 		
 	var suit_display := ""
 	match suit_name:
-		"dot": suit_display = "Circles 🀙"
-		"bam": suit_display = "Bamboo 🀐"
-		"char": suit_display = "Characters 🀇"
-		"wind": suit_display = "Winds 🀀"
-		"dragon": suit_display = "Dragons 🀄"
-		_: suit_display = "Wilds ✨"
+		"dot": suit_display = "Circles"
+		"bam": suit_display = "Bamboo"
+		"char": suit_display = "Characters"
+		"wind": suit_display = "Winds"
+		"dragon": suit_display = "Dragons"
+		_: suit_display = "Wilds"
 		
 	if is_overdrive:
-		lbl_flow.text = "🌊 FLOW OVERDRIVE ×%d · %s 🌊" % [flow, suit_display]
+		lbl_flow.text = "FLOW OVERDRIVE ×%d · %s" % [flow, suit_display]
 		lbl_flow.add_theme_color_override("font_color", UITheme.GOLD_BRIGHT)
 	else:
 		lbl_flow.text = "Flow ×%d · %s" % [flow, suit_display]
@@ -305,11 +310,11 @@ func _on_time_updated(time_left: float, max_time: float) -> void:
 		_last_warn_second = -1
 
 func _on_props_updated(u: int, h: int, s: int) -> void:
-	btn_undo.text = "↺ Undo\n(%d)" % u if u > 0 else "↺ Undo\n(+)"
+	btn_undo.text = "Undo\n(%d)" % u if u > 0 else "Undo\n(+)"
 	btn_undo.modulate.a = 0.65 if u <= 0 else 1.0
-	btn_hint.text = "💡 Hint\n(%d)" % h if h > 0 else "💡 Hint\n(+)"
+	btn_hint.text = "Hint\n(%d)" % h if h > 0 else "Hint\n(+)"
 	btn_hint.modulate.a = 0.65 if h <= 0 else 1.0
-	btn_shuffle.text = "🔀 Shuffle\n(%d)" % s if s > 0 else "🔀 Shuffle\n(+)"
+	btn_shuffle.text = "Shuffle\n(%d)" % s if s > 0 else "Shuffle\n(+)"
 	btn_shuffle.modulate.a = 0.65 if s <= 0 else 1.0
 	update_calm_goals()
 

@@ -388,7 +388,7 @@ func _resolve_matched_set(group: Array[RiverTile]) -> void:
 		chip.setup("+" + str(pts), is_triple or GameManager.flow_level >= 5 or is_glass_match)
 		
 	if is_glass_match:
-		toast_requested.emit("💎 Crystal Glass Shattered! (+500 pts)")
+		toast_requested.emit("Crystal Glass Shattered! (+500 pts)")
 		
 	if not ripples.is_empty():
 		AudioManager.play_wild_strand()
@@ -408,7 +408,7 @@ func _resolve_matched_set(group: Array[RiverTile]) -> void:
 	if has_wild:
 		var jade_gain: int = 10 if GameManager.has_relic("jade_whisper") else 5
 		SaveManager.add_jade(jade_gain)
-		toast_requested.emit("+%d 🪨 River Jade" % jade_gain)
+		toast_requested.emit("+%d 玉 River Jade" % jade_gain)
 
 	# Dragon Bell: Every 4th match rings bell to highlight a legal set
 	stage_match_count += 1

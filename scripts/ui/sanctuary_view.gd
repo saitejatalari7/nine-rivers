@@ -41,7 +41,7 @@ func _apply_luxury_styling() -> void:
 	shop_panel.add_theme_stylebox_override("panel", sb_shop)
 
 func refresh_sanctuary() -> void:
-	lbl_jade.text = "%d 🪨" % SaveManager.get_jade()
+	lbl_jade.text = "%d 玉" % SaveManager.get_jade()
 	
 	# Spawn all unlocked Koi fish
 	for c in fish_container.get_children():
@@ -150,7 +150,7 @@ func _populate_shop() -> void:
 	
 	# 1. Section: Sacred Koi Fish
 	var header_koi := Label.new()
-	header_koi.text = "🎏 SACRED KOI FISH"
+	header_koi.text = "SACRED KOI FISH"
 	header_koi.add_theme_font_size_override("font_size", 18)
 	header_koi.add_theme_color_override("font_color", UITheme.GOLD_CORE)
 	shop_list.add_child(header_koi)
@@ -166,7 +166,7 @@ func _populate_shop() -> void:
 	
 	# 2. Section: Zen Garden Elements
 	var header_dec := Label.new()
-	header_dec.text = "🏮 ZEN GARDEN ELEMENTS"
+	header_dec.text = "ZEN GARDEN ELEMENTS"
 	header_dec.add_theme_font_size_override("font_size", 18)
 	header_dec.add_theme_color_override("font_color", UITheme.GOLD_CORE)
 	shop_list.add_child(header_dec)
@@ -209,10 +209,10 @@ func _build_shop_card(item: Dictionary, is_koi: bool, user_jade: int) -> PanelCo
 	btn.add_theme_font_size_override("font_size", 18)
 	
 	if is_owned:
-		btn.text = "✓ Owned"
+		btn.text = "Owned"
 		btn.disabled = true
 	else:
-		btn.text = "%d 🪨" % item["cost"]
+		btn.text = "%d 玉" % item["cost"]
 		btn.disabled = user_jade < item["cost"]
 		var item_id: String = item["id"]
 		btn.pressed.connect(func():

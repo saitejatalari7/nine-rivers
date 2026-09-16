@@ -63,7 +63,7 @@ const PRODUCTS: Dictionary = {
 		"desc": "24k gold leaf filigree faces on imperial lacquer.",
 		"price_usd": "$1.99",
 		"price_inr": "₹99",
-		"price_str": "₹99 / $1.99 (or 1,500 🦪)",
+		"price_str": "₹99 / $1.99 (or 1,500 ◈)",
 		"pearl_cost": 1500,
 		"is_consumable": false
 	},
@@ -73,7 +73,7 @@ const PRODUCTS: Dictionary = {
 		"desc": "Deep basalt stone tiles with luminous white-jade calligraphy.",
 		"price_usd": "$1.99",
 		"price_inr": "₹99",
-		"price_str": "₹99 / $1.99 (or 1,500 🦪)",
+		"price_str": "₹99 / $1.99 (or 1,500 ◈)",
 		"pearl_cost": 1500,
 		"is_consumable": false
 	},
@@ -83,7 +83,7 @@ const PRODUCTS: Dictionary = {
 		"desc": "Delicate pale rose porcelain with vermilion engravings.",
 		"price_usd": "$1.99",
 		"price_inr": "₹99",
-		"price_str": "₹99 / $1.99 (or 1,500 🦪)",
+		"price_str": "₹99 / $1.99 (or 1,500 ◈)",
 		"pearl_cost": 1500,
 		"is_consumable": false
 	},
@@ -95,7 +95,7 @@ const PRODUCTS: Dictionary = {
 		"desc": "Teal mist water, delicate sakura petals, and rare Asagi koi.",
 		"price_usd": "$0.99",
 		"price_inr": "₹49",
-		"price_str": "₹49 / $0.99 (or 1,500 🪨 / 500 🦪)",
+		"price_str": "₹49 / $0.99 (or 1,500 玉 / 500 ◈)",
 		"jade_cost": 1500,
 		"pearl_cost": 500,
 		"is_consumable": false
@@ -108,7 +108,7 @@ const PRODUCTS: Dictionary = {
 		"desc": "Twilight purple water, glowing crimson caustics, and royal Tancho koi.",
 		"price_usd": "$0.99",
 		"price_inr": "₹49",
-		"price_str": "₹49 / $0.99 (or 1,500 🪨 / 500 🦪)",
+		"price_str": "₹49 / $0.99 (or 1,500 玉 / 500 ◈)",
 		"jade_cost": 1500,
 		"pearl_cost": 500,
 		"is_consumable": false

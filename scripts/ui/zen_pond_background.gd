@@ -108,6 +108,8 @@ var flora_items: Array[Dictionary] = []
 
 # Ripples: Array of { pos, r, max_r, a, speed }
 var ripples: Array[Dictionary] = []
+## Bounded so rapid tapping cannot pile up unbounded draw work.
+const MAX_RIPPLES: int = 14
 
 # Motes: Array of { pos, vel, size, phase }
 var motes: Array[Dictionary] = []
@@ -379,15 +381,25 @@ func _setup_flora(theme_data: Dictionary) -> void:
 		})
 
 ## Create expanding water ripple (e.g. on tile match or water tap)
-func add_ripple(screen_pos: Vector2, strength: float = 1.0) -> void:
+## attract: whether the koi should drift toward the disturbance. True for real
+## events like a match; false for ordinary taps, or every touch would send the
+## whole pond darting about and the effect would stop meaning anything.
+func add_ripple(screen_pos: Vector2, strength: float = 1.0, attract: bool = true) -> void:
+	# Cap concurrent ripples. A player drumming on the screen would otherwise
+	# pile up unbounded draw work on exactly the budget hardware we target.
+	if ripples.size() >= MAX_RIPPLES:
+		ripples.remove_at(0)
+
 	ripples.append({
 		"pos": screen_pos,
-		"r": 10.0,
+		"r": 10.0 * strength,
 		"max_r": 130.0 * strength,
 		"a": 0.85 * strength,
 		"speed": 105.0
 	})
-	
+
+	if not attract:
+		return
 	# Attract fish toward ripple
 	for f in fish_container.get_children():
 		if f.has_method("attract_to") and randf() < 0.7:

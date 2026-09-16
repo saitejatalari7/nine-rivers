@@ -16,19 +16,19 @@ var pointer_tween: Tween
 
 const STEPS: Array[Dictionary] = [
 	{
-		"title": "🏮 The Principle of Freedom",
+		"title": "The Principle of Freedom",
 		"desc": "A tile is FREE if its left or right edge is unobstructed, and no tile rests directly upon it. Free tiles gleam with ceramic light; blocked tiles softly slumber in shade.",
-		"btn": "Next: Matching →"
+		"btn": "Next: Matching"
 	},
 	{
-		"title": "🥢 Harmony of the Pairs",
+		"title": "Harmony of the Pairs",
 		"desc": "Select two identical free tiles to match them. They dissolve into molten gold dust, freeing the trapped tiles beneath and behind them.",
-		"btn": "Next: The Nine Flows →"
+		"btn": "Next: The Nine Flows"
 	},
 	{
-		"title": "🌊 The Flow of Nine Rivers",
+		"title": "The Flow of Nine Rivers",
 		"desc": "Making successive matches without pausing increases your Flow Multiplier (×2, ×3 ... up to ×9 Overdrive!). Clear all tiles to complete the stage.",
-		"btn": "Begin Journey ⛩️"
+		"btn": "Begin Journey"
 	}
 ]
 

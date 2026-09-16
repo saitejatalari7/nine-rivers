@@ -156,19 +156,19 @@ alignment = 1
 custom_minimum_size = Vector2(260, 120)
 layout_mode = 2
 theme_override_font_sizes/font_size = 28
-text = "↺ Undo\n(3)"
+text = "Undo\n(3)"
 
 [node name="BtnHint" type="Button" parent="PropsBar"]
 custom_minimum_size = Vector2(260, 120)
 layout_mode = 2
 theme_override_font_sizes/font_size = 28
-text = "💡 Hint\n(3)"
+text = "Hint\n(3)"
 
 [node name="BtnShuffle" type="Button" parent="PropsBar"]
 custom_minimum_size = Vector2(260, 120)
 layout_mode = 2
 theme_override_font_sizes/font_size = 28
-text = "🔀 Shuffle\n(3)"
+text = "Shuffle\n(3)"
 
 [node name="Toast" type="PanelContainer" parent="."]
 anchors_preset = 8

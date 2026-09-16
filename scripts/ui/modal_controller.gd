@@ -267,9 +267,10 @@ func show_level_select() -> void:
 	for s_val in stars_data.values():
 		total_stars += int(s_val)
 		
-	_add_title("River Stages (九河图)")
-	_add_subtitle("Calm Journey · %d / 150 ★ Stars Gathered" % total_stars)
-	
+	_add_seal_header("River Stages", "九河图 · Chapters I – V", "図")
+	_add_purse_line("%d / 150 ★  ·  Stage %d unlocked" % [total_stars, max_unlocked])
+	_add_hairline()
+
 	var scroll := ScrollContainer.new()
 	scroll.custom_minimum_size = Vector2(460, 400)
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -317,23 +318,26 @@ func show_level_select() -> void:
 		for lvl in range(ch["start"], ch["end"] + 1):
 			var btn := Button.new()
 			btn.custom_minimum_size = Vector2(96, 68)
+			btn.add_theme_font_size_override("font_size", 18)
 			if lvl <= max_unlocked:
 				var s_count: int = int(stars_data.get(str(lvl), 0))
 				var star_str := ""
 				for s in range(3):
 					star_str += "★" if s < s_count else "☆"
 				btn.text = "%d\n%s" % [lvl, star_str]
-				UITheme.style_button(btn, lvl == max_unlocked, 10)
-				btn.add_theme_font_size_override("font_size", 18)
+				# A cleared stage is a face-up tile, small enough to fit the
+				# map grid; the same material as the rest of the interface.
+				_style_stage_token(btn, lvl == max_unlocked)
 				btn.pressed.connect(func():
 					hide_modal()
 					start_calm_requested.emit(lvl)
 				)
 			else:
-				btn.text = "%d\n🔒" % lvl
+				# No padlock glyph: a stage you have not reached is simply a
+				# tile still lying face-down, not inked in yet.
+				btn.text = "%d\n·  ·  ·" % lvl
 				btn.disabled = true
-				UITheme.style_button(btn, false, 10)
-				btn.add_theme_font_size_override("font_size", 18)
+				_style_stage_token_locked(btn)
 			grid.add_child(btn)
 			
 		ch_box.add_child(grid)
@@ -341,8 +345,9 @@ func show_level_select() -> void:
 		
 	scroll.add_child(vbox)
 	card_container.add_child(scroll)
-	
-	_add_button("← Back to Main Menu", func():
+
+	_add_separator()
+	_add_button("Back", func():
 		show_main_menu()
 	)
 	show_modal()
@@ -350,30 +355,33 @@ func show_level_select() -> void:
 func show_pause_menu() -> void:
 	_current_screen = "pause"
 	_clear_content()
-	_add_title("Paused")
-	_add_subtitle("Current Score: %d" % GameManager.score)
-	
-	_add_button("▶ Resume Game", func():
+	_add_seal_header("Paused", "休 · Score %d" % GameManager.score, "休")
+	_add_hairline()
+
+	_add_tile_row("続", GLYPH_JADE, "Resume Game", "Back to the board", "", func():
 		hide_modal()
 		resume_game_requested.emit()
 	, true)
-	_add_button("↺ Restart Board", func():
+
+	_add_tile_row("再", GLYPH_GOLD, "Restart Board", "Deal this stage again", "", func():
 		hide_modal()
 		restart_stage_requested.emit()
 	)
-	_add_button("⚙️ Settings", func():
+
+	_add_separator()
+	_add_toggle_row("設", "Settings", "›", func():
 		show_settings_menu()
-	)
-	_add_button("⛩️ Quit to Main Menu", func():
+	, UITheme.IVORY_MUTED)
+	_add_toggle_row("戻", "Quit to Main Menu", "›", func():
 		return_home_requested.emit()
-	)
+	, UITheme.IVORY_MUTED)
 	show_modal()
 
 func show_level_clear(level: int, score: int, stars: int) -> void:
 	_current_screen = "level_clear"
 	_clear_content()
-	_add_title("✨ Board Cleared! ✨")
-	
+	_add_seal_header("Board Cleared", "清 · Stage %d" % level, "清")
+
 	var star_lbl := Label.new()
 	var star_str := ""
 	for i in range(3):
@@ -383,81 +391,103 @@ func show_level_clear(level: int, score: int, stars: int) -> void:
 	UITheme.style_label(star_lbl, "ui", 48, UITheme.GOLD_BRIGHT)
 	card_container.add_child(star_lbl)
 	
-	_add_tally("Final Score", str(score))
-	_add_tally("River Jade Earned", "+%d 🪨" % (50 * stars))
-	_add_tally("Peak Flow", "×%d" % GameManager.best_flow)
-	
+	_add_hairline()
+	_add_sheet_row("Final Score", str(score), UITheme.GOLD_CORE)
+	_add_sheet_row("River Jade Earned", "+%d 玉" % (50 * stars))
+	_add_sheet_row("Peak Flow", "×%d" % GameManager.best_flow)
 	_add_separator()
-	
-	_add_button("Next Level →", func():
+
+	_add_tile_row("続", GLYPH_JADE, "Next Stage", "Carry on downriver", "", func():
 		hide_modal()
 		next_stage_requested.emit()
 	, true)
-	_add_button("↺ Replay Board", func():
+
+	_add_separator()
+	_add_toggle_row("再", "Replay Board", "›", func():
 		hide_modal()
 		restart_stage_requested.emit()
-	)
-	_add_button("⛩️ Main Menu", func():
+	, UITheme.IVORY_MUTED)
+	_add_toggle_row("戻", "Main Menu", "›", func():
 		return_home_requested.emit()
-	)
+	, UITheme.IVORY_MUTED)
 	show_modal()
 
 func show_daily_clear(score: int, best_flow: int, streak: int) -> void:
 	_current_screen = "daily_clear"
 	_clear_content()
-	_add_title("🌊 The Daily Tide Cleared! 🌊")
-	_add_subtitle("River Streak: %d Days 🔥" % streak)
-	
-	_add_tally("Final Score", str(score))
-	_add_tally("Peak Flow Multiplier", "×%d" % best_flow)
-	_add_tally("Daily Tide Blessing", "+150 🪨 River Jade")
-	
+	_add_seal_header("The Daily Tide", "潮 · Cleared", "潮")
+	_add_hairline()
+
+	_add_sheet_row("Final Score", str(score), UITheme.GOLD_CORE)
+	_add_sheet_row("Peak Flow Multiplier", "×%d" % best_flow)
+	_add_sheet_row("River Streak", "%d days" % streak)
+	_add_sheet_row("Daily Tide Blessing", "+150 玉")
+
 	SaveManager.add_jade(150)
-	
-	_add_button("📋 Share Scorecard (Copy)", func():
-		var flow_emojis := ""
+	_add_separator()
+
+	_add_tile_row("写", GLYPH_GOLD, "Share Scorecard", "Copied to your clipboard", "", func():
+		# A bar of geometric blocks instead of a row of wave emoji: it survives
+		# being pasted into any app, on any platform, without changing shape.
+		var flow_bar := ""
 		for i in range(mini(10, best_flow)):
-			flow_emojis += "🌊"
-		var share_text := "Nine Rivers (九河) — The Daily Tide 🌊\nStreak: %d Days 🔥\nFlow: %s (×%d)\nScore: %s\nStatus: Clean Clear ✨" % [
-			streak, flow_emojis, best_flow, score
+			flow_bar += "▰"
+		var share_text := "Nine Rivers (九河) — The Daily Tide\nStreak: %d Days\nFlow: %s (×%d)\nScore: %s\nStatus: Clean Clear" % [
+			streak, flow_bar, best_flow, score
 		]
 		DisplayServer.clipboard_set(share_text)
 	, true)
-	
-	_add_button("⛩️ Main Menu", func():
+
+	_add_separator()
+	_add_toggle_row("戻", "Main Menu", "›", func():
 		return_home_requested.emit()
-	)
+	, UITheme.IVORY_MUTED)
 	show_modal()
 
 func show_boon_draft() -> void:
 	_current_screen = "boon_draft"
 	_clear_content()
-	_add_title("⚡ Stage Cleared! ⚡")
-	_add_subtitle("Draft 1 Relic to empower your run:")
-	
+	_add_seal_header("Stage Cleared", "賞 · Draft one relic", "賞")
+	_add_hairline()
+
 	var drafts: Array[Dictionary] = BoonPool.get_draft_choices(3, GameManager.active_relics)
 	for b in drafts:
+		# A relic is a thing you pick up, so it is drawn as a tile you can lift
+		# off the rack, not as a bordered card in a stack of bordered cards.
 		var card := PanelContainer.new()
-		card.custom_minimum_size = Vector2(0, 88)
-		var sb_relic := UITheme.create_panel_box(Color("#0d241d"), UITheme.GOLD_CORE, 1, 12, 0.3)
-		card.add_theme_stylebox_override("panel", sb_relic)
-		
+		card.custom_minimum_size = Vector2(0, 92)
+		card.add_theme_stylebox_override("panel", _make_tile_box())
+
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 18)
+
+		var g := Label.new()
+		g.text = String(b.get("icon", "宝"))
+		g.custom_minimum_size = Vector2(56, 0)
+		g.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		g.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		UITheme.style_label(g, "cjk", 44, GLYPH_JADE)
+		row.add_child(g)
+
 		var vbox := VBoxContainer.new()
-		vbox.add_theme_constant_override("separation", 4)
-		
+		vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		vbox.alignment = BoxContainer.ALIGNMENT_CENTER
+		vbox.add_theme_constant_override("separation", 3)
+
 		var h_title := Label.new()
-		h_title.text = "%s %s" % [b["icon"], b["name"]]
-		UITheme.style_label(h_title, "ui", 20, UITheme.GOLD_BRIGHT)
-		
+		h_title.text = b["name"]
+		UITheme.style_label(h_title, "ui", 24, TILE_INK)
+
 		var l_desc := Label.new()
 		l_desc.text = b["desc"]
-		UITheme.style_label(l_desc, "ui", 16, UITheme.IVORY_MUTED)
+		UITheme.style_label(l_desc, "ui", 16, TILE_SUBINK)
 		l_desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		
+
 		vbox.add_child(h_title)
 		vbox.add_child(l_desc)
-		card.add_child(vbox)
-		
+		row.add_child(vbox)
+		card.add_child(row)
+
 		var relic_btn := Button.new()
 		relic_btn.flat = true
 		relic_btn.anchors_preset = Control.PRESET_FULL_RECT
@@ -479,51 +509,56 @@ func show_boon_draft() -> void:
 func show_game_over(reason: String) -> void:
 	_current_screen = "game_over"
 	_clear_content()
-	_add_title("Run Concluded")
-	_add_subtitle(reason)
-	
-	_add_tally("Final Score", str(GameManager.score))
-	_add_tally("Stages Cleared", str(GameManager.current_stage_no - 1))
-	_add_tally("Peak Flow", "×%d" % GameManager.best_flow)
-	
+	_add_seal_header("Run Concluded", reason, "終")
+	_add_hairline()
+
+	_add_sheet_row("Final Score", str(GameManager.score), UITheme.GOLD_CORE)
+	_add_sheet_row("Stages Cleared", str(GameManager.current_stage_no - 1))
+	_add_sheet_row("Peak Flow", "×%d" % GameManager.best_flow)
 	_add_separator()
-	
-	_add_button("📋 Share Scorecard (Copy)", func():
-		var share_text := "Nine Rivers 🌊\nFlow: ×%d\nScore: %s\nStages: %d" % [
-			GameManager.best_flow, GameManager.score, GameManager.current_stage_no - 1
-		]
-		DisplayServer.clipboard_set(share_text)
-	)
-	_add_button("↺ Try Again", func():
+
+	_add_tile_row("再", GLYPH_JADE, "Try Again", "Set out from the source", "", func():
 		hide_modal()
 		if GameManager.current_mode == GameManager.GameMode.DAILY:
 			start_daily_requested.emit()
 		else:
 			start_run_requested.emit()
 	, true)
-	_add_button("⛩️ Main Menu", func():
+
+	_add_separator()
+	_add_toggle_row("写", "Share Scorecard", "›", func():
+		var share_text := "Nine Rivers (九河)\nFlow: ×%d\nScore: %s\nStages: %d" % [
+			GameManager.best_flow, GameManager.score, GameManager.current_stage_no - 1
+		]
+		DisplayServer.clipboard_set(share_text)
+	, UITheme.IVORY_MUTED)
+	_add_toggle_row("戻", "Main Menu", "›", func():
 		return_home_requested.emit()
-	)
+	, UITheme.IVORY_MUTED)
 	show_modal()
 
 func show_sanctuary_menu() -> void:
 	_current_screen = "sanctuary"
 	_clear_content()
-	_add_title("Koi Sanctuary (鲤鱼潭)")
-	_add_subtitle("River Jade Balance: %d 🪨" % SaveManager.get_jade())
-	
+	_add_seal_header("Koi Sanctuary", "鲤鱼潭 · The garden pond", "鯉")
+	_add_purse_line("%d 玉 River Jade" % SaveManager.get_jade())
+	_add_hairline()
+
+	# Ten koi as ten quiet lines rather than ten identical slabs; the ones you
+	# already own drop back to muted ivory so the buyable ones read first.
 	for k in SanctuaryManager.KOI_SHOP:
 		var unlocked: bool = SanctuaryManager.is_koi_unlocked(k["id"])
-		var txt := "%s (Owned)" % k["name"] if unlocked else "%s (%d Jade)" % [k["name"], k["cost"]]
 		var koi_id: String = k["id"]
-		_add_button(txt, func():
-			if not unlocked:
-				if SanctuaryManager.unlock_koi(koi_id):
-					AudioManager.play_win()
-					show_sanctuary_menu()
-		, unlocked)
-		
-	_add_button("← Back to Menu", func():
+		_add_toggle_row("鯉", k["name"],
+			"Owned" if unlocked else "%d 玉" % int(k["cost"]), func():
+				if not unlocked:
+					if SanctuaryManager.unlock_koi(koi_id):
+						AudioManager.play_win()
+						show_sanctuary_menu()
+		, UITheme.IVORY_MUTED if unlocked else UITheme.GOLD_CORE)
+
+	_add_separator()
+	_add_button("Back", func():
 		show_main_menu()
 	)
 
@@ -531,32 +566,40 @@ func show_bazaar_modal() -> void:
 	_current_screen = "bazaar"
 	_clear_content()
 	
-	_add_title("Spirit Bazaar (灵气集市)")
-	_add_subtitle("🦪 %d Spirit Pearls | 🪨 %d River Jade" % [MonetizationManager.get_pearls(), SaveManager.get_jade()])
-	_add_separator()
-	
-	_add_button("🀄 Artisan Tile Sets (4 Collections · Live Previews)", func():
-		show_tile_catalog_modal()
+	_add_seal_header("Spirit Bazaar", "灵气集市 · Tiles, ponds & offerings", "市")
+
+	var pearls: int = MonetizationManager.get_pearls()
+	_add_purse_line("%d ◈ Spirit Pearls   ·   %d 玉 River Jade" % [pearls, SaveManager.get_jade()])
+	_add_hairline()
+
+	_add_tile_row("牌", GLYPH_JADE, "Artisan Tile Sets",
+		"Four collections · live previews", "4", func():
+			show_tile_catalog_modal()
 	, true)
-	
-	_add_button("🌊 Zen Pond Backdrops (3 Free · 5 Water Themes)", func():
-		show_background_catalog_modal()
+
+	_add_tile_row("池", GLYPH_JADE, "Zen Pond Backdrops",
+		"Living water · koi & flora", "6", func():
+			show_background_catalog_modal()
 	)
-	
-	_add_button("🦪 Pearl Treasury & Serenity (Remove Ads)", func():
-		show_treasury_modal()
+
+	_add_tile_row("宝", GLYPH_GOLD, "Pearl Treasury",
+		"Pearls & the Serenity blessing", "%d ◈" % pearls, func():
+			show_treasury_modal()
 	)
-	
-	_add_button("🏮 Daily Meditations (Free Blessings & Props)", func():
-		show_daily_offerings_modal()
+
+	_add_tile_row("供", GLYPH_GOLD, "Daily Meditations",
+		"Free blessings & props", "", func():
+			show_daily_offerings_modal()
 	)
-	
+
 	_add_separator()
-	_add_button("↺ Restore Purchases", func():
+	_add_toggle_row("復", "Restore Purchases", "›", func():
 		MonetizationManager.restore_purchases()
 		show_bazaar_modal()
-	)
-	_add_button("← Back to Menu", func():
+	, UITheme.IVORY_MUTED)
+
+	_add_separator()
+	_add_button("Back", func():
 		show_main_menu()
 	)
 	show_modal()
@@ -565,31 +608,35 @@ func show_tile_catalog_modal() -> void:
 	_current_screen = "tile_catalog"
 	_clear_content()
 	
-	_add_title("Artisan Tile Sets (麻将牌套)")
-	_add_subtitle("Handcrafted 2.5D Ceramic & Volcanic Stone Sets")
-	
+	_add_seal_header("Tile Sets", "麻将牌套 · Ceramic, gold leaf & basalt", "牌")
+	_add_hairline()
+
 	var cur_theme := MonetizationManager.get_active_theme()
 	for theme_key in ["classic_jade", "theme_imperial_gold", "theme_obsidian_ink", "theme_cherry_blossom"]:
 		var detail: Dictionary = TILE_THEME_DETAILS[theme_key]
 		var is_active: bool = (cur_theme == theme_key)
 		var is_unlocked: bool = MonetizationManager.is_theme_unlocked(theme_key)
-		
+
 		var tag := ""
 		if is_active:
-			tag = "[EQUIPPED]"
+			tag = "Equipped"
 		elif is_unlocked:
-			tag = "[OWNED]"
+			tag = "Owned"
 		else:
-			tag = "[%s]" % MonetizationManager.get_formatted_price(theme_key)
-			
-		var label_str := "🀄 %s · %s" % [detail["name"], tag]
+			tag = MonetizationManager.get_formatted_price(theme_key)
+
 		var captured_key: String = theme_key
-		_add_button(label_str, func():
-			show_tile_detail_modal(captured_key)
+		var parts := _split_name(detail["name"])
+		# The equipped set wears the gold band, exactly as a banded triple does
+		# in play, so "which one am I using" needs no tag to be read.
+		_add_tile_row(_glyph_for(TILE_THEME_GLYPHS, theme_key, "牌"),
+			_glyph_col_for(TILE_THEME_GLYPHS, theme_key),
+			parts[0], parts[1], tag, func():
+				show_tile_detail_modal(captured_key)
 		, is_active)
-		
+
 	_add_separator()
-	_add_button("← Back to Bazaar", func():
+	_add_button("Back", func():
 		show_bazaar_modal()
 	)
 	show_modal()
@@ -599,43 +646,51 @@ func show_tile_detail_modal(theme_key: String) -> void:
 	_clear_content()
 	
 	var detail: Dictionary = TILE_THEME_DETAILS.get(theme_key, TILE_THEME_DETAILS["classic_jade"])
-	_add_title(detail["name"])
-	_add_subtitle(detail["subtitle"])
-	
+	var parts := _split_name(detail["name"])
+	_add_seal_header(parts[0], "%s · %s" % [parts[1], detail["subtitle"]],
+		_glyph_for(TILE_THEME_GLYPHS, theme_key, "牌"))
+
 	# Live visual preview row with real physical tiles
 	_add_tile_preview_row(detail["samples"], theme_key)
-	
+
 	_add_description(detail["desc"])
-	_add_feature_row("🎯 Tactical Purpose", detail["purpose"])
-	_add_feature_row("✨ Feel & Dissolution", detail["tactile"])
-	
+	_add_hairline()
+	_add_feature_row("Tactical Purpose", detail["purpose"])
+	_add_hairline()
+	_add_feature_row("Feel & Dissolution", detail["tactile"])
 	_add_separator()
-	
+
 	var cur_theme := MonetizationManager.get_active_theme()
 	var is_active: bool = (cur_theme == theme_key)
 	var is_unlocked: bool = MonetizationManager.is_theme_unlocked(theme_key)
-	
+
 	if is_active:
-		_add_tally("★ Current Status", "Equipped & In Play")
+		_add_sheet_row("Status", "Equipped & in play", UITheme.GOLD_CORE)
 	elif is_unlocked:
-		_add_button("✓ Equip This Tile Set", func():
-			MonetizationManager.equip_theme(theme_key)
-			AudioManager.play_win()
-			show_tile_detail_modal(theme_key)
-		, true)
-	else:
-		_add_button("🦪 Buy with 1,500 Spirit Pearls", func():
-			if MonetizationManager.buy_with_pearls(theme_key, func(): show_tile_detail_modal(theme_key)):
+		_add_tile_row("装", GLYPH_JADE, "Equip This Set",
+			"Takes effect on the next board", "", func():
+				MonetizationManager.equip_theme(theme_key)
 				AudioManager.play_win()
 				show_tile_detail_modal(theme_key)
-			else:
-				show_treasury_modal()
 		, true)
-		_add_button("💳 Unlock for %s (Play Store / UPI)" % MonetizationManager.get_formatted_price(theme_key), func():
-			MonetizationManager.buy_product(theme_key, func(): show_tile_detail_modal(theme_key))
+	else:
+		# One heavy way in, one light one. Two identical slabs would make the
+		# player read both before choosing either.
+		_add_tile_row("珠", GLYPH_GOLD, "Buy with Spirit Pearls",
+			"Pearls you already hold", "1,500 ◈", func():
+				if MonetizationManager.buy_with_pearls(theme_key, func(): show_tile_detail_modal(theme_key)):
+					AudioManager.play_win()
+					show_tile_detail_modal(theme_key)
+				else:
+					show_treasury_modal()
+		, true)
+		_add_toggle_row("購", "Unlock outright · Play Store",
+			MonetizationManager.get_formatted_price(theme_key), func():
+				MonetizationManager.buy_product(theme_key, func(): show_tile_detail_modal(theme_key))
 		)
-		
-	_add_button("← Back to Tile Sets", func():
+
+	_add_separator()
+	_add_button("Back", func():
 		show_tile_catalog_modal()
 	)
 	show_modal()
@@ -644,9 +699,9 @@ func show_background_catalog_modal() -> void:
 	_current_screen = "bg_catalog"
 	_clear_content()
 	
-	_add_title("Zen Pond Backdrops (水榭背幕)")
-	_add_subtitle("3 Free Environments · Living Shaders & Koi")
-	
+	_add_seal_header("Pond Backdrops", "水榭背幕 · Living water, koi & flora", "池")
+	_add_hairline()
+
 	var cur_bg := MonetizationManager.get_active_background_theme()
 	for bg_id in ["auto", "emerald_pond", "moonlit_river", "autumn_stream", "misty_spring", "sunset_haven"]:
 		var detail: Dictionary = BG_THEME_DETAILS[bg_id]
@@ -655,22 +710,24 @@ func show_background_catalog_modal() -> void:
 		
 		var tag := ""
 		if is_active:
-			tag = "[ACTIVE]"
+			tag = "Flowing"
 		elif bool(detail.get("is_free", false)):
-			tag = "[FREE]"
+			tag = "Free"
 		elif is_unlocked:
-			tag = "[OWNED]"
+			tag = "Owned"
 		else:
-			tag = "[1,500 🪨 / 500 🦪]"
-			
-		var label_str := "🌊 %s · %s" % [detail["name"], tag]
+			tag = "1,500 玉 / 500 ◈"
+
 		var captured_id: String = bg_id
-		_add_button(label_str, func():
-			show_background_detail_modal(captured_id)
+		var parts := _split_name(detail["name"])
+		_add_tile_row(_glyph_for(BG_THEME_GLYPHS, bg_id, "池"),
+			_glyph_col_for(BG_THEME_GLYPHS, bg_id),
+			parts[0], parts[1], tag, func():
+				show_background_detail_modal(captured_id)
 		, is_active)
-		
+
 	_add_separator()
-	_add_button("← Back to Bazaar", func():
+	_add_button("Back", func():
 		show_bazaar_modal()
 	)
 	show_modal()
@@ -680,46 +737,54 @@ func show_background_detail_modal(theme_id: String) -> void:
 	_clear_content()
 	
 	var detail: Dictionary = BG_THEME_DETAILS.get(theme_id, BG_THEME_DETAILS["emerald_pond"])
-	_add_title(detail["name"])
-	_add_subtitle(detail["subtitle"])
-	
+	var parts := _split_name(detail["name"])
+	_add_seal_header(parts[0], "%s · %s" % [parts[1], detail["subtitle"]],
+		_glyph_for(BG_THEME_GLYPHS, theme_id, "池"))
+
 	_add_palette_preview_card(detail["theme_data"])
-	
+
 	_add_description(detail["desc"])
-	_add_feature_row("🌊 Water Atmosphere", detail["mood"])
-	_add_feature_row("🐟 Living Koi Species", detail["koi"])
-	_add_feature_row("🪷 Floating Aquatic Flora", detail["flora"])
-	
+	_add_hairline()
+	_add_feature_row("Water Atmosphere", detail["mood"])
+	_add_hairline()
+	_add_feature_row("Living Koi Species", detail["koi"])
+	_add_hairline()
+	_add_feature_row("Floating Aquatic Flora", detail["flora"])
 	_add_separator()
-	
+
 	var cur_bg := MonetizationManager.get_active_background_theme()
 	var is_active: bool = (cur_bg == theme_id)
 	var is_unlocked: bool = MonetizationManager.is_background_theme_unlocked(theme_id)
-	
+
 	if is_active:
-		_add_tally("★ Current Status", "Currently Flowing in Background")
+		_add_sheet_row("Status", "Flowing behind the board", UITheme.GOLD_CORE)
 	elif is_unlocked:
-		_add_button("✓ Flow in This Pond (Equip)", func():
-			MonetizationManager.equip_background_theme(theme_id)
-			AudioManager.play_win()
-			show_background_detail_modal(theme_id)
-		, true)
-	else:
-		_add_button("🪨 Unlock with 1,500 River Jade", func():
-			if MonetizationManager.buy_background_with_jade(theme_id):
+		_add_tile_row("流", GLYPH_JADE, "Flow in This Pond",
+			"Set as your backdrop", "", func():
+				MonetizationManager.equip_background_theme(theme_id)
+				AudioManager.play_win()
 				show_background_detail_modal(theme_id)
 		, true)
-		_add_button("🦪 Unlock with 500 Spirit Pearls", func():
+	else:
+		# Jade is the currency the player earns by playing, so it leads.
+		_add_tile_row("玉", GLYPH_JADE, "Unlock with River Jade",
+			"Earned at the board", "1,500 玉", func():
+				if MonetizationManager.buy_background_with_jade(theme_id):
+					show_background_detail_modal(theme_id)
+		, true)
+		_add_toggle_row("珠", "Unlock with Spirit Pearls", "500 ◈", func():
 			if MonetizationManager.buy_background_with_pearls(theme_id):
 				show_background_detail_modal(theme_id)
 			else:
 				show_treasury_modal()
 		)
-		_add_button("💳 Unlock for %s (Play Store / UPI)" % MonetizationManager.get_formatted_price("bg_" + theme_id), func():
-			MonetizationManager.buy_product("bg_" + theme_id, func(): show_background_detail_modal(theme_id))
+		_add_toggle_row("購", "Unlock outright · Play Store",
+			MonetizationManager.get_formatted_price("bg_" + theme_id), func():
+				MonetizationManager.buy_product("bg_" + theme_id, func(): show_background_detail_modal(theme_id))
 		)
-		
-	_add_button("← Back to Pond Themes", func():
+
+	_add_separator()
+	_add_button("Back", func():
 		show_background_catalog_modal()
 	)
 	show_modal()
@@ -728,32 +793,44 @@ func show_treasury_modal() -> void:
 	_current_screen = "treasury"
 	_clear_content()
 	
-	_add_title("Pearl Treasury & Serenity (宝库)")
-	_add_subtitle("🦪 %d Spirit Pearls in Treasury" % MonetizationManager.get_pearls())
-	
+	_add_seal_header("Pearl Treasury", "宝库 · Pearls & the Serenity blessing", "宝")
+	_add_purse_line("%d ◈ Spirit Pearls in Treasury" % MonetizationManager.get_pearls())
+	_add_hairline()
+
 	if not MonetizationManager.is_no_ads():
-		_add_button("🌸 Serenity Blessing (No-Ads + 500 🦪) — %s" % MonetizationManager.get_formatted_price("no_ads"), func():
-			MonetizationManager.buy_product("no_ads", func(): show_treasury_modal())
+		_add_tile_row("静", GLYPH_JADE, "Serenity Blessing",
+			"No ads, for good · +500 ◈ pearls",
+			MonetizationManager.get_formatted_price("no_ads"), func():
+				MonetizationManager.buy_product("no_ads", func(): show_treasury_modal())
 		, true)
 	else:
-		_add_tally("✨ Serenity Status", "Permanent No-Ads Active (+Daily Prop)")
-		
-	_add_button("🦪 Pouch of 500 Pearls — %s" % MonetizationManager.get_formatted_price("pearls_small"), func():
-		MonetizationManager.buy_product("pearls_small", func(): show_treasury_modal())
+		_add_sheet_row("Serenity", "Active · no ads, +daily prop", UITheme.GOLD_CORE)
+
+	# A price ladder, not four identical slabs: the two small pouches are quiet
+	# lines, the best-value hoard is a tile.
+	_add_toggle_row("珠", "Pouch of 500 Pearls",
+		MonetizationManager.get_formatted_price("pearls_small"), func():
+			MonetizationManager.buy_product("pearls_small", func(): show_treasury_modal())
 	)
-	_add_button("🦪 Chest of 2,500 Pearls (+25%) — %s" % MonetizationManager.get_formatted_price("pearls_medium"), func():
-		MonetizationManager.buy_product("pearls_medium", func(): show_treasury_modal())
+	_add_toggle_row("珠", "Chest of 2,500 Pearls · +25%",
+		MonetizationManager.get_formatted_price("pearls_medium"), func():
+			MonetizationManager.buy_product("pearls_medium", func(): show_treasury_modal())
 	)
-	_add_button("🦪 Dragon Hoard (7,500 Pearls +50%) — %s" % MonetizationManager.get_formatted_price("pearls_large"), func():
-		MonetizationManager.buy_product("pearls_large", func(): show_treasury_modal())
+
+	_add_tile_row("龍", GLYPH_GOLD, "Dragon Hoard",
+		"7,500 pearls · +50% bonus",
+		MonetizationManager.get_formatted_price("pearls_large"), func():
+			MonetizationManager.buy_product("pearls_large", func(): show_treasury_modal())
 	)
-	
+
 	_add_separator()
-	_add_button("↺ Restore Purchases", func():
+	_add_toggle_row("復", "Restore Purchases", "›", func():
 		MonetizationManager.restore_purchases()
 		show_treasury_modal()
-	)
-	_add_button("← Back to Bazaar", func():
+	, UITheme.IVORY_MUTED)
+
+	_add_separator()
+	_add_button("Back", func():
 		show_bazaar_modal()
 	)
 	show_modal()
@@ -762,28 +839,30 @@ func show_daily_offerings_modal() -> void:
 	_current_screen = "daily_offerings"
 	_clear_content()
 	
-	_add_title("Daily Meditations (晨钟暮鼓)")
-	_add_subtitle("Spiritual Blessings & Optional Offerings")
-	
+	_add_seal_header("Daily Meditations", "晨钟暮鼓 · Blessings & offerings", "供")
+	_add_hairline()
+
 	var remaining_ads: int = MonetizationManager.get_remaining_rewarded_ads()
 	if remaining_ads > 0:
-		_add_button("🏮 Daily Meditation Blessing (+60 🦪 Free / Ad) [%d left]" % remaining_ads, func():
-			MonetizationManager.show_rewarded_ad("daily_pearls", func(_t, _a):
-				AudioManager.play_win()
-				show_daily_offerings_modal()
-			)
+		_add_tile_row("福", GLYPH_GOLD, "Meditation Blessing",
+			"+60 ◈ pearls, free · watch an offering",
+			"%d left" % remaining_ads, func():
+				MonetizationManager.show_rewarded_ad("daily_pearls", func(_t, _a):
+					AudioManager.play_win()
+					show_daily_offerings_modal()
+				)
 		, true)
-		_add_button("🎋 Spirits' Prop Aid (+1 Hint & Shuffle / Ad)", func():
+		_add_toggle_row("具", "Spirits' Prop Aid", "+1 hint & shuffle", func():
 			MonetizationManager.show_rewarded_ad("props_refill", func(_t, _a):
 				AudioManager.play_win()
 				show_daily_offerings_modal()
 			)
-		)
+		, UITheme.IVORY_MUTED)
 	else:
-		_add_tally("🏮 Daily Offerings", "Completed for today (resets at dawn)")
-		
+		_add_sheet_row("Daily Offerings", "Complete · resets at dawn", UITheme.GOLD_CORE)
+
 	_add_separator()
-	_add_button("← Back to Bazaar", func():
+	_add_button("Back", func():
 		show_bazaar_modal()
 	)
 	show_modal()
@@ -859,16 +938,16 @@ func show_settings_menu() -> void:
 func show_privacy_modal() -> void:
 	_current_screen = "privacy"
 	_clear_content()
-	_add_title("Privacy Policy")
-	_add_subtitle("Nine Rivers (九河)")
-	
-	_add_tally("Data Collection", "Zero Personal Data Collected")
-	_add_tally("Save Storage", "100% Local Device Storage")
-	_add_tally("In-App Purchases", "Secure Apple / Google Play")
-	_add_tally("Family Safe", "COPPA & All-Ages Compliant")
-	
+	_add_seal_header("Privacy", "約 · Nine Rivers 九河", "約")
+	_add_hairline()
+
+	_add_sheet_row("Data Collection", "None")
+	_add_sheet_row("Save Storage", "Local device only")
+	_add_sheet_row("In-App Purchases", "Apple / Google Play")
+	_add_sheet_row("Family Safe", "COPPA & all-ages")
+
 	_add_separator()
-	_add_button("← Back to Settings", func():
+	_add_button("Back", func():
 		show_settings_menu()
 	)
 	show_modal()
@@ -876,17 +955,17 @@ func show_privacy_modal() -> void:
 func show_credits_modal() -> void:
 	_current_screen = "credits"
 	_clear_content()
-	_add_title("Nine Rivers (九河)")
-	_add_subtitle("Credits & Acknowledgments")
-	
-	_add_tally("Game Design", "Nine Rivers Studio")
-	_add_tally("Art Direction", "Imperial Ceramic & Ink Vector Engine")
-	_add_tally("Typography", "Noto Serif CJK & Ma Shan Zheng")
-	_add_tally("Audio Synthesis", "Procedural Guzheng & Acoustic Clacks")
-	_add_tally("Engine", "Godot Engine 4.6")
-	
+	_add_seal_header("Credits", "謝 · Nine Rivers 九河", "謝")
+	_add_hairline()
+
+	_add_sheet_row("Game Design", "Nine Rivers Studio")
+	_add_sheet_row("Art Direction", "Ceramic & ink vector engine")
+	_add_sheet_row("Typography", "Noto Serif CJK · Ma Shan Zheng")
+	_add_sheet_row("Audio", "Procedural guzheng & clacks")
+	_add_sheet_row("Engine", "Godot 4.6")
+
 	_add_separator()
-	_add_button("← Back to Settings", func():
+	_add_button("Back", func():
 		show_settings_menu()
 	)
 	show_modal()
@@ -957,6 +1036,45 @@ const TILE_BISCUIT := Color("#b79f74")   # the tile's own 3D underside
 const TILE_INK := Color("#232b26")
 const TILE_SUBINK := Color("#6d6455")
 const TILE_META := Color("#8a7f6b")
+## Carved-glyph inks for tile rows. Cinnabar is deliberately absent: it is spent
+## once per screen, on the seal, and nowhere else.
+const GLYPH_JADE := Color("#1f7a52")
+const GLYPH_GOLD := Color("#9e6d19")
+const GLYPH_INK := Color("#3a352c")
+const GLYPH_STONE := Color("#6d6455")
+
+## Each theme is carved with its own character rather than a generic icon:
+## 玉 jade, 金 gold, 墨 ink, 樱 cherry blossom; 流 flowing, 翠 kingfisher-green,
+## 月 moon, 丹 cinnabar-red maple, 岚 mountain mist, 夕 evening.
+const TILE_THEME_GLYPHS: Dictionary = {
+	"classic_jade": "玉", "theme_imperial_gold": "金",
+	"theme_obsidian_ink": "墨", "theme_cherry_blossom": "樱"
+}
+const BG_THEME_GLYPHS: Dictionary = {
+	"auto": "流", "emerald_pond": "翠", "moonlit_river": "月",
+	"autumn_stream": "丹", "misty_spring": "岚", "sunset_haven": "夕"
+}
+const GLYPH_COLS: Dictionary = {
+	"classic_jade": GLYPH_JADE, "theme_imperial_gold": GLYPH_GOLD,
+	"theme_obsidian_ink": GLYPH_INK, "theme_cherry_blossom": GLYPH_STONE,
+	"auto": GLYPH_JADE, "emerald_pond": GLYPH_JADE, "moonlit_river": GLYPH_INK,
+	"autumn_stream": GLYPH_GOLD, "misty_spring": GLYPH_STONE, "sunset_haven": GLYPH_GOLD
+}
+
+func _glyph_for(table: Dictionary, key: String, fallback: String) -> String:
+	return String(table.get(key, fallback))
+
+func _glyph_col_for(_table: Dictionary, key: String) -> Color:
+	return GLYPH_COLS.get(key, GLYPH_JADE)
+
+## Theme names are stored as "Classic Jade (羊脂白玉)". The Latin half belongs in
+## the tile's title and the Chinese half in its subline, so the two never have
+## to share one run of type.
+static func _split_name(s: String) -> Array:
+	var i := s.find(" (")
+	if i < 0:
+		return [s, ""]
+	return [s.substr(0, i), s.substr(i + 2, s.length() - i - 3)]
 const RICE_PAPER := Color("#f0e6d2")
 const PAPER_INK := Color("#2b2519")
 const PAPER_RULE := Color(0.47, 0.39, 0.24, 0.22)
@@ -1054,6 +1172,36 @@ func _add_tile_row(glyph: String, glyph_col: Color, title: String, sub: String,
 		b.add_child(band)
 
 	card_container.add_child(b)
+
+## A stage on the map, drawn as a small face-up tile. `current` gets the gold
+## band the player already reads as "this is the one that matters".
+func _style_stage_token(btn: Button, current: bool) -> void:
+	for state in ["normal", "hover", "focus", "disabled"]:
+		var sb := _make_tile_box()
+		sb.content_margin_left = 6
+		sb.content_margin_right = 6
+		sb.content_margin_top = 8
+		sb.content_margin_bottom = 8
+		sb.border_width_bottom = 5
+		if current:
+			sb.border_color = UITheme.GOLD_CORE
+		btn.add_theme_stylebox_override(state, sb)
+	var pressed_sb := _make_tile_box(true)
+	pressed_sb.content_margin_left = 6
+	pressed_sb.content_margin_right = 6
+	btn.add_theme_stylebox_override("pressed", pressed_sb)
+	btn.add_theme_color_override("font_color", TILE_INK)
+	btn.add_theme_color_override("font_hover_color", TILE_INK)
+	btn.add_theme_color_override("font_pressed_color", TILE_INK)
+	btn.add_theme_color_override("font_focus_color", TILE_INK)
+
+## A stage still out of reach: no tile, no border, just the number waiting.
+func _style_stage_token_locked(btn: Button) -> void:
+	var empty := StyleBoxEmpty.new()
+	for state in ["normal", "hover", "focus", "pressed", "disabled"]:
+		btn.add_theme_stylebox_override(state, empty)
+	btn.add_theme_color_override("font_disabled_color",
+		Color(UITheme.IVORY_MUTED.r, UITheme.IVORY_MUTED.g, UITheme.IVORY_MUTED.b, 0.34))
 
 ## A hairline that fades at both ends, instead of another boxed border.
 func _add_hairline() -> void:
@@ -1165,6 +1313,15 @@ func _add_toggle_row(glyph: String, label: String, value: String,
 	card_container.add_child(b)
 	_add_hairline()
 
+## One compact centred line of currency, instead of a stack of tallies that the
+## eye has to read through before it reaches anything actionable.
+func _add_purse_line(text: String) -> void:
+	var l := Label.new()
+	l.text = text
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	UITheme.style_label(l, "ui", 21, UITheme.GOLD_MUTED)
+	card_container.add_child(l)
+
 ## A key/value line on the rice-paper sheet: hairline rule, no boxes.
 func _add_sheet_row(key: String, val: String, val_col: Color = UITheme.IVORY_BASE) -> void:
 	var row := HBoxContainer.new()
@@ -1252,9 +1409,11 @@ func _add_tile_preview_row(samples: Array, theme_id: String) -> void:
 	center_box.custom_minimum_size = Vector2(0, 110)
 	
 	var preview_panel := PanelContainer.new()
-	var sb := UITheme.create_panel_box(Color(0.02, 0.08, 0.06, 0.85), UITheme.GOLD_MUTED, 1, 14, 0.3)
+	# No border: the tiles are the object here, and a gold box around them would
+	# be one more frame inside an already-framed card.
+	var sb := UITheme.create_panel_box(Color(0.02, 0.08, 0.06, 0.55), UITheme.GOLD_MUTED, 0, 14, 0.0)
 	preview_panel.add_theme_stylebox_override("panel", sb)
-	
+
 	var margin := MarginContainer.new()
 	margin.add_theme_constant_override("margin_left", 24)
 	margin.add_theme_constant_override("margin_right", 24)
@@ -1281,9 +1440,9 @@ func _add_palette_preview_card(theme_data: Dictionary) -> void:
 	center_box.custom_minimum_size = Vector2(0, 90)
 	
 	var preview_panel := PanelContainer.new()
-	var sb := UITheme.create_panel_box(Color(0.02, 0.08, 0.06, 0.85), UITheme.GOLD_MUTED, 1, 14, 0.3)
+	var sb := UITheme.create_panel_box(Color(0.02, 0.08, 0.06, 0.0), UITheme.GOLD_MUTED, 0, 14, 0.0)
 	preview_panel.add_theme_stylebox_override("panel", sb)
-	
+
 	var margin := MarginContainer.new()
 	margin.add_theme_constant_override("margin_left", 20)
 	margin.add_theme_constant_override("margin_right", 20)

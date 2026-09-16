@@ -84,6 +84,27 @@ func _show_intro_splash() -> void:
 		_return_home()
 	)
 
+## Every tap disturbs the water. _input() runs before the GUI consumes the
+## event, so this fires over menus and modals as well as the board - the pond
+## is behind all of them, and with the Rack's transparent card the ripple is
+## visible between the tiles.
+func _input(event: InputEvent) -> void:
+	if zen_background == null or not zen_background.has_method("add_ripple"):
+		return
+	var pos := Vector2.INF
+	if event is InputEventScreenTouch and event.pressed:
+		pos = event.position
+	elif event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		pos = event.position
+	if pos == Vector2.INF:
+		return
+	if SettingsManager.is_reduced_motion():
+		return
+	# Gentler than a match ripple, and attract=false: if the koi darted at every
+	# touch they would be permanently frantic and the reaction would stop
+	# meaning anything when a real match happens.
+	zen_background.add_ripple(pos, 0.45, false)
+
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_GO_BACK_REQUEST:
 		_handle_back_action()
@@ -143,7 +164,7 @@ func _on_tile_matched_ripple(world_pos: Vector2) -> void:
 
 func _on_theme_changed(theme_data: Dictionary, new_level: int) -> void:
 	if new_level > 1 and hud:
-		hud.show_toast("🪷 Realm: %s (%s)" % [theme_data.get("name", ""), theme_data.get("name_zh", "")])
+		hud.show_toast("Realm: %s (%s)" % [theme_data.get("name", ""), theme_data.get("name_zh", "")])
 
 func _return_home() -> void:
 	board.clear_board()
@@ -261,7 +282,7 @@ func _on_undo_clicked() -> void:
 		GameManager.props_updated.emit(GameManager.undos, GameManager.hints, GameManager.shuffles)
 		hud.show_toast("Undid last move.")
 	elif GameManager.undos <= 0:
-		hud.show_toast("No Undos left! Tap 🦪 Pearls to visit Bazaar.")
+		hud.show_toast("No Undos left! Tap ◈ Pearls to visit Bazaar.")
 
 func _on_hint_clicked() -> void:
 	if GameManager.hints > 0 and board.provide_hint():
@@ -270,7 +291,7 @@ func _on_hint_clicked() -> void:
 		GameManager.props_updated.emit(GameManager.undos, GameManager.hints, GameManager.shuffles)
 		hud.show_toast("Hint shown!")
 	elif GameManager.hints <= 0:
-		hud.show_toast("No Hints left! Tap 🦪 Pearls to visit Bazaar.")
+		hud.show_toast("No Hints left! Tap ◈ Pearls to visit Bazaar.")
 
 func _on_shuffle_clicked() -> void:
 	var free_surge: bool = GameManager.has_relic("tide_surge") and GameManager.time_left < 20.0 and GameManager.current_mode != GameManager.GameMode.CALM
@@ -283,7 +304,7 @@ func _on_shuffle_clicked() -> void:
 			GameManager.props_updated.emit(GameManager.undos, GameManager.hints, GameManager.shuffles)
 			hud.show_toast("Board reshuffled!")
 	elif GameManager.shuffles <= 0 and not free_surge:
-		hud.show_toast("No Shuffles left! Tap 🦪 Pearls to visit Bazaar.")
+		hud.show_toast("No Shuffles left! Tap ◈ Pearls to visit Bazaar.")
 
 func _on_board_move_completed(remaining: int, legal_moves: int) -> void:
 	hud.update_board_stats(remaining, legal_moves)

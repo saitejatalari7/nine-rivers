@@ -50,9 +50,9 @@ static func set_modifier_for_stage(mode: int, stage_or_level: int, seed_val: int
 
 static func get_modifier_name(mod: Modifier = active_modifier) -> String:
 	match mod:
-		Modifier.FOG: return "River Fog 🌫️"
-		Modifier.RUSH: return "Torrent Rush ⚡"
-		Modifier.FROST: return "Winter Frost ❄️"
+		Modifier.FOG: return "River Fog"
+		Modifier.RUSH: return "Torrent Rush"
+		Modifier.FROST: return "Winter Frost"
 		_: return ""
 
 static func get_modifier_desc(mod: Modifier = active_modifier) -> String:
