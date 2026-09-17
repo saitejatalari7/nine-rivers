@@ -2,11 +2,11 @@ class_name SanctuaryManager
 extends RefCounted
 
 const KOI_SHOP: Array[Dictionary] = [
-	{"id": "kohaku", "name": "Kohaku", "cost": 0, "desc": "Brings peace to the river waters."},
-	{"id": "sanke", "name": "Taisho Sanke", "cost": 200, "desc": "+5% bonus River Jade from all clears."},
-	{"id": "showa", "name": "Showa Sanshoku", "cost": 400, "desc": "Extends Flow timer window."},
-	{"id": "ogon", "name": "Platinum Ogon", "cost": 750, "desc": "+10% score multiplier in Calm Mode."},
-	{"id": "dragon_koi", "name": "Golden Dragon Koi", "cost": 1500, "desc": "Flow Overdrive threshold reduced to Flow ×6."}
+	{"id": "kohaku", "name": "Kohaku", "cost": 0, "desc": "Your first koi"},
+	{"id": "sanke", "name": "Taisho Sanke", "cost": 200, "desc": "+5% River Jade"},
+	{"id": "showa", "name": "Showa Sanshoku", "cost": 400, "desc": "Longer Flow window"},
+	{"id": "ogon", "name": "Platinum Ogon", "cost": 750, "desc": "+10% score in Calm"},
+	{"id": "dragon_koi", "name": "Golden Dragon Koi", "cost": 1500, "desc": "Overdrive at Flow ×6"}
 ]
 
 const DECORATIONS: Array[Dictionary] = [

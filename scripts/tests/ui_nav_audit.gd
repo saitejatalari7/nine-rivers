@@ -25,7 +25,6 @@ const MAX_BUTTONS_PER_STATE: int = 18
 
 var main: Node2D
 var modal: Node
-var sanctuary: Control
 var hud: CanvasLayer
 var board: Node
 
@@ -41,7 +40,6 @@ func _ready() -> void:
 	await _explore()
 	_audit_daily_layouts()
 	await _audit_live_flows()
-	await _audit_sanctuary_view()
 	_check_reachability()
 	_report()
 	get_tree().quit(1 if not fails.is_empty() else 0)
@@ -76,7 +74,6 @@ func _boot() -> void:
 	await get_tree().process_frame
 
 	modal = main.get_node("Modal")
-	sanctuary = main.get_node("SanctuaryLayer/Sanctuary")
 	hud = main.get_node("HUD")
 	board = main.get_node("Board")
 
@@ -92,8 +89,6 @@ func _boot() -> void:
 # ---------------------------------------------------------------- state
 
 func _state_key() -> String:
-	if is_instance_valid(sanctuary) and sanctuary.visible:
-		return "sanctuary_view"
 	if modal.visible:
 		return "modal:%s" % modal._current_screen
 	if board.visible:
@@ -507,73 +502,6 @@ func _audit_live_flows() -> void:
 			_fail("%s: after carrying on, nothing is on screen at all." % flow["name"])
 
 	await _reset()
-
-# ---------------------------------------------------------------- sanctuary
-
-func _audit_sanctuary_view() -> void:
-	await _reset()
-	main._open_sanctuary()
-	await _settle()
-
-	if not sanctuary.visible:
-		_fail("Koi Sanctuary did not open from the main menu.")
-		return
-
-	var checked: Array = [
-		["TopBar/BtnBack", sanctuary.get_node_or_null("TopBar/BtnBack")],
-		["BottomBar/BtnShop", sanctuary.get_node_or_null("BottomBar/BtnShop")],
-		["ShopDrawer/Body/DrawerHead/BtnCloseShop", sanctuary.get_node_or_null("ShopDrawer/Body/DrawerHead/BtnCloseShop")],
-	]
-	for pair in checked:
-		var c: Control = pair[1]
-		if c == null:
-			_fail("Sanctuary: %s is missing." % pair[0])
-			continue
-		var w: float = maxf(c.size.x, c.custom_minimum_size.x)
-		var h: float = maxf(c.size.y, c.custom_minimum_size.y)
-		if h < UITheme.TOUCH_MIN - 1.0 or w < UITheme.TOUCH_MIN - 1.0:
-			_fail("Sanctuary: %s is %.0fx%.0f, under the %.0f touch minimum." % [
-				pair[0], w, h, UITheme.TOUCH_MIN])
-
-	var small_type: Array[String] = []
-	_walk_font_sizes(sanctuary, small_type)
-	for s in small_type:
-		_fail("Sanctuary: %s" % s)
-
-	var top_bar: Control = sanctuary.get_node_or_null("TopBar")
-	if top_bar != null:
-		var insets: Vector2 = UITheme.get_safe_insets(get_viewport())
-		var need: float = maxf(insets.x, UITheme.SAFE_TOP_FLOOR)
-		if top_bar.offset_top < need - 1.0:
-			_fail("Sanctuary: TopBar sits at %.0f, inside the %.0f status-bar inset." % [
-				top_bar.offset_top, need])
-
-	# Open the shop drawer, then confirm it closes and the screen still exits.
-	var drawer: Control = sanctuary.get_node("ShopDrawer")
-	drawer.visible = false
-	await _settle()
-	sanctuary.get_node("BottomBar/BtnShop").pressed.emit()
-	await _settle()
-	if not drawer.visible:
-		_fail("Sanctuary: the shop button did not open the shop drawer.")
-	sanctuary.get_node("ShopDrawer/Body/DrawerHead/BtnCloseShop").pressed.emit()
-	await _settle()
-	if drawer.visible:
-		_fail("Sanctuary: the shop drawer's close button did not close it.")
-
-	sanctuary.get_node("TopBar/BtnBack").pressed.emit()
-	await _settle()
-	if _state_key() != HOME:
-		_fail("Sanctuary: Back landed on %s instead of the main menu." % _state_key())
-
-func _walk_font_sizes(node: Node, out: Array[String]) -> void:
-	for c in node.get_children():
-		if c is Label and not (c as Label).text.is_empty() and (c as Label).visible:
-			var fs: int = (c as Label).get_theme_font_size("font_size")
-			if fs > 0 and fs < UITheme.FS_CAPTION:
-				out.append("'%s' is set at %dpx (%.1fsp), under the %dpx floor." % [
-					(c as Label).text.replace("\n", " "), fs, fs / 3.0, UITheme.FS_CAPTION])
-		_walk_font_sizes(c, out)
 
 # ---------------------------------------------------------------- report
 

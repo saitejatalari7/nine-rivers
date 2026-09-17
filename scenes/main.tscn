@@ -6,7 +6,6 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/hud.tscn" id="4_hud"]
 [ext_resource type="PackedScene" path="res://scenes/ui/modal.tscn" id="5_modal"]
 [ext_resource type="Shader" path="res://assets/shaders/river_felt.gdshader" id="6_shader"]
-[ext_resource type="PackedScene" path="res://scenes/sanctuary.tscn" id="7_sanc"]
 [ext_resource type="Texture2D" path="res://assets/branding/splash.png" id="8_splash"]
 [ext_resource type="Script" path="res://scripts/ui/zen_pond_background.gd" id="9_zenbg"]
 
@@ -53,12 +52,6 @@ script = ExtResource("3_cam")
 [node name="HUD" parent="." instance=ExtResource("4_hud")]
 
 [node name="Modal" parent="." instance=ExtResource("5_modal")]
-
-[node name="SanctuaryLayer" type="CanvasLayer" parent="."]
-layer = 8
-
-[node name="Sanctuary" parent="SanctuaryLayer" instance=ExtResource("7_sanc")]
-visible = false
 
 [node name="SplashScreen" type="CanvasLayer" parent="."]
 layer = 25

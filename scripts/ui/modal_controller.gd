@@ -7,7 +7,6 @@ extends CanvasLayer
 signal start_calm_requested(level: int)
 signal start_run_requested()
 signal start_daily_requested()
-signal open_sanctuary_requested()
 signal restart_stage_requested()
 signal next_stage_requested()
 signal resume_game_requested()
@@ -306,12 +305,6 @@ func show_main_menu() -> void:
 		"", func():
 			hide_modal()
 			start_daily_requested.emit()
-	)
-
-	_add_tile_row("鯉", Color("#1f7a52"), "Koi Sanctuary", "Zen garden",
-		"", func():
-			hide_modal()
-			open_sanctuary_requested.emit()
 	)
 
 	_add_tile_row("市", Color("#9e6d19"), "Spirit Bazaar", "Tiles & ponds",
@@ -648,29 +641,36 @@ func show_game_over(reason: String) -> void:
 	, UITheme.IVORY_MUTED)
 	show_modal()
 
+## Koi are permanent buffs bought with River Jade, so the row leads with what
+## the blessing DOES. They used to sit in a separate pond scene alongside
+## cosmetic decorations that never read as anything.
 func show_sanctuary_menu() -> void:
 	_current_screen = "sanctuary"
 	_clear_content()
-	_add_seal_header("Koi Sanctuary", "鲤鱼潭 · The garden pond", "鯉")
+	_add_seal_header("Koi Blessings", "鲤鱼 · Permanent river boons", "鯉")
 	_add_purse_line("%d 玉 River Jade" % SaveManager.get_jade())
 	_add_hairline()
 
-	# Ten koi as ten quiet lines rather than ten identical slabs; the ones you
-	# already own drop back to muted ivory so the buyable ones read first.
 	for k in SanctuaryManager.KOI_SHOP:
 		var unlocked: bool = SanctuaryManager.is_koi_unlocked(k["id"])
 		var koi_id: String = k["id"]
-		_add_toggle_row("鯉", k["name"],
-			"Owned" if unlocked else "%d 玉" % int(k["cost"]), func():
-				if not unlocked:
-					if SanctuaryManager.unlock_koi(koi_id):
-						AudioManager.play_win()
-						show_sanctuary_menu()
-		, UITheme.IVORY_MUTED if unlocked else UITheme.GOLD_CORE)
+		var cost: int = int(k["cost"])
+		var affordable: bool = SaveManager.get_jade() >= cost
+		var meta: String = "Owned" if unlocked else "%d 玉" % cost
+		_add_tile_row("鯉", GLYPH_JADE if unlocked else GLYPH_GOLD,
+			String(k["name"]), String(k["desc"]), meta, func():
+				if unlocked:
+					return
+				if not affordable:
+					return
+				if SanctuaryManager.unlock_koi(koi_id):
+					AudioManager.play_win()
+					show_sanctuary_menu()
+		, not unlocked and affordable)
 
 	_add_separator()
 	_add_button("Back", func():
-		show_main_menu()
+		show_bazaar_modal()
 	)
 	show_modal()
 
@@ -692,6 +692,11 @@ func show_bazaar_modal() -> void:
 	_add_tile_row("池", GLYPH_JADE, "Zen Pond Backdrops",
 		"Living water & koi", "6", func():
 			show_background_catalog_modal()
+	)
+
+	_add_tile_row("鯉", GLYPH_JADE, "Koi Blessings",
+		"Permanent boons", "%d 玉" % SaveManager.get_jade(), func():
+			show_sanctuary_menu()
 	)
 
 	_add_tile_row("宝", GLYPH_GOLD, "Pearl Treasury",

@@ -6,7 +6,6 @@ const CameraController = preload("res://scripts/ui/camera_controller.gd")
 const HudController = preload("res://scripts/ui/hud_controller.gd")
 const ModalController = preload("res://scripts/ui/modal_controller.gd")
 const StagePlan = preload("res://scripts/core/stage_plan.gd")
-const SanctuaryView = preload("res://scripts/ui/sanctuary_view.gd")
 const StageModifiers = preload("res://scripts/core/stage_modifiers.gd")
 const TutorialController = preload("res://scripts/ui/tutorial_controller.gd")
 
@@ -16,7 +15,6 @@ const TutorialController = preload("res://scripts/ui/tutorial_controller.gd")
 @onready var modal: ModalController = $Modal
 ## On its own CanvasLayer: parented to the Node2D it inherited the gameplay
 ## camera's pan and zoom, so opening the pond after a board left it off-centre.
-@onready var sanctuary: SanctuaryView = $SanctuaryLayer/Sanctuary
 @onready var splash_screen: CanvasLayer = $SplashScreen
 @onready var zen_background = $FeltBackground
 
@@ -57,7 +55,6 @@ func _ready() -> void:
 	modal.next_stage_requested.connect(_next_stage)
 	modal.resume_game_requested.connect(_resume_game)
 	modal.return_home_requested.connect(_return_home)
-	modal.open_sanctuary_requested.connect(_open_sanctuary)
 	modal.background_quiet_changed.connect(func(quiet: bool):
 		if zen_background and zen_background.has_method("set_quiet"):
 			zen_background.set_quiet(quiet))
@@ -65,7 +62,6 @@ func _ready() -> void:
 		_start_calm_mode(1)
 		tutorial.start_tutorial()
 	)
-	sanctuary.back_requested.connect(_return_home_from_sanctuary)
 	
 	# Wire GameManager
 	GameManager.game_over.connect(_on_game_over)
@@ -136,31 +132,10 @@ func _handle_back_action() -> void:
 		board.visible = true
 		hud.visible = true
 		_return_home()
-	elif sanctuary.visible:
-		# Close the drawer first; dropping two levels on one press also left the
-		# drawer open for the next visit.
-		if sanctuary.has_method("close_shop_drawer") and sanctuary.close_shop_drawer():
-			return
-		_return_home_from_sanctuary()
 	elif modal.visible:
 		modal.handle_back_pressed()
 	elif board.visible and not modal.visible:
 		_on_menu_clicked()
-
-func _open_sanctuary() -> void:
-	# _handle_back_action() tests the sanctuary before the modal, so leaving a
-	# modal open underneath would send the back gesture to the wrong screen.
-	modal.hide_modal()
-	board.visible = false
-	hud.visible = false
-	sanctuary.visible = true
-	sanctuary.refresh_sanctuary()
-
-func _return_home_from_sanctuary() -> void:
-	sanctuary.visible = false
-	board.visible = true
-	hud.visible = true
-	_return_home()
 
 func _on_flow_updated_shader(flow: int, _suit: String, is_overdrive: bool) -> void:
 	if zen_background and zen_background.has_method("set_flow_level"):
@@ -183,7 +158,6 @@ func _on_theme_changed(theme_data: Dictionary, new_level: int) -> void:
 
 func _return_home() -> void:
 	board.clear_board()
-	sanctuary.visible = false
 	board.visible = false
 	hud.visible = false
 	GameManager.is_timer_active = false

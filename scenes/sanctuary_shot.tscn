@@ -1,4 +1,0 @@
-[gd_scene load_steps=2 format=3]
-[ext_resource type="Script" path="res://scripts/tests/sanctuary_shot.gd" id="1"]
-[node name="SanctuaryShot" type="Node"]
-script = ExtResource("1")

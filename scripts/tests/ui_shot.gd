@@ -17,7 +17,7 @@ func _ready() -> void:
 		["ui_sub_levels", func(): modal.show_level_select()],
 		["ui_sub_bazaar", func(): modal.show_bazaar_modal()],
 		["ui_sub_treasury", func(): modal.show_treasury_modal()],
-		["ui_sub_sanctuary", func(): modal.show_sanctuary_menu()],
+		["ui_sub_blessings", func(): modal.show_sanctuary_menu()],
 	]:
 		entry[1].call()
 		await get_tree().create_timer(0.45).timeout
