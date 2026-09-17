@@ -751,12 +751,24 @@ func _get_available_player() -> AudioStreamPlayer:
 ## file plays dead centre through AudioStreamPlayer, so the board had no width
 ## at all; these give it somewhere to happen.
 ##
-## The pan is baked into a stereo buffer rather than applied by a bus effect or
-## an AudioStreamPlayer2D, because both of those would tie the image to the
-## gameplay camera, which pans and zooms with the board.
+## Sound design and spatialisation are separate: a generator returns a mono
+## signal, and _binaural_render places it. That split is what makes real
+## binaural affordable here - these are three events a minute, rendered once
+## into a buffer, so the cost is paid at generation and never again. Doing the
+## same per tap would mean convolving on every tile.
 
 const DRIFT_MIN_GAP: float = 7.0
 const DRIFT_MAX_GAP: float = 16.0
+
+## Interaural time difference at full deflection. A sound reaching one ear
+## before the other is the cue amplitude panning cannot fake, and it is most of
+## why panned audio sits inside the head while binaural sits outside it.
+## ~0.65 ms is the human maximum; kept at the low end because the two channels
+## sum acoustically on a phone speaker, and a large ITD would comb-filter there.
+const ITD_SECONDS: float = 0.00045
+## How hard the head shadows the far ear. One-pole low-pass, because the head
+## blocks treble far more than bass.
+const SHADOW_MIN: float = 0.18
 
 var drift_players: Array[AudioStreamPlayer] = []
 var _drift_timer: float = 0.0
@@ -790,29 +802,67 @@ func _play_drift_event() -> void:
 	if free_player == null:
 		return
 	var kind: int = _drift_rng.randi_range(0, 2)
-	var left_to_right: bool = _drift_rng.randf() < 0.5
+	var ltr: bool = _drift_rng.randf() < 0.5
+	var mono: PackedFloat32Array
 	match kind:
 		0:
-			free_player.stream = _make_drift_drop(left_to_right)
+			mono = _mono_drop()
 		1:
-			free_player.stream = _make_drift_air(left_to_right)
+			mono = _mono_air()
 		_:
-			free_player.stream = _make_drift_note(left_to_right)
+			mono = _mono_note()
+	free_player.stream = _binaural_render(mono, ltr)
 	free_player.play()
 
-## Equal-power pan so the loudness stays constant as the image moves; a linear
-## crossfade dips in the middle and reads as a gap rather than a pass.
-func _pan_gains(t: float, left_to_right: bool) -> Vector2:
-	var p: float = t if left_to_right else 1.0 - t
-	var angle: float = p * PI * 0.5
-	return Vector2(cos(angle), sin(angle))
-
-func _stereo_wav(frames: int) -> PackedByteArray:
+## Places a mono signal on a head. Three cues, in order of how much they matter
+## for a sound moving horizontally:
+##   1. ITD    - the far ear hears it later. The strongest lateralisation cue.
+##   2. Shadow - the far ear hears it duller, because the head blocks treble.
+##   3. ILD    - the far ear hears it quieter.
+##
+## This is a structural model, not a measured HRTF. It will not place a sound
+## above or behind you - that needs pinna filtering from a real dataset - but
+## it does get sounds out of the centre of the skull, which amplitude panning
+## never does.
+func _binaural_render(mono: PackedFloat32Array, ltr: bool) -> AudioStreamWAV:
+	var frames: int = mono.size()
 	var pcm := PackedByteArray()
 	pcm.resize(frames * 4)
-	return pcm
+	var max_delay: float = ITD_SECONDS * sample_rate
+	var shadow_l: float = 0.0
+	var shadow_r: float = 0.0
+	for i in range(frames):
+		var u: float = float(i) / float(maxi(1, frames - 1))
+		# -1 hard left, +1 hard right.
+		var azim: float = (u * 2.0 - 1.0) if ltr else (1.0 - u * 2.0)
+		var near_right: bool = azim > 0.0
+		var mag: float = absf(azim)
 
-func _finish_stereo(pcm: PackedByteArray) -> AudioStreamWAV:
+		# The near ear reads the signal now; the far ear reads it from the past.
+		var delay: float = mag * max_delay
+		var far: float = _read_delayed(mono, i, delay)
+		var near: float = mono[i]
+
+		# Head shadow on the far ear only.
+		var cutoff: float = lerpf(1.0, SHADOW_MIN, mag)
+		var l_raw: float
+		var r_raw: float
+		if near_right:
+			shadow_l += (far - shadow_l) * cutoff
+			l_raw = shadow_l
+			r_raw = near
+		else:
+			shadow_r += (far - shadow_r) * cutoff
+			r_raw = shadow_r
+			l_raw = near
+
+		# Equal-power level difference over the top.
+		var angle: float = (azim * 0.5 + 0.5) * PI * 0.5
+		var gl: float = cos(angle)
+		var gr: float = sin(angle)
+		pcm.encode_s16(i * 4, int(clampf(l_raw * gl, -1.0, 1.0) * 32767.0))
+		pcm.encode_s16(i * 4 + 2, int(clampf(r_raw * gr, -1.0, 1.0) * 32767.0))
+
 	var wav := AudioStreamWAV.new()
 	wav.format = AudioStreamWAV.FORMAT_16_BITS
 	wav.mix_rate = int(sample_rate)
@@ -820,74 +870,72 @@ func _finish_stereo(pcm: PackedByteArray) -> AudioStreamWAV:
 	wav.data = pcm
 	return wav
 
-## A single drop with a short pitch fall and a long tail, drifting as it rings.
-func _make_drift_drop(ltr: bool) -> AudioStreamWAV:
+## Fractional read into the past, linearly interpolated; a whole-sample delay
+## would step audibly as the image moves.
+func _read_delayed(buf: PackedFloat32Array, i: int, delay: float) -> float:
+	var pos: float = float(i) - delay
+	if pos <= 0.0:
+		return buf[0]
+	var i0: int = int(pos)
+	var i1: int = mini(i0 + 1, buf.size() - 1)
+	var frac: float = pos - float(i0)
+	return lerpf(buf[i0], buf[i1], frac)
+
+## A single drop with a short pitch fall and a long tail.
+func _mono_drop() -> PackedFloat32Array:
 	var dur: float = _drift_rng.randf_range(3.2, 4.8)
 	var frames: int = int(sample_rate * dur)
-	var pcm := _stereo_wav(frames)
+	var out := PackedFloat32Array()
+	out.resize(frames)
 	var f_start: float = _drift_rng.randf_range(900.0, 1400.0)
 	var f_end: float = f_start * 0.55
 	var phase: float = 0.0
 	for i in range(frames):
 		var t: float = float(i) / sample_rate
-		var u: float = t / dur
 		var freq: float = lerpf(f_start, f_end, minf(1.0, t / 0.09))
 		phase += TAU * freq / sample_rate
 		var strike: float = exp(-t * 7.0) * (1.0 - exp(-t * 300.0))
 		var tail: float = exp(-t * 0.45) * 0.38
-		var s: float = sin(phase) * (strike + tail) * 0.5
-		var g: Vector2 = _pan_gains(u, ltr)
-		pcm.encode_s16(i * 4, int(clampf(s * g.x, -1.0, 1.0) * 32767.0))
-		pcm.encode_s16(i * 4 + 2, int(clampf(s * g.y, -1.0, 1.0) * 32767.0))
-	return _finish_stereo(pcm)
+		out[i] = sin(phase) * (strike + tail) * 0.5
+	return out
 
 ## Filtered noise that swells and fades - a breath of air over the water.
-func _make_drift_air(ltr: bool) -> AudioStreamWAV:
+func _mono_air() -> PackedFloat32Array:
 	var dur: float = _drift_rng.randf_range(5.0, 7.5)
 	var frames: int = int(sample_rate * dur)
-	var pcm := _stereo_wav(frames)
-	# Two one-pole filters in series make a soft band; white noise alone is hiss.
+	var out := PackedFloat32Array()
+	out.resize(frames)
 	var lp: float = 0.0
 	var hp: float = 0.0
 	var cutoff: float = _drift_rng.randf_range(0.02, 0.05)
 	for i in range(frames):
-		var t: float = float(i) / sample_rate
-		var u: float = t / dur
+		var u: float = float(i) / float(frames)
 		var n: float = _drift_rng.randf_range(-1.0, 1.0)
 		lp += (n - lp) * cutoff
 		hp += (lp - hp) * cutoff * 0.25
 		# Two one-pole stages this gentle leave almost nothing behind, so the
 		# band needs real make-up gain to be audible at all.
-		var band: float = (lp - hp) * 9.0
-		var env: float = sin(u * PI)
-		var s: float = band * env * 0.75
-		var g: Vector2 = _pan_gains(u, ltr)
-		pcm.encode_s16(i * 4, int(clampf(s * g.x, -1.0, 1.0) * 32767.0))
-		pcm.encode_s16(i * 4 + 2, int(clampf(s * g.y, -1.0, 1.0) * 32767.0))
-	return _finish_stereo(pcm)
+		out[i] = (lp - hp) * 9.0 * sin(u * PI) * 0.75
+	return out
 
-## A single pentatonic note, soft enough to sit under the board rather than
-## announce itself, with two quiet harmonics for body.
-func _make_drift_note(ltr: bool) -> AudioStreamWAV:
+## A single pentatonic note, soft enough to sit under the board.
+func _mono_note() -> PackedFloat32Array:
 	var dur: float = _drift_rng.randf_range(4.0, 6.0)
 	var frames: int = int(sample_rate * dur)
-	var pcm := _stereo_wav(frames)
+	var out := PackedFloat32Array()
+	out.resize(frames)
 	var base: float = PENTATONIC[_drift_rng.randi_range(5, 12)]
 	var p1: float = 0.0
 	var p2: float = 0.0
 	var p3: float = 0.0
 	for i in range(frames):
 		var t: float = float(i) / sample_rate
-		var u: float = t / dur
 		p1 += TAU * base / sample_rate
 		p2 += TAU * base * 2.0 / sample_rate
 		p3 += TAU * base * 3.0 / sample_rate
 		var env: float = exp(-t * 0.42) * (1.0 - exp(-t * 14.0))
-		var s: float = (sin(p1) + sin(p2) * 0.22 + sin(p3) * 0.08) * env * 0.34
-		var g: Vector2 = _pan_gains(u, ltr)
-		pcm.encode_s16(i * 4, int(clampf(s * g.x, -1.0, 1.0) * 32767.0))
-		pcm.encode_s16(i * 4 + 2, int(clampf(s * g.y, -1.0, 1.0) * 32767.0))
-	return _finish_stereo(pcm)
+		out[i] = (sin(p1) + sin(p2) * 0.22 + sin(p3) * 0.08) * env * 0.34
+	return out
 
 # ================= POSITIONAL BOARD AUDIO =================
 ## Tile sounds played where the tile is, and coloured by which layer it sits on.
