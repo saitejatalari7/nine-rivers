@@ -183,7 +183,8 @@ func restore_state(snap: Dictionary) -> void:
 	if current_mode != GameMode.CALM:
 		time_updated.emit(time_left, max_time)
 
-func register_match(suit: String, is_triple: bool, mastery_level: int = 0, is_glass: bool = false) -> int:
+func register_match(suit: String, is_triple: bool, mastery_level: int = 0,
+		is_glass: bool = false, at: Vector2 = Vector2.INF, z: int = 0) -> int:
 	# 1. Flow calculation
 	var is_wild_suit: bool = (suit == "flower" or suit == "season")
 	if is_first_match_of_stage:
@@ -238,7 +239,7 @@ func register_match(suit: String, is_triple: bool, mastery_level: int = 0, is_gl
 		time_left = minf(max_time, time_left + bonus)
 		time_updated.emit(time_left, max_time)
 	
-	AudioManager.play_tile_match(flow_level, is_triple, is_glass)
+	AudioManager.play_tile_match(flow_level, is_triple, is_glass, at, z)
 	if flow_level >= 5:
 		AudioManager.play_combo_high()
 	return pts

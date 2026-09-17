@@ -90,6 +90,7 @@ func _ready() -> void:
 	add_child(ambient_player)
 	
 	_setup_drift_layer()
+	_setup_positional_players()
 	_pregenerate_ui_click()
 	_pregenerate_clack_sounds()
 	_pregenerate_shatter_sounds()
@@ -479,19 +480,15 @@ func play_click() -> void:
 		player.volume_db = -5.0
 		player.play()
 
-func play_tile_clack(pitch_mod: float = 1.0) -> void:
+func play_tile_clack(pitch_mod: float = 1.0, at: Vector2 = Vector2.INF, z: int = 0) -> void:
 	haptic(8)
 	if not SettingsManager.sfx_enabled or clack_samples.is_empty():
 		return
 	var sample: AudioStreamWAV = clack_samples[randi() % clack_samples.size()]
-	var player: AudioStreamPlayer = _get_available_player()
-	if player:
-		player.stream = sample
-		player.pitch_scale = pitch_mod * (0.96 + randf() * 0.08)
-		player.volume_db = -3.5
-		player.play()
+	_play_at(sample, at, z, -3.5, pitch_mod * (0.96 + randf() * 0.08))
 
-func play_tile_match(flow_level: int, is_triple: bool = false, is_glass: bool = false) -> void:
+func play_tile_match(flow_level: int, is_triple: bool = false, is_glass: bool = false,
+		at: Vector2 = Vector2.INF, z: int = 0) -> void:
 	haptic(35 if is_glass else (25 if is_triple else 15))
 	if not SettingsManager.sfx_enabled:
 		return
@@ -505,7 +502,7 @@ func play_tile_match(flow_level: int, is_triple: bool = false, is_glass: bool = 
 	# 2. Ascending Guzheng pentatonic chime
 	var note_idx: int = clampi(flow_level + 4, 0, PENTATONIC.size() - 1)
 	var freq: float = PENTATONIC[note_idx]
-	_play_guzheng_string(freq, 0.42, 0.68)
+	_play_guzheng_string(freq, 0.42, 0.68, at, z)
 	
 	if is_triple:
 		# Triple harmony: fifth interval Guzheng chime
@@ -613,11 +610,11 @@ func play_win() -> void:
 		_play_guzheng_string(523.25, 2.2, 0.5)  # C5 high chime
 	)
 
-func play_tile_pick() -> void:
+func play_tile_pick(at: Vector2 = Vector2.INF, z: int = 0) -> void:
 	haptic(8)
 	if not SettingsManager.sfx_enabled:
 		return
-	_play_guzheng_string(783.99, 0.12, 0.40)
+	_play_guzheng_string(783.99, 0.12, 0.40, at, z)
 
 func play_combo_high() -> void:
 	if not SettingsManager.sfx_enabled:
@@ -685,7 +682,8 @@ func play_hitstop_impact() -> void:
 
 # ================= GUZHENG PHYSICAL STRING SYNTHESIZER =================
 
-func _play_guzheng_string(freq: float, duration: float, volume: float) -> void:
+func _play_guzheng_string(freq: float, duration: float, volume: float,
+		at: Vector2 = Vector2.INF, z: int = 0) -> void:
 	var key: int = int(freq * 10.0) ^ (int(duration * 100.0) << 16)
 	var wav: AudioStreamWAV
 	
@@ -698,11 +696,7 @@ func _play_guzheng_string(freq: float, duration: float, volume: float) -> void:
 			_guzheng_cache.clear()
 		_guzheng_cache[key] = wav
 	
-	var player := _get_available_player()
-	if player:
-		player.stream = wav
-		player.volume_db = linear_to_db(clampf(volume, 0.01, 1.0))
-		player.play()
+	_play_at(wav, at, z, linear_to_db(clampf(volume, 0.01, 1.0)), 1.0)
 
 func _synthesize_guzheng_wav(freq: float, duration: float) -> AudioStreamWAV:
 	var total_frames := int(sample_rate * duration)
@@ -894,3 +888,49 @@ func _make_drift_note(ltr: bool) -> AudioStreamWAV:
 		pcm.encode_s16(i * 4, int(clampf(s * g.x, -1.0, 1.0) * 32767.0))
 		pcm.encode_s16(i * 4 + 2, int(clampf(s * g.y, -1.0, 1.0) * 32767.0))
 	return _finish_stereo(pcm)
+
+# ================= POSITIONAL BOARD AUDIO =================
+## Tile sounds played where the tile is, and coloured by which layer it sits on.
+## AudioStreamPlayer2D is right for these (unlike the drift layer): a tile IS in
+## the world, so when the camera pans or zooms its sound should move with it.
+
+const POSITIONAL_PANNING: float = 1.6
+## Each layer up is nearer the player: a little louder and a little brighter.
+const LAYER_GAIN_DB: float = 1.1
+const LAYER_PITCH: float = 0.015
+
+var pos_players: Array[AudioStreamPlayer2D] = []
+
+func _setup_positional_players() -> void:
+	for i in range(10):
+		var p := AudioStreamPlayer2D.new()
+		p.bus = BUS_SFX
+		p.panning_strength = POSITIONAL_PANNING
+		add_child(p)
+		pos_players.append(p)
+
+func _free_positional() -> AudioStreamPlayer2D:
+	for p in pos_players:
+		if not p.playing:
+			return p
+	return pos_players[0]
+
+## Plays `stream` at a board position. Falls back to the centred pool when the
+## caller has no position, so non-board sounds are unaffected.
+func _play_at(stream: AudioStream, at: Vector2, z: int, vol_db: float, pitch: float) -> void:
+	if stream == null:
+		return
+	if at == Vector2.INF or pos_players.is_empty():
+		var mono := _get_available_player()
+		if mono:
+			mono.stream = stream
+			mono.volume_db = vol_db
+			mono.pitch_scale = pitch
+			mono.play()
+		return
+	var p := _free_positional()
+	p.stream = stream
+	p.global_position = at
+	p.volume_db = vol_db + float(z) * LAYER_GAIN_DB
+	p.pitch_scale = pitch * (1.0 + float(z) * LAYER_PITCH)
+	p.play()

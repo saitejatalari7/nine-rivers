@@ -294,8 +294,9 @@ func _on_tile_clicked(view: TileView) -> void:
 			
 	selected_tiles.append(t)
 	view.set_selected(true)
-	AudioManager.play_tile_clack(1.2)
-	AudioManager.play_tile_pick()
+	var tile_at: Vector2 = view.position + Vector2(TW * 0.5, TH * 0.5)
+	AudioManager.play_tile_clack(1.2, tile_at, t.z)
+	AudioManager.play_tile_pick(tile_at, t.z)
 	
 	# Check if set is complete
 	var required_size: int = 2
@@ -327,6 +328,7 @@ func _resolve_matched_set(group: Array[RiverTile]) -> void:
 	var suit_name: String = group[0].suit
 	var max_mastery: int = 0
 	var last_view_pos := Vector2.ZERO
+	var last_z: int = 0
 	var has_last_pos := false
 	var is_glass_match: bool = false
 	for t in group:
@@ -341,6 +343,7 @@ func _resolve_matched_set(group: Array[RiverTile]) -> void:
 		var v = tile_views.get(t)
 		if is_instance_valid(v):
 			last_view_pos = v.position
+			last_z = t.z
 			has_last_pos = true
 			# Spawn visual particle shatter dust on cleared tiles
 			var dust = TileShatterDustScene.instantiate()
@@ -377,10 +380,16 @@ func _resolve_matched_set(group: Array[RiverTile]) -> void:
 	})
 	
 	# Register match in GameManager with tile mastery score boost and crystal glass bonus
-	var pts: int = GameManager.register_match(suit_name, is_triple, max_mastery, is_glass_match)
+	# Position first: register_match plays the chime, so it needs the centre of
+	# the group that was just cleared.
+	var match_at: Vector2 = Vector2.INF
+	if has_last_pos:
+		match_at = last_view_pos + Vector2(TW * 0.5, TH * 0.5)
+	var pts: int = GameManager.register_match(suit_name, is_triple, max_mastery,
+		is_glass_match, match_at, last_z)
 	
 	if has_last_pos:
-		var match_center := last_view_pos + Vector2(TW * 0.5, TH * 0.5)
+		var match_center := match_at
 		tile_matched.emit(match_center)
 		var chip: FloatingChip = FloatingChipScene.instantiate()
 		chip.position = last_view_pos + Vector2(TW * 0.5, TH * 0.3)
