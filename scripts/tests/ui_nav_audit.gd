@@ -40,7 +40,7 @@ func _ready() -> void:
 	await _explore()
 	_audit_daily_layouts()
 	await _audit_live_flows()
-	_check_reachability()
+	await _check_reachability()
 	_report()
 	get_tree().quit(1 if not fails.is_empty() else 0)
 
@@ -349,8 +349,22 @@ func _check_reachability() -> void:
 			else:
 				_fail("%s is a hard dead end: neither a control nor the back gesture leads home." % key)
 
-	if String((graph.get(HOME, {}) as Dictionary).get("back", "")) == HOME:
-		_note("main menu: the back gesture does nothing (does not offer to exit the app).")
+	# The main menu is the root, so back should arm an exit rather than navigate.
+	# Godot quits on the back gesture by default, which closed the game mid-board
+	# until quit_on_go_back was turned off; the exit now lives here instead.
+	if ProjectSettings.get_setting("application/config/quit_on_go_back", true):
+		_fail("quit_on_go_back is on: the Android back gesture closes the game "
+			+ "instead of opening the pause menu.")
+	await _goto({"builder": "show_main_menu", "args": []})
+	var armed_before: float = main._exit_armed_until
+	main._handle_back_action()
+	await _settle()
+	if main._exit_armed_until <= armed_before:
+		_fail("main menu: back does not arm an exit, so the app cannot be left.")
+	elif _state_key() != HOME:
+		_fail("main menu: back left the menu instead of arming an exit.")
+	else:
+		print("  main menu: back arms exit, second press leaves (verified)")
 
 # ---------------------------------------------------------------- daily tide
 

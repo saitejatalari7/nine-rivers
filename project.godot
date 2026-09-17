@@ -17,6 +17,9 @@ config/features=PackedStringArray("4.6", "GL Compatibility")
 boot_splash/bg_color=Color(0.0156, 0.137, 0.105, 1)
 boot_splash/image="res://assets/branding/splash.png"
 config/icon="res://assets/branding/app_icon.jpg"
+; Godot quits on the Android back gesture by default, which closed the game
+; mid-board before _handle_back_action() could show the pause menu.
+config/quit_on_go_back=false
 
 [autoload]
 

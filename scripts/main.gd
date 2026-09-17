@@ -133,9 +133,29 @@ func _handle_back_action() -> void:
 		hud.visible = true
 		_return_home()
 	elif modal.visible:
-		modal.handle_back_pressed()
+		# The main menu is the root: Android convention is that back leaves the
+		# app from here, and with quit_on_go_back off nothing else would.
+		if modal._current_screen == "main":
+			_confirm_exit()
+		else:
+			modal.handle_back_pressed()
 	elif board.visible and not modal.visible:
 		_on_menu_clicked()
+
+## Two presses to leave, so a stray gesture at the menu does not close the game.
+var _exit_armed_until: float = 0.0
+
+func _confirm_exit() -> void:
+	var now: float = Time.get_ticks_msec() / 1000.0
+	if now < _exit_armed_until:
+		get_tree().quit()
+		return
+	_exit_armed_until = now + 2.0
+	hud.visible = true
+	hud.show_toast("Press back again to leave Nine Rivers")
+	await get_tree().create_timer(2.0).timeout
+	if not board.visible:
+		hud.visible = false
 
 func _on_flow_updated_shader(flow: int, _suit: String, is_overdrive: bool) -> void:
 	if zen_background and zen_background.has_method("set_flow_level"):
