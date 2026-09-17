@@ -404,14 +404,20 @@ func _clear_board() -> bool:
 	if not board.board_cleared.is_connected(_on_cleared):
 		board.board_cleared.connect(_on_cleared)
 	var clicks: int = 0
+	var shuffles: int = 0
 	while not _cleared and clicks < MAX_CLICKS:
 		var sets: Array = board.get_legal_sets()
 		if sets.is_empty():
-			if not board.shuffle_remaining_tiles():
+			# This branch does not consume a click, so MAX_CLICKS cannot bound
+			# it. shuffle_remaining_tiles() only refuses below two tiles, so a
+			# blocked board with tiles left shuffled forever and the run hung
+			# until the outer timeout killed it.
+			if shuffles >= 8 or not board.shuffle_remaining_tiles():
 				return false
+			shuffles += 1
 			await get_tree().process_frame
 			continue
-		for t in sets[0]:
+		for t in _best_set(sets):
 			var view = board.tile_views.get(t)
 			if not is_instance_valid(view):
 				break
@@ -423,6 +429,29 @@ func _clear_board() -> bool:
 			clicks += 1
 		await get_tree().process_frame
 	return _cleared
+
+## Naive first-set play stalls on the denser boards - the layout validator puts
+## greedy at 2-5 clears out of 12 on tier 3+ - which made the daily flow look
+## broken when it is only hard. This is bot_runner's heuristic: take the
+## deepest set, avoid spending wilds, prefer the flow suit.
+func _best_set(sets: Array) -> Array:
+	var best: Array = sets[0]
+	var best_score: float = -1000000.0
+	for st in sets:
+		var sc: float = 0.0
+		for t in st:
+			sc += float(t.z) * 10.0
+			if t.is_wild():
+				sc -= 25.0
+		if st.size() >= 3:
+			sc += 8.0
+		if not st.is_empty() and st[0].suit == GameManager.flow_suit:
+			sc += 5.0
+		if sc > best_score:
+			best_score = sc
+			best = st
+	return best
+
 
 func _on_cleared() -> void:
 	_cleared = true
