@@ -89,6 +89,7 @@ func _ready() -> void:
 	ambient_player.volume_db = -80.0
 	add_child(ambient_player)
 	
+	_setup_drift_layer()
 	_pregenerate_ui_click()
 	_pregenerate_clack_sounds()
 	_pregenerate_shatter_sounds()
@@ -750,3 +751,146 @@ func _get_available_player() -> AudioStreamPlayer:
 			return p
 	return sfx_players[0]
 
+
+# ================= DRIFTING AMBIENT LAYER =================
+## Sparse events that travel across the stereo field. Everything else in this
+## file plays dead centre through AudioStreamPlayer, so the board had no width
+## at all; these give it somewhere to happen.
+##
+## The pan is baked into a stereo buffer rather than applied by a bus effect or
+## an AudioStreamPlayer2D, because both of those would tie the image to the
+## gameplay camera, which pans and zooms with the board.
+
+const DRIFT_MIN_GAP: float = 7.0
+const DRIFT_MAX_GAP: float = 16.0
+
+var drift_players: Array[AudioStreamPlayer] = []
+var _drift_timer: float = 0.0
+var _drift_rng := RandomNumberGenerator.new()
+
+func _setup_drift_layer() -> void:
+	_drift_rng.randomize()
+	for i in range(3):
+		var p := AudioStreamPlayer.new()
+		p.bus = BUS_MUSIC
+		p.volume_db = -19.0
+		add_child(p)
+		drift_players.append(p)
+	_drift_timer = _drift_rng.randf_range(2.0, 5.0)
+
+func _process(delta: float) -> void:
+	if drift_players.is_empty() or not SettingsManager.music_enabled:
+		return
+	_drift_timer -= delta
+	if _drift_timer > 0.0:
+		return
+	_drift_timer = _drift_rng.randf_range(DRIFT_MIN_GAP, DRIFT_MAX_GAP)
+	_play_drift_event()
+
+func _play_drift_event() -> void:
+	var free_player: AudioStreamPlayer = null
+	for p in drift_players:
+		if not p.playing:
+			free_player = p
+			break
+	if free_player == null:
+		return
+	var kind: int = _drift_rng.randi_range(0, 2)
+	var left_to_right: bool = _drift_rng.randf() < 0.5
+	match kind:
+		0:
+			free_player.stream = _make_drift_drop(left_to_right)
+		1:
+			free_player.stream = _make_drift_air(left_to_right)
+		_:
+			free_player.stream = _make_drift_note(left_to_right)
+	free_player.play()
+
+## Equal-power pan so the loudness stays constant as the image moves; a linear
+## crossfade dips in the middle and reads as a gap rather than a pass.
+func _pan_gains(t: float, left_to_right: bool) -> Vector2:
+	var p: float = t if left_to_right else 1.0 - t
+	var angle: float = p * PI * 0.5
+	return Vector2(cos(angle), sin(angle))
+
+func _stereo_wav(frames: int) -> PackedByteArray:
+	var pcm := PackedByteArray()
+	pcm.resize(frames * 4)
+	return pcm
+
+func _finish_stereo(pcm: PackedByteArray) -> AudioStreamWAV:
+	var wav := AudioStreamWAV.new()
+	wav.format = AudioStreamWAV.FORMAT_16_BITS
+	wav.mix_rate = int(sample_rate)
+	wav.stereo = true
+	wav.data = pcm
+	return wav
+
+## A single drop with a short pitch fall and a long tail, drifting as it rings.
+func _make_drift_drop(ltr: bool) -> AudioStreamWAV:
+	var dur: float = _drift_rng.randf_range(3.2, 4.8)
+	var frames: int = int(sample_rate * dur)
+	var pcm := _stereo_wav(frames)
+	var f_start: float = _drift_rng.randf_range(900.0, 1400.0)
+	var f_end: float = f_start * 0.55
+	var phase: float = 0.0
+	for i in range(frames):
+		var t: float = float(i) / sample_rate
+		var u: float = t / dur
+		var freq: float = lerpf(f_start, f_end, minf(1.0, t / 0.09))
+		phase += TAU * freq / sample_rate
+		var strike: float = exp(-t * 7.0) * (1.0 - exp(-t * 300.0))
+		var tail: float = exp(-t * 0.45) * 0.38
+		var s: float = sin(phase) * (strike + tail) * 0.5
+		var g: Vector2 = _pan_gains(u, ltr)
+		pcm.encode_s16(i * 4, int(clampf(s * g.x, -1.0, 1.0) * 32767.0))
+		pcm.encode_s16(i * 4 + 2, int(clampf(s * g.y, -1.0, 1.0) * 32767.0))
+	return _finish_stereo(pcm)
+
+## Filtered noise that swells and fades - a breath of air over the water.
+func _make_drift_air(ltr: bool) -> AudioStreamWAV:
+	var dur: float = _drift_rng.randf_range(5.0, 7.5)
+	var frames: int = int(sample_rate * dur)
+	var pcm := _stereo_wav(frames)
+	# Two one-pole filters in series make a soft band; white noise alone is hiss.
+	var lp: float = 0.0
+	var hp: float = 0.0
+	var cutoff: float = _drift_rng.randf_range(0.02, 0.05)
+	for i in range(frames):
+		var t: float = float(i) / sample_rate
+		var u: float = t / dur
+		var n: float = _drift_rng.randf_range(-1.0, 1.0)
+		lp += (n - lp) * cutoff
+		hp += (lp - hp) * cutoff * 0.25
+		# Two one-pole stages this gentle leave almost nothing behind, so the
+		# band needs real make-up gain to be audible at all.
+		var band: float = (lp - hp) * 9.0
+		var env: float = sin(u * PI)
+		var s: float = band * env * 0.75
+		var g: Vector2 = _pan_gains(u, ltr)
+		pcm.encode_s16(i * 4, int(clampf(s * g.x, -1.0, 1.0) * 32767.0))
+		pcm.encode_s16(i * 4 + 2, int(clampf(s * g.y, -1.0, 1.0) * 32767.0))
+	return _finish_stereo(pcm)
+
+## A single pentatonic note, soft enough to sit under the board rather than
+## announce itself, with two quiet harmonics for body.
+func _make_drift_note(ltr: bool) -> AudioStreamWAV:
+	var dur: float = _drift_rng.randf_range(4.0, 6.0)
+	var frames: int = int(sample_rate * dur)
+	var pcm := _stereo_wav(frames)
+	var base: float = PENTATONIC[_drift_rng.randi_range(5, 12)]
+	var p1: float = 0.0
+	var p2: float = 0.0
+	var p3: float = 0.0
+	for i in range(frames):
+		var t: float = float(i) / sample_rate
+		var u: float = t / dur
+		p1 += TAU * base / sample_rate
+		p2 += TAU * base * 2.0 / sample_rate
+		p3 += TAU * base * 3.0 / sample_rate
+		var env: float = exp(-t * 0.42) * (1.0 - exp(-t * 14.0))
+		var s: float = (sin(p1) + sin(p2) * 0.22 + sin(p3) * 0.08) * env * 0.34
+		var g: Vector2 = _pan_gains(u, ltr)
+		pcm.encode_s16(i * 4, int(clampf(s * g.x, -1.0, 1.0) * 32767.0))
+		pcm.encode_s16(i * 4 + 2, int(clampf(s * g.y, -1.0, 1.0) * 32767.0))
+	return _finish_stereo(pcm)
