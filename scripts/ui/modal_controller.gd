@@ -224,24 +224,33 @@ func _ready() -> void:
 ## hides and immediately re-shows (back out of Board Cleared, which hides the
 ## card and then asks main.gd for the home screen) would be switched off again a
 ## frame later, leaving the player staring at an empty pond.
+## Both transitions are tracked, not just the hide. An untracked show tween
+## outlives the hide that was meant to cancel it and keeps driving the card's
+## alpha after the hide callback has already switched `visible` off.
 var _hide_tween: Tween = null
+var _show_tween: Tween = null
 
-func show_modal() -> void:
+func _kill_transitions() -> void:
 	if _hide_tween != null and _hide_tween.is_valid():
 		_hide_tween.kill()
 	_hide_tween = null
+	if _show_tween != null and _show_tween.is_valid():
+		_show_tween.kill()
+	_show_tween = null
+
+func show_modal() -> void:
+	_kill_transitions()
 	visible = true
 	_sync_background_load()
 	_fit_scroll()
 	card_panel.scale = Vector2(0.92, 0.92)
 	card_panel.modulate.a = 0.0
-	var tween := create_tween().set_parallel(true)
-	tween.tween_property(card_panel, "scale", Vector2.ONE, 0.22).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tween.tween_property(card_panel, "modulate:a", 1.0, 0.16)
+	_show_tween = create_tween().set_parallel(true)
+	_show_tween.tween_property(card_panel, "scale", Vector2.ONE, 0.22).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	_show_tween.tween_property(card_panel, "modulate:a", 1.0, 0.16)
 
 func hide_modal() -> void:
-	if _hide_tween != null and _hide_tween.is_valid():
-		_hide_tween.kill()
+	_kill_transitions()
 	_hide_tween = create_tween()
 	_hide_tween.tween_property(card_panel, "modulate:a", 0.0, 0.12)
 	_hide_tween.tween_callback(func():

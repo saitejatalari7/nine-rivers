@@ -23,8 +23,8 @@ const COL_CREAM_BOT := Color("#f2e9d4")     # Bottom face tone (--cream-2)
 const COL_BORDER := Color("#cdb98f")        # Fine ivory rim
 const COL_DEEP := Color("#b79f74")          # Biscuit warm ceramic underside (--deep)
 
-const COL_RED := Color("#c0392b")           # Imperial cinnabar vermilion
-const COL_GREEN := Color("#1f7a52")         # Jade emerald green
+const COL_RED := Color("#b03225")           # Imperial cinnabar vermilion
+const COL_GREEN := Color("#1b6d49")         # Jade emerald green
 const COL_BLUE := Color("#28527a")          # Porcelain cobalt blue
 const COL_INK := Color("#232b26")           # Deep calligraphy ink
 const COL_GOLD := Color("#f2c14e")          # 24k Imperial Gold
@@ -160,10 +160,10 @@ static func get_col_red(theme_id: String = "") -> Color:
 		# measured 2.4:1 and the glyphs sank into the tile.
 		return Color("#8c1c13") # Deep imperial crimson
 	elif th == "theme_cherry_blossom":
-		return Color("#cf3b5b") # Sakura rose cinnabar
+		return Color("#8f2340") # Sakura rose cinnabar
 	var mode: String = SettingsManager.color_blind_mode
 	if mode in ["deuteranopia", "protanopia"]:
-		return Color("#e04a3f")
+		return Color("#b83a2e")
 	return COL_RED
 
 static func get_col_green(theme_id: String = "") -> Color:
@@ -176,10 +176,10 @@ static func get_col_green(theme_id: String = "") -> Color:
 		# Was #c69214 - gold glyphs on a gold face. Bamboo simply vanished.
 		return Color("#17503a") # Deep malachite
 	elif th == "theme_cherry_blossom":
-		return Color("#38a169") # Tender spring tea bud green
+		return Color("#2f5626") # Tender spring tea bud green
 	var mode: String = SettingsManager.color_blind_mode
 	if mode in ["deuteranopia", "protanopia"]:
-		return Color("#008a8a")
+		return Color("#006e6e")
 	return COL_GREEN
 
 static func get_col_blue(theme_id: String = "") -> Color:
@@ -192,7 +192,7 @@ static func get_col_blue(theme_id: String = "") -> Color:
 		# Was #b8860b - goldenrod dots on gold. Invisible at tile size.
 		return Color("#1b3a5c") # Deep cobalt
 	elif th == "theme_cherry_blossom":
-		return Color("#6c5ce7") # Soft wisteria iris
+		return Color("#453a9c") # Soft wisteria iris
 	var mode: String = SettingsManager.color_blind_mode
 	if mode == "tritanopia":
 		return Color("#593570")
