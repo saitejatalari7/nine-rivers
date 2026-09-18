@@ -133,7 +133,7 @@ static func get_col_ink(theme_id: String = "") -> Color:
 	if th == "theme_obsidian_ink":
 		return Color("#f0f4f8") # White jade calligraphy on dark basalt
 	elif th == "theme_imperial_gold":
-		return Color("#2a1608") # Deep sepia lacquer ink
+		return Color("#fff4e0") # Pale lacquer ink
 	elif th == "theme_cherry_blossom":
 		return Color("#2e181f")
 	return COL_INK
@@ -156,9 +156,7 @@ static func get_col_red(theme_id: String = "") -> Color:
 	if th == "theme_obsidian_ink":
 		return Color("#ff4757") # Radiant neon vermilion for dark basalt
 	elif th == "theme_imperial_gold":
-		# Deep enough to clear 3:1 against the gilt face. The previous #b22222
-		# measured 2.4:1 and the glyphs sank into the tile.
-		return Color("#8c1c13") # Deep imperial crimson
+		return Color("#ffd6cc") # Pale cinnabar
 	elif th == "theme_cherry_blossom":
 		return Color("#8f2340") # Sakura rose cinnabar
 	var mode: String = SettingsManager.color_blind_mode
@@ -173,8 +171,10 @@ static func get_col_green(theme_id: String = "") -> Color:
 	if th == "theme_obsidian_ink":
 		return Color("#00d2d3") # Radiant electric turquoise
 	elif th == "theme_imperial_gold":
-		# Was #c69214 - gold glyphs on a gold face. Bamboo simply vanished.
-		return Color("#17503a") # Deep malachite
+		# The face is a dark gold texture, so the ink has to be LIGHT. The
+		# previous dark malachite was picked against a near-white face that the
+		# renderer stopped using at the Blender art pass.
+		return Color("#d6f5cf") # Pale jade
 	elif th == "theme_cherry_blossom":
 		return Color("#2f5626") # Tender spring tea bud green
 	var mode: String = SettingsManager.color_blind_mode
@@ -189,8 +189,7 @@ static func get_col_blue(theme_id: String = "") -> Color:
 	if th == "theme_obsidian_ink":
 		return Color("#54a0ff") # Radiant sapphire cyan
 	elif th == "theme_imperial_gold":
-		# Was #b8860b - goldenrod dots on gold. Invisible at tile size.
-		return Color("#1b3a5c") # Deep cobalt
+		return Color("#cfe4ff") # Pale cobalt
 	elif th == "theme_cherry_blossom":
 		return Color("#453a9c") # Soft wisteria iris
 	var mode: String = SettingsManager.color_blind_mode
@@ -545,7 +544,7 @@ func _draw() -> void:
 		var body_rect := Rect2(offset_x, offset_y, TILE_W, TILE_H)
 		# Blocked tiles were a separate, darker face colour per theme. One
 		# texture plus a tint keeps the two states from drifting apart.
-		var tint: Color = Color.WHITE if (is_free or is_revealed or is_dissolving) else Color(0.70, 0.70, 0.68, 1.0)
+		var tint: Color = Color.WHITE if (is_free or is_revealed or is_dissolving) else Color(0.86, 0.86, 0.84, 1.0)
 		draw_texture_rect(body_tex, body_rect, false, tint)
 		# No procedural highlight line or theme framing here: the sprite already
 		# carries its own bevel highlight, and for gold and cherry it carries the
@@ -667,10 +666,10 @@ func _draw() -> void:
 
 func _draw_atmospheric_blocked_tint(face_r: Rect2) -> void:
 	# Soft warm translucent shadow wash (preserves beautiful ivory porcelain look)
-	var blocked_wash := Color(0.12, 0.14, 0.12, 0.22)
+	var blocked_wash := Color(0.12, 0.14, 0.12, 0.10)
 	draw_rect(face_r, blocked_wash, true)
 	var top_shadow := Rect2(face_r.position, Vector2(face_r.size.x, face_r.size.y * 0.40))
-	draw_rect(top_shadow, Color(0.06, 0.08, 0.07, 0.10), true)
+	draw_rect(top_shadow, Color(0.06, 0.08, 0.07, 0.06), true)
 
 func _draw_fog_shroud(face_r: Rect2) -> void:
 	# Softened. At alpha 0.92 the mist was near-opaque, so on a 144-tile board
@@ -819,14 +818,18 @@ func draw_canonical_characters(face_r: Rect2, rank: int) -> void:
 	var bot_sz: int = int(face_r.size.x * 0.38) # ~24px
 	
 	if th == "theme_imperial_gold":
-		# 24k Gilded gold engraving with warm chased depth
-		draw_string(font, Vector2(cx - top_sz * 0.5 + 1.0, cy - 2.0), num_str, HORIZONTAL_ALIGNMENT_CENTER, top_sz, top_sz, Color("#6d460e"))
-		draw_string(font, Vector2(cx - top_sz * 0.5, cy - 3.0), num_str, HORIZONTAL_ALIGNMENT_CENTER, top_sz, top_sz, Color("#d49826"))
-		draw_string(font, Vector2(cx - top_sz * 0.5 - 0.5, cy - 3.5), num_str, HORIZONTAL_ALIGNMENT_CENTER, top_sz, top_sz, Color(1.0, 0.95, 0.70, 0.45))
-		
-		# 萬 in royal crimson lacquer
-		draw_string(font, Vector2(cx - bot_sz * 0.5 + 1.0, cy + bot_sz * 0.95 + 1.0), "萬", HORIZONTAL_ALIGNMENT_CENTER, bot_sz, bot_sz, Color("#4a0e12"))
-		draw_string(font, Vector2(cx - bot_sz * 0.5, cy + bot_sz * 0.95), "萬", HORIZONTAL_ALIGNMENT_CENTER, bot_sz, bot_sz, Color("#b22222"))
+		# Same trap as the dragons: the numeral was gilded #d49826 on a #8b6c26
+		# gold face and 萬 was dark crimson on dark gold, both hardcoded past
+		# the palette. Emboss kept, colours taken from the palette.
+		var gold_ink: Color = get_col_ink(th)
+		var gold_red: Color = get_col_red(th)
+		var ink_sh := Color(gold_ink.r * 0.22, gold_ink.g * 0.20, gold_ink.b * 0.18, 0.85)
+		var red_sh := Color(gold_red.r * 0.25, gold_red.g * 0.18, gold_red.b * 0.18, 0.85)
+		draw_string(font, Vector2(cx - top_sz * 0.5 + 1.0, cy - 2.0), num_str, HORIZONTAL_ALIGNMENT_CENTER, top_sz, top_sz, ink_sh)
+		draw_string(font, Vector2(cx - top_sz * 0.5, cy - 3.0), num_str, HORIZONTAL_ALIGNMENT_CENTER, top_sz, top_sz, gold_ink)
+
+		draw_string(font, Vector2(cx - bot_sz * 0.5 + 1.0, cy + bot_sz * 0.95 + 1.0), "萬", HORIZONTAL_ALIGNMENT_CENTER, bot_sz, bot_sz, red_sh)
+		draw_string(font, Vector2(cx - bot_sz * 0.5, cy + bot_sz * 0.95), "萬", HORIZONTAL_ALIGNMENT_CENTER, bot_sz, bot_sz, gold_red)
 	elif th == "theme_obsidian_ink":
 		# Luminescent white-jade glyph with electric cyan glow
 		draw_string(font, Vector2(cx - top_sz * 0.5, cy - 3.0), num_str, HORIZONTAL_ALIGNMENT_CENTER, top_sz, top_sz, Color(0, 0.85, 0.8, 0.35))
@@ -844,15 +847,16 @@ func draw_canonical_glyph(face_r: Rect2, text: String, col: Color, font_size: in
 	var cy: float = face_r.position.y + face_r.size.y * 0.5
 	
 	if th == "theme_imperial_gold":
-		if text == "發":
-			# Gilded 24k Gold Prosperity character
-			draw_string(font, Vector2(cx - font_size * 0.5 + 1.2, cy + font_size * 0.36 + 1.2), text, HORIZONTAL_ALIGNMENT_CENTER, font_size, font_size, Color("#6d460e"))
-			draw_string(font, Vector2(cx - font_size * 0.5, cy + font_size * 0.36), text, HORIZONTAL_ALIGNMENT_CENTER, font_size, font_size, Color("#d49826"))
-			draw_string(font, Vector2(cx - font_size * 0.5 - 0.5, cy + font_size * 0.36 - 0.5), text, HORIZONTAL_ALIGNMENT_CENTER, font_size, font_size, Color(1.0, 0.95, 0.70, 0.55))
-			return
-		elif text == "中":
-			draw_string(font, Vector2(cx - font_size * 0.5 + 1.0, cy + font_size * 0.36 + 1.0), text, HORIZONTAL_ALIGNMENT_CENTER, font_size, font_size, Color("#4a0e12"))
-			draw_string(font, Vector2(cx - font_size * 0.5, cy + font_size * 0.36), text, HORIZONTAL_ALIGNMENT_CENTER, font_size, font_size, Color("#b22222"))
+		# These two used to hardcode their own colours and ignore `col`, which
+		# is why fixing the palette did nothing for the dragons: 發 was drawn
+		# #d49826 on a #8b6c26 gold face - gold on gold, the exact bug this file
+		# claims elsewhere to have fixed - and 中 was dark red on dark gold. The
+		# emboss is worth keeping, so it is now built FROM the palette colour
+		# rather than instead of it.
+		if text == "發" or text == "中":
+			var shadow := Color(col.r * 0.25, col.g * 0.22, col.b * 0.20, 0.85)
+			draw_string(font, Vector2(cx - font_size * 0.5 + 1.1, cy + font_size * 0.36 + 1.1), text, HORIZONTAL_ALIGNMENT_CENTER, font_size, font_size, shadow)
+			draw_string(font, Vector2(cx - font_size * 0.5, cy + font_size * 0.36), text, HORIZONTAL_ALIGNMENT_CENTER, font_size, font_size, col)
 			return
 	elif th == "theme_obsidian_ink":
 		# Soft glowing halo on dark volcanic stone
