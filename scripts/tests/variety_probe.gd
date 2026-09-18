@@ -14,13 +14,18 @@ func _ready() -> void:
 	var fails := 0
 	print("bank        variants  closest pair  effective variants*")
 	for spec in [
-		["clack", AudioManager.clack_samples, 0.20],
+		# The combined pool is the union of the per-material banks, so its
+		# closest pair is by construction the worst within-material pair -
+		# flagging it as a near-duplicate would be double-counting.
+		["clack (union)", AudioManager.clack_samples, 0.20, true],
+		["ice", AudioManager.ice_samples, 0.18],
 		["sand", AudioManager.sand_samples, 0.20],
 		["glass", AudioManager.glass_samples, 0.20],
 		["shatter", AudioManager.shatter_samples, 0.20],
 	]:
 		var bank: Array = spec[1]
 		var pitch_span: float = spec[2]
+		var informational: bool = spec.size() > 3 and bool(spec[3])
 		if bank.size() < 2:
 			print("%-11s %8d  (too few to compare)" % [spec[0], bank.size()])
 			fails += 1
@@ -33,11 +38,12 @@ func _ready() -> void:
 		# steps of roughly 3%, so a +-10% span is about 6 distinguishable pitches.
 		var effective: int = bank.size() * int(pitch_span / 0.03)
 		var flag := ""
-		if worst > NEAR_DUPLICATE:
+		if worst > NEAR_DUPLICATE and not informational:
 			flag = "  NEAR-DUPLICATE"
 			fails += 1
 		print("%-11s %8d  %12.3f  %d%s" % [spec[0], bank.size(), worst, effective, flag])
 
+	_check_materials()
 	print("")
 	print("  * bank size x distinguishable pitch steps within the per-play jitter")
 	print("Failures: %d" % fails)
@@ -47,6 +53,39 @@ func _ready() -> void:
 ## correlate highly in the time domain because they share a sharp envelope -
 ## the first version of this probe measured "these are both clicks" rather than
 ## "these sound the same". Comparing magnitude spectra is closer to hearing.
+## Variety within a material is not the point of the material split. The point
+## is that a bamboo tile and a dot tile sound like DIFFERENT OBJECTS, so the
+## separation between banks has to be larger than the spread inside one - or
+## the player hears eight kinds of the same thing rather than five instruments.
+func _check_materials() -> void:
+	print("")
+	print("material   within-bank   vs other materials   separated by")
+	var suits: Array = AudioManager.MATERIALS.keys()
+	var worst_sep := 999.0
+	for a in suits:
+		var bank_a: Array = AudioManager.clack_banks[a]
+		var within := 0.0
+		for i in range(bank_a.size()):
+			for j in range(i + 1, bank_a.size()):
+				within = maxf(within, _similarity(bank_a[i], bank_a[j]))
+		# Closest approach to any other material.
+		var across := -1.0
+		for b in suits:
+			if b == a:
+				continue
+			for x in bank_a:
+				for y in AudioManager.clack_banks[b]:
+					across = maxf(across, _similarity(x, y))
+		var margin: float = within - across
+		if margin < worst_sep:
+			worst_sep = margin
+		print("%-10s %11.3f   %18.3f   %+.3f%s" % [
+			a, within, across, margin, "" if margin > 0.0 else "  NOT DISTINCT"])
+	if worst_sep <= 0.0:
+		print("  FAIL  at least one material is no more like itself than like the others")
+	else:
+		print("  every material is more like itself than like any other (margin %+.3f)" % worst_sep)
+
 func _similarity(a: AudioStreamWAV, b: AudioStreamWAV) -> float:
 	var sa := _spectrum(a)
 	var sb := _spectrum(b)

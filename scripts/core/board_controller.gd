@@ -253,7 +253,7 @@ func _on_tile_clicked(view: TileView) -> void:
 	var reason := get_tile_blocked_reason(t, grid)
 	if reason != "free":
 		view.play_wrong_shake()
-		AudioManager.play_tile_clack(0.7)
+		AudioManager.play_tile_clack(0.7, view.position + Vector2(TW * 0.5, TH * 0.5), t.z, t.suit)
 		if reason == "covered":
 			toast_requested.emit("Covered by a tile above!")
 		else:
@@ -264,7 +264,9 @@ func _on_tile_clicked(view: TileView) -> void:
 	if t.is_frozen:
 		t.is_frozen = false
 		view.play_wrong_shake()
-		AudioManager.play_tile_clack(1.6)
+		# The ice, not the tile underneath it - bright and glassy whatever the
+		# suit, so cracking always sounds like cracking.
+		AudioManager.play_ice_crack(view.position + Vector2(TW * 0.5, TH * 0.5), t.z)
 		toast_requested.emit("Ice cracked! Tile thawed.")
 		view.queue_redraw()
 		return
@@ -273,7 +275,7 @@ func _on_tile_clicked(view: TileView) -> void:
 	if selected_tiles.has(t):
 		selected_tiles.erase(t)
 		view.set_selected(false)
-		AudioManager.play_tile_clack(1.1)
+		AudioManager.play_tile_clack(1.1, view.position + Vector2(TW * 0.5, TH * 0.5), t.z, t.suit)
 		return
 		
 	# Compatibility check with current selection
@@ -295,7 +297,7 @@ func _on_tile_clicked(view: TileView) -> void:
 	selected_tiles.append(t)
 	view.set_selected(true)
 	var tile_at: Vector2 = view.position + Vector2(TW * 0.5, TH * 0.5)
-	AudioManager.play_tile_clack(1.2, tile_at, t.z)
+	AudioManager.play_tile_clack(1.2, tile_at, t.z, t.suit)
 	AudioManager.play_tile_pick(tile_at, t.z)
 	
 	# Check if set is complete

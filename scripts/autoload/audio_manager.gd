@@ -93,6 +93,7 @@ func _ready() -> void:
 	_setup_positional_players()
 	_pregenerate_ui_click()
 	_pregenerate_clack_sounds()
+	_pregenerate_ice_sounds()
 	_pregenerate_shatter_sounds()
 	_pregenerate_sand_sounds()
 	_pregenerate_glass_shatter_sounds()
@@ -307,52 +308,197 @@ func _pregenerate_ui_click() -> void:
 ## roughly 36 times a board, which is what reads as repetition however good the
 ## sample is.
 ##
+## Worse, every suit sounded identical, so the most frequent sound in the game
+## carried no information. Each suit now has its own material - struck bamboo
+## and a porcelain dot are as different to the ear as they are to the eye - so
+## a player hears WHAT they cleared without looking, which matters when a tile
+## is 33dp across.
+##
 ## These are synthesised, not recorded, so variety costs generation time rather
-## than download size - a clack is 75ms, so a bank of 32 is about 2.4 seconds of
-## audio in total. Parameters are spread pseudo-randomly rather than stepped, so
-## the bank does not sound like someone playing up a scale.
-const CLACK_VARIANTS: int = 32
+## than download size: 5 materials x 8 variants is 40 clacks, about 3 seconds
+## of audio in total.
+const CLACK_PER_MATERIAL: int = 8
+
+## suit -> the physical thing being struck.
+##
+## The first attempt gave every material the same model - two sines plus noise -
+## and only moved the frequencies. The probe measured four of the five as no
+## more like themselves than like each other, which is exactly right: that is
+## one instrument in four tunings, not four instruments. What separates real
+## materials is structural.
+##
+##   partials  how many modes ring, and at what ratios. Harmonic ratios sound
+##             like a note; inharmonic ones sound like an object. A struck
+##             plate is 1 : 2.76 : 5.40, which is why ceramic reads as ceramic.
+##   noise     how much of the strike is grit rather than tone. Dense wood is
+##             nearly all grit; a bell is nearly none.
+##   decay     how long it rings. Bronze outlasts hardwood by a factor of five,
+##             and that ratio carries more identity than pitch does.
+const MATERIALS: Dictionary = {
+	# Hollow bamboo tube: low body, one strong air resonance, gone quickly.
+	"bam": {
+		"body": [700.0, 960.0], "partials": [1.0, 2.62], "amps": [1.0, 0.55],
+		"decay": [95.0, 125.0], "noise": [0.30, 0.48], "noise_decay": [430.0, 560.0],
+		"noise_lp": 0.35,
+	},
+	# Glazed porcelain: plate ratios, almost no grit, rings on.
+	"dot": {
+		"body": [1500.0, 1880.0], "partials": [1.0, 2.76, 5.40], "amps": [1.0, 0.62, 0.30],
+		"decay": [26.0, 38.0], "noise": [0.08, 0.16], "noise_decay": [620.0, 780.0],
+		"noise_lp": 0.85,
+	},
+	# Dense hardwood: a thud. Almost all grit, one weak mode, dead fast.
+	"char": {
+		"body": [330.0, 560.0], "partials": [1.0, 1.72], "amps": [0.55, 0.20],
+		"decay": [165.0, 215.0], "noise": [0.80, 0.98], "noise_decay": [260.0, 340.0],
+		# Heavily filtered: hardwood on felt is a dull thump with almost no
+		# treble, and unfiltered grit is what left this material measuring no
+		# more like itself than like the others.
+		"noise_lp": 0.06,
+	},
+	# Small bronze: four modes, a detuned pair beating against each other.
+	"wind": {
+		"body": [1320.0, 1690.0], "partials": [1.0, 2.01, 3.42, 5.83],
+		"amps": [1.0, 0.85, 0.48, 0.26],
+		"decay": [17.0, 26.0], "noise": [0.05, 0.11], "noise_decay": [700.0, 860.0],
+		"noise_lp": 0.95,
+	},
+	# Larger bronze: lower, longer, heavier on the low modes.
+	"dragon": {
+		"body": [560.0, 980.0], "partials": [1.0, 1.98, 2.94, 4.21, 6.05],
+		"amps": [1.0, 0.72, 0.55, 0.34, 0.18],
+		"decay": [9.0, 22.0], "noise": [0.04, 0.09], "noise_decay": [760.0, 920.0],
+		"noise_lp": 0.90,
+	},
+}
+
+## suit -> bank. Flowers and seasons borrow the dragon voice; they are honours
+## too, and giving every wild its own material would be variety nobody hears.
+var clack_banks: Dictionary = {}
 
 func _pregenerate_clack_sounds() -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 0x1EA7C1AC
-	for variation in range(CLACK_VARIANTS):
-		var duration: float = rng.randf_range(0.065, 0.085)
-		var total_frames: int = int(sample_rate * duration)
+	for suit in MATERIALS.keys():
+		var bank: Array[AudioStreamWAV] = []
+		for variation in range(CLACK_PER_MATERIAL):
+			bank.append(_synth_clack(MATERIALS[suit], variation, rng))
+		clack_banks[suit] = bank
+		# The generic pool keeps every material, so a caller without a suit
+		# still gets the full spread rather than one instrument.
+		for w in bank:
+			clack_samples.append(w)
+
+## Stratified within the material: 8 independent draws from overlapping ranges
+## collide by the birthday problem, and an earlier version produced a pair
+## measuring 0.94 similar. Each variant owns a slice and jitters inside it,
+## with body and ring strided differently so a bank is not a rising scale.
+func _synth_clack(mat: Dictionary, variation: int, rng: RandomNumberGenerator) -> AudioStreamWAV:
+	var n: int = CLACK_PER_MATERIAL
+	var u: float = (float(variation) + rng.randf()) / float(n)
+	var v: float = (float((variation * 5) % n) + rng.randf()) / float(n)
+	var w: float = (float((variation * 3) % n) + rng.randf()) / float(n)
+
+	var body: float = lerpf(mat["body"][0], mat["body"][1], u)
+	var decay: float = lerpf(mat["decay"][0], mat["decay"][1], w)
+	var noise_amp: float = lerpf(mat["noise"][0], mat["noise"][1], v)
+	var noise_decay: float = lerpf(mat["noise_decay"][0], mat["noise_decay"][1], u)
+	var partials: Array = mat["partials"]
+	var amps: Array = mat["amps"]
+
+	# A long ring needs a long buffer or it is cut off mid-decay; a thud does
+	# not, and padding it with silence only wastes memory.
+	var duration: float = clampf(5.0 / decay, 0.055, 0.42)
+	var frames: int = int(sample_rate * duration)
+	var pcm := PackedByteArray()
+	pcm.resize(frames * 2)
+
+	# Higher modes of a struck object die faster than the fundamental. Without
+	# this every material keeps its full brightness to the end and they all
+	# converge on the same timbre.
+	var mode_decay := PackedFloat32Array()
+	mode_decay.resize(partials.size())
+	for m in range(partials.size()):
+		mode_decay[m] = decay * (1.0 + float(m) * 0.55)
+
+	var norm: float = 0.0
+	for a in amps:
+		norm += float(a)
+	norm = maxf(norm, 0.001)
+
+	var noise_lp: float = float(mat.get("noise_lp", 1.0))
+	# A one-pole this low loses most of the signal, so make up the level or the
+	# thud disappears entirely.
+	var noise_gain: float = 1.0 / sqrt(maxf(noise_lp, 0.02))
+	var noise_state: float = 0.0
+
+	for i in range(frames):
+		var t: float = float(i) / sample_rate
+		var tone: float = 0.0
+		for m in range(partials.size()):
+			tone += sin(t * TAU * body * float(partials[m])) * float(amps[m]) * exp(-t * mode_decay[m])
+		tone /= norm
+		noise_state += ((rng.randf() * 2.0 - 1.0) - noise_state) * noise_lp
+		var grit: float = noise_state * exp(-t * noise_decay) * noise_amp * noise_gain
+		var val: float = clampf((tone + grit) * 0.62, -1.0, 1.0)
+		pcm.encode_s16(i * 2, int(val * 32767.0))
+
+	var wav := AudioStreamWAV.new()
+	wav.format = AudioStreamWAV.FORMAT_16_BITS
+	wav.mix_rate = int(sample_rate)
+	wav.stereo = false
+	wav.data = pcm
+	return wav
+
+## Falls back to the full spread when the suit has no material of its own.
+func clack_bank_for(suit: String) -> Array:
+	if clack_banks.has(suit):
+		return clack_banks[suit]
+	if suit == "flower" or suit == "season":
+		return clack_banks.get("dragon", clack_samples)
+	return clack_samples
+
+var ice_samples: Array[AudioStreamWAV] = []
+
+## Frost is one extra tap and no more, so the ice has to announce itself by
+## sound alone or the modifier reads as nothing happening. Bright, short and
+## brittle: a high inharmonic pair over a fast noise burst, nothing like the
+## wooden or ceramic bodies underneath it.
+func _pregenerate_ice_sounds() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 0x1CEC4AC
+	for variation in range(8):
+		var u: float = (float(variation) + rng.randf()) / 8.0
+		var v: float = (float((variation * 3) % 8) + rng.randf()) / 8.0
+		var f1: float = lerpf(5200.0, 7400.0, u)
+		var f2: float = lerpf(3100.0, 4600.0, v)
+		var dur: float = rng.randf_range(0.10, 0.15)
+		var frames: int = int(sample_rate * dur)
 		var pcm := PackedByteArray()
-		pcm.resize(total_frames * 2)
-
-		# Stratified, not uniform random: 32 independent draws from overlapping
-		# ranges collide by the birthday problem, and the first attempt at this
-		# produced a pair measuring 0.94 similar. Each variant instead owns a
-		# slice of the range and jitters inside it, so the bank is guaranteed
-		# spread. The ring is strided by a coprime step so body and ring do not
-		# rise together and turn the bank into a scale.
-		var u: float = (float(variation) + rng.randf()) / float(CLACK_VARIANTS)
-		var v: float = (float((variation * 13) % CLACK_VARIANTS) + rng.randf()) / float(CLACK_VARIANTS)
-		var w: float = (float((variation * 7) % CLACK_VARIANTS) + rng.randf()) / float(CLACK_VARIANTS)
-		var base_freq: float = lerpf(1050.0, 1760.0, u)
-		var ring_freq: float = lerpf(2450.0, 3950.0, v)
-		var decay: float = lerpf(78.0, 116.0, w)
-		var ring_amp: float = lerpf(0.26, 0.56, v)
-		var snap_amp: float = lerpf(0.42, 0.88, w)
-		var snap_decay: float = lerpf(360.0, 540.0, u)
-
-		for frame in range(total_frames):
-			var t: float = float(frame) / sample_rate
-			var env: float = exp(-t * decay)
-			var primary: float = sin(t * TAU * base_freq)
-			var ping: float = sin(t * TAU * ring_freq) * ring_amp
-			var snap: float = (rng.randf() * 2.0 - 1.0) * exp(-t * snap_decay) * snap_amp
-			var sample_val: float = clampf((primary + ping + snap) * env * 0.52, -1.0, 1.0)
-			pcm.encode_s16(frame * 2, int(sample_val * 32767.0))
-
+		pcm.resize(frames * 2)
+		for i in range(frames):
+			var t: float = float(i) / sample_rate
+			# Two envelopes: the snap of the fracture, then a short glassy tail.
+			var snap: float = exp(-t * 340.0)
+			var tail: float = exp(-t * 46.0) * 0.5
+			var tone: float = sin(t * TAU * f1) * 0.7 + sin(t * TAU * f2) * 0.5
+			var grit: float = (rng.randf() * 2.0 - 1.0) * snap * 0.9
+			var val: float = clampf((tone * (snap + tail) + grit) * 0.42, -1.0, 1.0)
+			pcm.encode_s16(i * 2, int(val * 32767.0))
 		var wav := AudioStreamWAV.new()
 		wav.format = AudioStreamWAV.FORMAT_16_BITS
 		wav.mix_rate = int(sample_rate)
 		wav.stereo = false
 		wav.data = pcm
-		clack_samples.append(wav)
+		ice_samples.append(wav)
+
+func play_ice_crack(at: Vector2 = Vector2.INF, z: int = 0) -> void:
+	haptic(14)
+	if not SettingsManager.sfx_enabled or ice_samples.is_empty():
+		return
+	var sample: AudioStreamWAV = ice_samples[randi() % ice_samples.size()]
+	_play_at(sample, at, z, -5.0 + randf() * 1.5, 0.92 + randf() * 0.18)
+
 
 func _pregenerate_shatter_sounds() -> void:
 	# 3 distinct tactile ceramic fracture & crumbling dust whoosh samples
@@ -501,11 +647,15 @@ func play_click() -> void:
 		player.volume_db = -5.0
 		player.play()
 
-func play_tile_clack(pitch_mod: float = 1.0, at: Vector2 = Vector2.INF, z: int = 0) -> void:
+func play_tile_clack(pitch_mod: float = 1.0, at: Vector2 = Vector2.INF, z: int = 0,
+		suit: String = "") -> void:
 	haptic(8)
 	if not SettingsManager.sfx_enabled or clack_samples.is_empty():
 		return
-	var sample: AudioStreamWAV = clack_samples[randi() % clack_samples.size()]
+	var bank: Array = clack_bank_for(suit)
+	if bank.is_empty():
+		bank = clack_samples
+	var sample: AudioStreamWAV = bank[randi() % bank.size()]
 	_play_at(sample, at, z, -3.5 + randf() * 1.6, pitch_mod * (0.90 + randf() * 0.20))
 
 func play_tile_match(flow_level: int, is_triple: bool = false, is_glass: bool = false,
