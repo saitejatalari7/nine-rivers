@@ -50,16 +50,34 @@ func _ready() -> void:
 func _similarity(a: AudioStreamWAV, b: AudioStreamWAV) -> float:
 	var sa := _spectrum(a)
 	var sb := _spectrum(b)
+	# Pearson correlation of LOG spectra, not cosine of raw ones. Cosine on
+	# all-positive vectors is biased high - any two broadband sounds score above
+	# 0.9 simply because no component is ever negative, which is why the first
+	# version called well-separated clacks near-duplicates. Taking logs matches
+	# how the ear weighs level, and removing the mean measures whether the
+	# spectral SHAPES differ rather than whether both are loud.
+	var n: int = sa.size()
+	var ma := 0.0
+	var mb := 0.0
+	for i in range(n):
+		sa[i] = log(maxf(sa[i], 1e-6))
+		sb[i] = log(maxf(sb[i], 1e-6))
+		ma += sa[i]
+		mb += sb[i]
+	ma /= float(n)
+	mb /= float(n)
 	var dot := 0.0
-	var na := 0.0
-	var nb := 0.0
-	for i in range(sa.size()):
-		dot += sa[i] * sb[i]
-		na += sa[i] * sa[i]
-		nb += sb[i] * sb[i]
-	if na <= 0.0 or nb <= 0.0:
+	var va := 0.0
+	var vb := 0.0
+	for i in range(n):
+		var x: float = sa[i] - ma
+		var y: float = sb[i] - mb
+		dot += x * y
+		va += x * x
+		vb += y * y
+	if va <= 0.0 or vb <= 0.0:
 		return 0.0
-	return dot / sqrt(na * nb)
+	return dot / sqrt(va * vb)
 
 ## Coarse magnitude spectrum by direct evaluation at log-spaced frequencies.
 func _spectrum(w: AudioStreamWAV) -> PackedFloat32Array:
