@@ -302,30 +302,51 @@ func _pregenerate_ui_click() -> void:
 	wav.data = pcm
 	click_sample = wav
 
+## The tile clack is the most-heard sound in the game by an order of magnitude:
+## a 144-tile board is around 144 taps. Four samples meant hearing each one
+## roughly 36 times a board, which is what reads as repetition however good the
+## sample is.
+##
+## These are synthesised, not recorded, so variety costs generation time rather
+## than download size - a clack is 75ms, so a bank of 32 is about 2.4 seconds of
+## audio in total. Parameters are spread pseudo-randomly rather than stepped, so
+## the bank does not sound like someone playing up a scale.
+const CLACK_VARIANTS: int = 32
+
 func _pregenerate_clack_sounds() -> void:
-	# 4 distinct tactile ceramic clack audio samples modeled after solid melamine tiles
-	for variation in range(4):
-		var duration: float = 0.075
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 0x1EA7C1AC
+	for variation in range(CLACK_VARIANTS):
+		var duration: float = rng.randf_range(0.065, 0.085)
 		var total_frames: int = int(sample_rate * duration)
 		var pcm := PackedByteArray()
 		pcm.resize(total_frames * 2)
-		
-		var base_freq: float = 1320.0 + variation * 180.0
-		var ring_freq: float = 3100.0 - variation * 160.0
-		
+
+		# Stratified, not uniform random: 32 independent draws from overlapping
+		# ranges collide by the birthday problem, and the first attempt at this
+		# produced a pair measuring 0.94 similar. Each variant instead owns a
+		# slice of the range and jitters inside it, so the bank is guaranteed
+		# spread. The ring is strided by a coprime step so body and ring do not
+		# rise together and turn the bank into a scale.
+		var u: float = (float(variation) + rng.randf()) / float(CLACK_VARIANTS)
+		var v: float = (float((variation * 13) % CLACK_VARIANTS) + rng.randf()) / float(CLACK_VARIANTS)
+		var w: float = (float((variation * 7) % CLACK_VARIANTS) + rng.randf()) / float(CLACK_VARIANTS)
+		var base_freq: float = lerpf(1050.0, 1760.0, u)
+		var ring_freq: float = lerpf(2450.0, 3950.0, v)
+		var decay: float = lerpf(78.0, 116.0, w)
+		var ring_amp: float = lerpf(0.26, 0.56, v)
+		var snap_amp: float = lerpf(0.42, 0.88, w)
+		var snap_decay: float = lerpf(360.0, 540.0, u)
+
 		for frame in range(total_frames):
 			var t: float = float(frame) / sample_rate
-			var env: float = exp(-t * 95.0) # Sharp transient decay
-			
-			# Multi-body impact modeling: stiff primary knock + high melamine resonance ping + micro fissure snap
+			var env: float = exp(-t * decay)
 			var primary: float = sin(t * TAU * base_freq)
-			var ping: float = sin(t * TAU * ring_freq) * 0.42
-			var snap: float = (randf() * 2.0 - 1.0) * exp(-t * 450.0) * 0.65
-			
-			var sample_val: float = (primary + ping + snap) * env * 0.52
-			sample_val = clampf(sample_val, -1.0, 1.0)
+			var ping: float = sin(t * TAU * ring_freq) * ring_amp
+			var snap: float = (rng.randf() * 2.0 - 1.0) * exp(-t * snap_decay) * snap_amp
+			var sample_val: float = clampf((primary + ping + snap) * env * 0.52, -1.0, 1.0)
 			pcm.encode_s16(frame * 2, int(sample_val * 32767.0))
-			
+
 		var wav := AudioStreamWAV.new()
 		wav.format = AudioStreamWAV.FORMAT_16_BITS
 		wav.mix_rate = int(sample_rate)
@@ -335,7 +356,7 @@ func _pregenerate_clack_sounds() -> void:
 
 func _pregenerate_shatter_sounds() -> void:
 	# 3 distinct tactile ceramic fracture & crumbling dust whoosh samples
-	for variation in range(3):
+	for variation in range(10):
 		var duration: float = 0.28
 		var total_frames: int = int(sample_rate * duration)
 		var pcm := PackedByteArray()
@@ -373,7 +394,7 @@ func _pregenerate_shatter_sounds() -> void:
 
 func _pregenerate_sand_sounds() -> void:
 	# 3 variations of tactile golden sand cascade (fine grains cascading down with golden shimmer)
-	for variation in range(3):
+	for variation in range(10):
 		var duration: float = 0.35
 		var total_frames: int = int(sample_rate * duration)
 		var pcm := PackedByteArray()
@@ -412,7 +433,7 @@ func _pregenerate_sand_sounds() -> void:
 
 func _pregenerate_glass_shatter_sounds() -> void:
 	# 3 variations of crisp, crystalline physical breaking glass
-	for variation in range(3):
+	for variation in range(10):
 		var duration: float = 0.40
 		var total_frames: int = int(sample_rate * duration)
 		var pcm := PackedByteArray()
@@ -485,7 +506,7 @@ func play_tile_clack(pitch_mod: float = 1.0, at: Vector2 = Vector2.INF, z: int =
 	if not SettingsManager.sfx_enabled or clack_samples.is_empty():
 		return
 	var sample: AudioStreamWAV = clack_samples[randi() % clack_samples.size()]
-	_play_at(sample, at, z, -3.5, pitch_mod * (0.96 + randf() * 0.08))
+	_play_at(sample, at, z, -3.5 + randf() * 1.6, pitch_mod * (0.90 + randf() * 0.20))
 
 func play_tile_match(flow_level: int, is_triple: bool = false, is_glass: bool = false,
 		at: Vector2 = Vector2.INF, z: int = 0) -> void:
@@ -520,7 +541,7 @@ func play_golden_sand(is_triple: bool = false) -> void:
 	var player: AudioStreamPlayer = _get_available_player()
 	if player:
 		player.stream = sample
-		player.pitch_scale = (0.92 if is_triple else 1.0) * (0.96 + randf() * 0.08)
+		player.pitch_scale = (0.92 if is_triple else 1.0) * (0.90 + randf() * 0.20)
 		player.volume_db = -1.5 if is_triple else -3.0
 		player.play()
 
@@ -543,7 +564,7 @@ func play_tile_shatter(is_triple: bool = false) -> void:
 	var player: AudioStreamPlayer = _get_available_player()
 	if player:
 		player.stream = sample
-		player.pitch_scale = (0.90 if is_triple else 1.0) * (0.96 + randf() * 0.08)
+		player.pitch_scale = (0.90 if is_triple else 1.0) * (0.90 + randf() * 0.20)
 		player.volume_db = -1.5 if is_triple else -3.0
 		player.play()
 

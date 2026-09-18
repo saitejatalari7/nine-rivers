@@ -12,6 +12,10 @@ build/
 
 # Android Gradle build outputs & cache (1.5GB+)
 android/build/
+# ...but the manifest carries a customisation that must survive a clone:
+# opting out of Android's predictive back, without which Godot never receives
+# the back gesture at all.
+!android/build/src/main/AndroidManifest.xml
 .gradle/
 *.iml
 

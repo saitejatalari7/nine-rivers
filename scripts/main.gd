@@ -109,11 +109,24 @@ func _input(event: InputEvent) -> void:
 	# meaning anything when a real match happens.
 	zen_background.add_ripple(pos, 0.45, false)
 
+## Android's back gesture reaches us one of two ways, and on at least one
+## device neither was arriving: predictive back (opt-out is in
+## android/build/src/main/AndroidManifest.xml) swallows the legacy
+## onBackPressed() that Godot turns into this notification. The key fallback
+## below costs nothing and covers the case where it is delivered as input
+## instead.
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_GO_BACK_REQUEST:
 		_handle_back_action()
 
 func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and not event.echo:
+		var k := event as InputEventKey
+		if k.keycode == KEY_BACK or k.physical_keycode == KEY_BACK or k.keycode == KEY_ESCAPE:
+			_handle_back_action()
+			get_viewport().set_input_as_handled()
+			return
+
 	if splash_screen.visible and event is InputEventMouseButton and event.pressed:
 		splash_screen.visible = false
 		board.visible = true
