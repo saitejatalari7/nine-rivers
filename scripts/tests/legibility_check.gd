@@ -26,6 +26,7 @@ extends Node
 
 const TileViewScene = preload("res://scenes/tile.tscn")
 const RiverTile = preload("res://scripts/core/river_tile.gd")
+const TileLighting = preload("res://scripts/ui/tile_lighting.gd")
 
 const THEMES: Array[String] = [
 	"classic_jade", "theme_imperial_gold", "theme_obsidian_ink", "theme_cherry_blossom",
@@ -107,6 +108,10 @@ func _render(theme: String, free: bool, probe: Dictionary, skip_art: bool) -> Im
 	vp.transparent_bg = false
 	vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	add_child(vp)
+	# Without this the harness measured an unlit tile while the game shipped a
+	# lit one, so every number was for a face darker than the real thing - and
+	# sweeping the light settings changed nothing, which is what gave it away.
+	TileLighting.attach(vp)
 
 	TileView.debug_skip_artwork = skip_art
 	var view = TileViewScene.instantiate()
@@ -150,6 +155,10 @@ func _ink_and_face(with_art: Image, without: Image) -> Vector2:
 		return Vector2(-1.0, -1.0)
 	ink.sort()
 	face.sort()
+	if OS.get_environment("LEG_DEBUG") != "":
+		print("      ink n=%d med=%.3f p10=%.3f p90=%.3f | face n=%d med=%.3f" % [
+			ink.size(), ink[ink.size() / 2], ink[int(ink.size() * 0.1)], ink[int(ink.size() * 0.9)],
+			face.size(), face[face.size() / 2]])
 	return Vector2(ink[ink.size() / 2], face[face.size() / 2])
 
 

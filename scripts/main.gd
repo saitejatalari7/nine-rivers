@@ -93,6 +93,15 @@ func _show_intro_splash() -> void:
 ## is behind all of them, and with the Rack's transparent card the ripple is
 ## visible between the tiles.
 func _input(event: InputEvent) -> void:
+	# Back is handled here rather than in _unhandled_input because a focused
+	# Button consumes the key first, which is why the gesture appeared to do
+	# nothing on device even with the notification wired up.
+	if event is InputEventKey and event.pressed and not event.echo:
+		var k := event as InputEventKey
+		if k.keycode == KEY_BACK or k.physical_keycode == KEY_BACK or k.keycode == KEY_ESCAPE:
+			_handle_back_action()
+			get_viewport().set_input_as_handled()
+			return
 	if zen_background == null or not zen_background.has_method("add_ripple"):
 		return
 	var pos := Vector2.INF
@@ -120,13 +129,6 @@ func _notification(what: int) -> void:
 		_handle_back_action()
 
 func _unhandled_input(event: InputEvent) -> void:
-	if event is InputEventKey and event.pressed and not event.echo:
-		var k := event as InputEventKey
-		if k.keycode == KEY_BACK or k.physical_keycode == KEY_BACK or k.keycode == KEY_ESCAPE:
-			_handle_back_action()
-			get_viewport().set_input_as_handled()
-			return
-
 	if splash_screen.visible and event is InputEventMouseButton and event.pressed:
 		splash_screen.visible = false
 		board.visible = true
@@ -134,10 +136,6 @@ func _unhandled_input(event: InputEvent) -> void:
 		_return_home()
 		return
 		
-	if event is InputEventKey and event.pressed:
-		if event.keycode == KEY_ESCAPE or event.keycode == KEY_BACK:
-			_handle_back_action()
-			get_viewport().set_input_as_handled()
 
 func _handle_back_action() -> void:
 	if splash_screen.visible:
@@ -146,29 +144,13 @@ func _handle_back_action() -> void:
 		hud.visible = true
 		_return_home()
 	elif modal.visible:
-		# The main menu is the root: Android convention is that back leaves the
-		# app from here, and with quit_on_go_back off nothing else would.
-		if modal._current_screen == "main":
-			_confirm_exit()
-		else:
+		# Back never leaves the game. It used to exit from the main menu, on the
+		# Android convention that back quits at the root, and losing a session to
+		# a stray gesture is worse than having no gesture to quit with.
+		if modal._current_screen != "main":
 			modal.handle_back_pressed()
-	elif board.visible and not modal.visible:
+	elif board.visible:
 		_on_menu_clicked()
-
-## Two presses to leave, so a stray gesture at the menu does not close the game.
-var _exit_armed_until: float = 0.0
-
-func _confirm_exit() -> void:
-	var now: float = Time.get_ticks_msec() / 1000.0
-	if now < _exit_armed_until:
-		get_tree().quit()
-		return
-	_exit_armed_until = now + 2.0
-	hud.visible = true
-	hud.show_toast("Press back again to leave Nine Rivers")
-	await get_tree().create_timer(2.0).timeout
-	if not board.visible:
-		hud.visible = false
 
 func _on_flow_updated_shader(flow: int, _suit: String, is_overdrive: bool) -> void:
 	if zen_background and zen_background.has_method("set_flow_level"):

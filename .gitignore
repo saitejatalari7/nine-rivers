@@ -36,3 +36,6 @@ Godot_Devs.lnk
 # Original unsubset CJK fonts (30MB). Kept locally for regeneration only;
 # assets/fonts/ ships the subsets. See tools/subset_fonts.sh
 assets/fonts/original/
+
+# Agent worktrees: nested git repos, never part of the project
+.claude/worktrees/

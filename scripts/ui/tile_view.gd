@@ -42,8 +42,13 @@ const USE_RENDERED_BODY: bool = true
 
 const BODY_TEX_DIR := "res://assets/tiles/"
 const BODY_TEX_FILES: Dictionary = {
-	"classic_jade": "tile_classic_jade.png",
-	"theme_imperial_gold": "tile_imperial_gold.png",
+	# Frosted white, not the original warm body: dark inks on near-white took
+	# this theme from failing every legibility check to passing every one.
+	"classic_jade": "tile_frost.png",
+	# Dark antique bronze. The mid-gold body put pale ink on a pale-ish face and
+	# merged every tile with its neighbour on a full board; the same inks read as
+	# gilding against bronze.
+	"theme_imperial_gold": "tile_gold.png",
 	"theme_obsidian_ink": "tile_obsidian_ink.png",
 	"theme_cherry_blossom": "tile_cherry_blossom.png",
 }
@@ -55,6 +60,15 @@ static var _body_tex_cache: Dictionary = {}
 ## Test-only: suppresses the suit artwork so a probe can diff a drawn tile
 ## against a bare body and isolate the ink. Never set outside scripts/tests.
 static var debug_skip_artwork: bool = false
+
+## How much a blocked tile darkens. Multiplying toward black is right only
+## while the ink is lighter than the face: on a dark-ink theme it drags the
+## face down toward the ink and costs the contrast that made the ink readable.
+## Imperial Gold went to 2.63 against a 3.0 floor at the shared 0.86.
+const BLOCKED_TINT: Dictionary = {
+	"theme_imperial_gold": Color(0.95, 0.94, 0.90, 1.0),
+}
+const BLOCKED_TINT_DEFAULT := Color(0.86, 0.86, 0.84, 1.0)
 
 static var _normal_tex: Texture2D = null
 
@@ -159,7 +173,10 @@ static func get_col_ink(theme_id: String = "") -> Color:
 	if th == "theme_obsidian_ink":
 		return Color("#f0f4f8") # White jade calligraphy on dark basalt
 	elif th == "theme_imperial_gold":
-		return Color("#fff4e0") # Pale lacquer ink
+		# Dark ink on a bright gold face, the way a real gold-lacquer tile is cut.
+		# The face had to be brightened to carry it: black on the old dark gold
+		# measured 2.8, below the 3.0 floor.
+		return Color("#16100a")
 	elif th == "theme_cherry_blossom":
 		return Color("#2e181f")
 	return COL_INK
@@ -182,7 +199,7 @@ static func get_col_red(theme_id: String = "") -> Color:
 	if th == "theme_obsidian_ink":
 		return Color("#ff4757") # Radiant neon vermilion for dark basalt
 	elif th == "theme_imperial_gold":
-		return Color("#ffd6cc") # Pale cinnabar
+		return Color("#7a1410") # Deep cinnabar lacquer
 	elif th == "theme_cherry_blossom":
 		return Color("#8f2340") # Sakura rose cinnabar
 	var mode: String = SettingsManager.color_blind_mode
@@ -197,10 +214,7 @@ static func get_col_green(theme_id: String = "") -> Color:
 	if th == "theme_obsidian_ink":
 		return Color("#00d2d3") # Radiant electric turquoise
 	elif th == "theme_imperial_gold":
-		# The face is a dark gold texture, so the ink has to be LIGHT. The
-		# previous dark malachite was picked against a near-white face that the
-		# renderer stopped using at the Blender art pass.
-		return Color("#d6f5cf") # Pale jade
+		return Color("#10402a") # Deep malachite
 	elif th == "theme_cherry_blossom":
 		return Color("#2f5626") # Tender spring tea bud green
 	var mode: String = SettingsManager.color_blind_mode
@@ -215,7 +229,7 @@ static func get_col_blue(theme_id: String = "") -> Color:
 	if th == "theme_obsidian_ink":
 		return Color("#54a0ff") # Radiant sapphire cyan
 	elif th == "theme_imperial_gold":
-		return Color("#cfe4ff") # Pale cobalt
+		return Color("#14243f") # Deep cobalt
 	elif th == "theme_cherry_blossom":
 		return Color("#453a9c") # Soft wisteria iris
 	var mode: String = SettingsManager.color_blind_mode
@@ -623,7 +637,7 @@ func _draw_body(ci: CanvasItem) -> void:
 		# into the full TILE_W x TILE_H rect rather than face_rect: the art is
 		# 64:84 and face_rect is 64:80, so face_rect alone would squash it.
 		var body_rect := Rect2(offset_x, offset_y, TILE_W, TILE_H)
-		var tint: Color = Color.WHITE if (is_free or is_revealed or is_dissolving) else Color(0.86, 0.86, 0.84, 1.0)
+		var tint: Color = Color.WHITE if (is_free or is_revealed or is_dissolving) else BLOCKED_TINT.get(cur_th, BLOCKED_TINT_DEFAULT)
 		ci.draw_texture_rect(body_tex, body_rect, false, tint)
 	else:
 		# Procedural fallback: original flat-slab path, used when the rendered
@@ -869,7 +883,7 @@ func draw_white_dragon_frame(face_r: Rect2) -> void:
 	var scale_y: float = face_r.size.y / 132.0
 	var col := get_col_blue(th)
 	if th == "theme_imperial_gold":
-		col = Color("#d49826") # 24k Gold frame
+		col = get_col_ink(th) # pale lacquer, same as every other glyph on bronze
 	elif th == "theme_obsidian_ink":
 		col = Color("#38bdf8") # Radiant electric cyan frame
 	elif th == "theme_cherry_blossom":
@@ -917,8 +931,11 @@ func draw_canonical_characters(face_r: Rect2, rank: int) -> void:
 		# the palette. Emboss kept, colours taken from the palette.
 		var gold_ink: Color = get_col_ink(th)
 		var gold_red: Color = get_col_red(th)
-		var ink_sh := Color(gold_ink.r * 0.22, gold_ink.g * 0.20, gold_ink.b * 0.18, 0.85)
-		var red_sh := Color(gold_red.r * 0.25, gold_red.g * 0.18, gold_red.b * 0.18, 0.85)
+		# A light highlight, not a dark shadow. The ink is dark now, so darkening
+		# it again was invisible; offsetting a pale gold underneath reads as a
+		# stroke cut into the lacquer.
+		var ink_sh := Color(1.0, 0.92, 0.70, 0.30)
+		var red_sh := Color(1.0, 0.90, 0.66, 0.28)
 		draw_string(font, Vector2(cx - top_sz * 0.5 + 1.0, cy - 0.0), num_str, HORIZONTAL_ALIGNMENT_CENTER, top_sz, top_sz, ink_sh)
 		draw_string(font, Vector2(cx - top_sz * 0.5, cy - 1.0), num_str, HORIZONTAL_ALIGNMENT_CENTER, top_sz, top_sz, gold_ink)
 
@@ -948,7 +965,7 @@ func draw_canonical_glyph(face_r: Rect2, text: String, col: Color, font_size: in
 		# emboss is worth keeping, so it is now built FROM the palette colour
 		# rather than instead of it.
 		if text == "發" or text == "中":
-			var shadow := Color(col.r * 0.25, col.g * 0.22, col.b * 0.20, 0.85)
+			var shadow := Color(1.0, 0.92, 0.70, 0.30)
 			draw_string(font, Vector2(cx - font_size * 0.5 + 1.1, cy + font_size * 0.36 + 1.1), text, HORIZONTAL_ALIGNMENT_CENTER, font_size, font_size, shadow)
 			draw_string(font, Vector2(cx - font_size * 0.5, cy + font_size * 0.36), text, HORIZONTAL_ALIGNMENT_CENTER, font_size, font_size, col)
 			return
