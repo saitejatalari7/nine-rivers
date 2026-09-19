@@ -51,6 +51,10 @@ const BODY_TEX_FILES: Dictionary = {
 ## tile: there are up to 144 on screen and they share four textures.
 static var _body_tex_cache: Dictionary = {}
 
+## Test-only: suppresses the suit artwork so a probe can diff a drawn tile
+## against a bare body and isolate the ink. Never set outside scripts/tests.
+static var debug_skip_artwork: bool = false
+
 static func get_body_texture(theme_id: String) -> Texture2D:
 	if _body_tex_cache.has(theme_id):
 		return _body_tex_cache[theme_id]
@@ -203,16 +207,31 @@ const FLOWERS: Array[String] = ["梅", "蘭", "菊", "竹"]
 const SEASONS: Array[String] = ["春", "夏", "秋", "冬"]
 
 # Canonical Mahjong Coordinate Map (viewBox 0 0 100 132)
+#
+# Positions were spread and the radii enlarged so a face fills roughly three
+# quarters of its tile rather than half. The old table left 2-dot spanning 29%
+# of the width and bamboo 2 spanning 13%, which is what "the symbols are tiny"
+# was pointing at. Each radius is the largest that keeps neighbouring circles
+# from touching at that rank's spacing.
 const DOTS: Dictionary = {
-	1: [[50.0, 66.0, 24.0]],
-	2: [[50.0, 40.0], [50.0, 92.0]],
-	3: [[30.0, 34.0], [50.0, 66.0], [70.0, 98.0]],
-	4: [[32.0, 40.0], [68.0, 40.0], [32.0, 92.0], [68.0, 92.0]],
-	5: [[32.0, 38.0], [68.0, 38.0], [50.0, 66.0], [32.0, 94.0], [68.0, 94.0]],
-	6: [[32.0, 32.0], [68.0, 32.0], [32.0, 66.0], [68.0, 66.0], [32.0, 100.0], [68.0, 100.0]],
-	7: [[30.0, 26.0], [50.0, 26.0], [70.0, 26.0], [32.0, 68.0], [68.0, 68.0], [32.0, 102.0], [68.0, 102.0]],
-	8: [[32.0, 24.0], [68.0, 24.0], [32.0, 52.0], [68.0, 52.0], [32.0, 80.0], [68.0, 80.0], [32.0, 108.0], [68.0, 108.0]],
-	9: [[26.0, 32.0], [50.0, 32.0], [74.0, 32.0], [26.0, 66.0], [50.0, 66.0], [74.0, 66.0], [26.0, 100.0], [50.0, 100.0], [74.0, 100.0]]
+	1: [[50.0, 66.0]],
+	2: [[50.0, 38.0], [50.0, 94.0]],
+	3: [[29.0, 33.0], [50.0, 66.0], [71.0, 99.0]],
+	4: [[30.0, 37.0], [70.0, 37.0], [30.0, 95.0], [70.0, 95.0]],
+	5: [[30.0, 34.0], [70.0, 34.0], [50.0, 66.0], [30.0, 98.0], [70.0, 98.0]],
+	6: [[30.0, 30.0], [70.0, 30.0], [30.0, 66.0], [70.0, 66.0], [30.0, 102.0], [70.0, 102.0]],
+	7: [[23.0, 24.0], [50.0, 24.0], [77.0, 24.0], [30.0, 66.0], [70.0, 66.0], [30.0, 106.0], [70.0, 106.0]],
+	8: [[30.0, 25.0], [70.0, 25.0], [30.0, 52.0], [70.0, 52.0], [30.0, 79.0], [70.0, 79.0], [30.0, 106.0], [70.0, 106.0]],
+	9: [[24.0, 30.0], [50.0, 30.0], [76.0, 30.0], [24.0, 66.0], [50.0, 66.0], [76.0, 66.0], [24.0, 102.0], [50.0, 102.0], [76.0, 102.0]]
+}
+
+## Circle radius per rank, in the same viewBox units. Split out of DOTS because
+## the old third element doubled as bamboo's "this is the big stalk" flag, so a
+## radius could not be given to any other rank without turning its bamboo into
+## a full-height pill.
+const DOT_R: Dictionary = {
+	1: 30.0, 2: 24.0, 3: 18.0, 4: 18.0, 5: 17.0,
+	6: 17.0, 7: 12.5, 8: 12.5, 9: 12.5,
 }
 
 var tile_data: RiverTile
@@ -264,7 +283,9 @@ static func get_cjk_font() -> Font:
 			"Noto Sans CJK SC", "Noto Sans SC", "Heiti SC",
 			"SimHei", "Segoe UI", "sans-serif"
 		])
-		sf.font_weight = 600
+		# 700 over 600: thin strokes on a 64px face were the other half of the
+		# legibility problem, alongside the glyphs being small.
+		sf.font_weight = 700
 		sf.subpixel_positioning = TextServer.SUBPIXEL_POSITIONING_AUTO
 		sf.oversampling = 2.0
 		if ResourceLoader.exists("res://assets/fonts/NotoSerifSC.ttf"):
@@ -652,7 +673,8 @@ func _draw() -> void:
 	# The face is drawn FIRST and the mist laid over it, rather than the mist
 	# replacing it. That is what lets the artwork ghost through as a shape
 	# while the rank stays unreadable.
-	draw_canonical_face(face_rect)
+	if not debug_skip_artwork:
+		draw_canonical_face(face_rect)
 	if StageModifiers.is_fog_active() and not is_free and not is_revealed:
 		_draw_fog_shroud(face_rect)
 	
@@ -760,18 +782,18 @@ func draw_canonical_face(face_r: Rect2) -> void:
 			draw_canonical_characters(face_r, tile_data.rank)
 		"wind":
 			var w_str := WINDS[tile_data.rank - 1] if tile_data.rank <= WINDS.size() else "東"
-			draw_canonical_glyph(face_r, w_str, get_col_ink(th), 38)
+			draw_canonical_glyph(face_r, w_str, get_col_ink(th), 48)
 		"dragon":
 			match tile_data.rank:
-				1: draw_canonical_glyph(face_r, "中", get_col_red(th), 38)
-				2: draw_canonical_glyph(face_r, "發", get_col_green(th), 38)
+				1: draw_canonical_glyph(face_r, "中", get_col_red(th), 48)
+				2: draw_canonical_glyph(face_r, "發", get_col_green(th), 48)
 				3: draw_white_dragon_frame(face_r)
 		"flower":
 			var f_str := FLOWERS[tile_data.rank - 1] if tile_data.rank <= FLOWERS.size() else "花"
-			draw_canonical_glyph(face_r, f_str, get_col_green(th), 30)
+			draw_canonical_glyph(face_r, f_str, get_col_green(th), 42)
 		"season":
 			var s_str := SEASONS[tile_data.rank - 1] if tile_data.rank <= SEASONS.size() else "季"
-			draw_canonical_glyph(face_r, s_str, get_col_blue(th), 30)
+			draw_canonical_glyph(face_r, s_str, get_col_blue(th), 42)
 
 func draw_white_dragon_frame(face_r: Rect2) -> void:
 	var th: String = get_effective_theme()
@@ -785,26 +807,28 @@ func draw_white_dragon_frame(face_r: Rect2) -> void:
 	elif th == "theme_cherry_blossom":
 		col = Color("#cf3b5b") # Soft rose cinnabar frame
 	
-	# Outer rounded rectangle (64x82, rx=7, stroke=7 in 100x132 viewBox)
+	# Outer rounded rectangle, widened from 64x82 so the white dragon reads at
+	# the same size as the other two.
+	# Outer rounded rectangle
 	var sb_outer := StyleBoxFlat.new()
 	sb_outer.draw_center = false
 	sb_outer.border_color = col
-	sb_outer.set_border_width_all(int(round(4.0 * (scale_x / 0.64))))
+	sb_outer.set_border_width_all(int(round(5.0 * (scale_x / 0.64))))
 	sb_outer.set_corner_radius_all(int(round(7.0 * scale_x)))
 	sb_outer.anti_aliasing = true
 	sb_outer.anti_aliasing_size = 1.0
-	var outer_r := Rect2(face_r.position.x + 18.0 * scale_x, face_r.position.y + 26.0 * scale_y, 64.0 * scale_x, 82.0 * scale_y)
+	var outer_r := Rect2(face_r.position.x + 12.0 * scale_x, face_r.position.y + 18.0 * scale_y, 76.0 * scale_x, 98.0 * scale_y)
 	draw_style_box(sb_outer, outer_r)
 	
 	# Inner rounded rectangle (38x56, rx=5, stroke=3.4 in 100x132 viewBox)
 	var sb_inner := StyleBoxFlat.new()
 	sb_inner.draw_center = false
 	sb_inner.border_color = col
-	sb_inner.set_border_width_all(int(round(2.0 * (scale_x / 0.64))))
+	sb_inner.set_border_width_all(int(round(3.0 * (scale_x / 0.64))))
 	sb_inner.set_corner_radius_all(int(round(5.0 * scale_x)))
 	sb_inner.anti_aliasing = true
 	sb_inner.anti_aliasing_size = 1.0
-	var inner_r := Rect2(face_r.position.x + 31.0 * scale_x, face_r.position.y + 39.0 * scale_y, 38.0 * scale_x, 56.0 * scale_y)
+	var inner_r := Rect2(face_r.position.x + 27.0 * scale_x, face_r.position.y + 34.0 * scale_y, 46.0 * scale_x, 66.0 * scale_y)
 	draw_style_box(sb_inner, inner_r)
 
 func draw_canonical_characters(face_r: Rect2, rank: int) -> void:
@@ -814,8 +838,10 @@ func draw_canonical_characters(face_r: Rect2, rank: int) -> void:
 	var cx: float = face_r.position.x + face_r.size.x * 0.5
 	var cy: float = face_r.position.y + face_r.size.y * 0.5
 	
-	var top_sz: int = int(face_r.size.x * 0.46) # ~29px
-	var bot_sz: int = int(face_r.size.x * 0.38) # ~24px
+	# 0.46/0.38 put the pair at 45% of the tile width. 0.58/0.52 is the largest
+	# that still stacks inside the 80px face without the numeral clipping.
+	var top_sz: int = int(face_r.size.x * 0.58)
+	var bot_sz: int = int(face_r.size.x * 0.52)
 	
 	if th == "theme_imperial_gold":
 		# Same trap as the dragons: the numeral was gilded #d49826 on a #8b6c26
@@ -825,20 +851,20 @@ func draw_canonical_characters(face_r: Rect2, rank: int) -> void:
 		var gold_red: Color = get_col_red(th)
 		var ink_sh := Color(gold_ink.r * 0.22, gold_ink.g * 0.20, gold_ink.b * 0.18, 0.85)
 		var red_sh := Color(gold_red.r * 0.25, gold_red.g * 0.18, gold_red.b * 0.18, 0.85)
-		draw_string(font, Vector2(cx - top_sz * 0.5 + 1.0, cy - 2.0), num_str, HORIZONTAL_ALIGNMENT_CENTER, top_sz, top_sz, ink_sh)
-		draw_string(font, Vector2(cx - top_sz * 0.5, cy - 3.0), num_str, HORIZONTAL_ALIGNMENT_CENTER, top_sz, top_sz, gold_ink)
+		draw_string(font, Vector2(cx - top_sz * 0.5 + 1.0, cy - 0.0), num_str, HORIZONTAL_ALIGNMENT_CENTER, top_sz, top_sz, ink_sh)
+		draw_string(font, Vector2(cx - top_sz * 0.5, cy - 1.0), num_str, HORIZONTAL_ALIGNMENT_CENTER, top_sz, top_sz, gold_ink)
 
-		draw_string(font, Vector2(cx - bot_sz * 0.5 + 1.0, cy + bot_sz * 0.95 + 1.0), "萬", HORIZONTAL_ALIGNMENT_CENTER, bot_sz, bot_sz, red_sh)
-		draw_string(font, Vector2(cx - bot_sz * 0.5, cy + bot_sz * 0.95), "萬", HORIZONTAL_ALIGNMENT_CENTER, bot_sz, bot_sz, gold_red)
+		draw_string(font, Vector2(cx - bot_sz * 0.5 + 1.0, cy + bot_sz * 0.82 + 1.0), "萬", HORIZONTAL_ALIGNMENT_CENTER, bot_sz, bot_sz, red_sh)
+		draw_string(font, Vector2(cx - bot_sz * 0.5, cy + bot_sz * 0.82), "萬", HORIZONTAL_ALIGNMENT_CENTER, bot_sz, bot_sz, gold_red)
 	elif th == "theme_obsidian_ink":
 		# Luminescent white-jade glyph with electric cyan glow
-		draw_string(font, Vector2(cx - top_sz * 0.5, cy - 3.0), num_str, HORIZONTAL_ALIGNMENT_CENTER, top_sz, top_sz, Color(0, 0.85, 0.8, 0.35))
-		draw_string(font, Vector2(cx - top_sz * 0.5, cy - 3.0), num_str, HORIZONTAL_ALIGNMENT_CENTER, top_sz, top_sz, Color("#f0f4f8"))
+		draw_string(font, Vector2(cx - top_sz * 0.5, cy - 1.0), num_str, HORIZONTAL_ALIGNMENT_CENTER, top_sz, top_sz, Color(0, 0.85, 0.8, 0.35))
+		draw_string(font, Vector2(cx - top_sz * 0.5, cy - 1.0), num_str, HORIZONTAL_ALIGNMENT_CENTER, top_sz, top_sz, Color("#f0f4f8"))
 		# 萬 in radiant neon vermilion
-		draw_string(font, Vector2(cx - bot_sz * 0.5, cy + bot_sz * 0.95), "萬", HORIZONTAL_ALIGNMENT_CENTER, bot_sz, bot_sz, Color("#ff4757"))
+		draw_string(font, Vector2(cx - bot_sz * 0.5, cy + bot_sz * 0.82), "萬", HORIZONTAL_ALIGNMENT_CENTER, bot_sz, bot_sz, Color("#ff4757"))
 	else:
-		draw_string(font, Vector2(cx - top_sz * 0.5, cy - 3.0), num_str, HORIZONTAL_ALIGNMENT_CENTER, top_sz, top_sz, get_col_ink(th))
-		draw_string(font, Vector2(cx - bot_sz * 0.5, cy + bot_sz * 0.95), "萬", HORIZONTAL_ALIGNMENT_CENTER, bot_sz, bot_sz, get_col_red(th))
+		draw_string(font, Vector2(cx - top_sz * 0.5, cy - 1.0), num_str, HORIZONTAL_ALIGNMENT_CENTER, top_sz, top_sz, get_col_ink(th))
+		draw_string(font, Vector2(cx - bot_sz * 0.5, cy + bot_sz * 0.82), "萬", HORIZONTAL_ALIGNMENT_CENTER, bot_sz, bot_sz, get_col_red(th))
 
 func draw_canonical_glyph(face_r: Rect2, text: String, col: Color, font_size: int) -> void:
 	var th: String = get_effective_theme()
@@ -869,7 +895,7 @@ func draw_canonical_glyph(face_r: Rect2, text: String, col: Color, font_size: in
 func draw_canonical_dots(face_r: Rect2, n: int) -> void:
 	var th: String = get_effective_theme()
 	var pts_list: Array = DOTS.get(n, [])
-	var default_r: float = 9.5 if n >= 8 else (10.5 if n == 9 else 12.5)
+	var r_base: float = DOT_R.get(n, 12.5)
 	var scale_x: float = face_r.size.x / 100.0
 	var scale_y: float = face_r.size.y / 132.0
 	var dot_colors: Array[Color] = [get_col_blue(th), get_col_red(th), get_col_green(th)]
@@ -878,19 +904,26 @@ func draw_canonical_dots(face_r: Rect2, n: int) -> void:
 		core_col = Color("#0f1317")
 	elif th == "theme_imperial_gold":
 		core_col = Color("#fff9e8")
-	
+
 	for i in range(pts_list.size()):
 		var p: Array = pts_list[i]
 		var cx: float = face_r.position.x + p[0] * scale_x
 		var cy: float = face_r.position.y + p[1] * scale_y
-		var r_val: float = (p[2] if p.size() > 2 else default_r) * scale_x
+		var r_val: float = r_base * scale_x
 		var col: Color = dot_colors[(i + n) % 3]
 		var center := Vector2(cx, cy)
-		
-		# 1. Outer colored enameled circle
+
 		draw_circle(center, r_val, col, true, -1.0, true)
-		# 2. Inner circle core
 		draw_circle(center, r_val * 0.42, core_col, true, -1.0, true)
+
+
+## Pill sizes in viewBox units. Bamboo shares the dot positions, so a rank with
+## few tokens is inherently a narrow column - 2-bamboo is two stalks one above
+## the other on a real tile. Widening the pills is the only lever the shared
+## arrangement leaves; the low ranks get the widest of them.
+const BAM_BIG := Vector2(30.0, 66.0)
+const BAM_SMALL := Vector2(22.0, 34.0)
+const BAM_SMALL_SPARSE := Vector2(27.0, 38.0)
 
 func draw_canonical_bamboos(face_r: Rect2, n: int) -> void:
 	var th: String = get_effective_theme()
@@ -904,22 +937,20 @@ func draw_canonical_bamboos(face_r: Rect2, n: int) -> void:
 		cream_line_col = Color("#f0f4f8")
 	elif th == "theme_imperial_gold":
 		cream_line_col = Color("#fff8e1")
-	
+
+	var small: Vector2 = BAM_SMALL_SPARSE if n <= 3 else BAM_SMALL
 	for i in range(pts_list.size()):
 		var p: Array = pts_list[i]
-		var is_big: bool = p.size() > 2
-		var w: float = (17.0 if is_big else 12.0) * scale_x
-		var h: float = (48.0 if is_big else 27.0) * scale_y
-		var x: float = face_r.position.x + (p[0] - (17.0 if is_big else 12.0) * 0.5) * scale_x
-		var y: float = face_r.position.y + (p[1] - (48.0 if is_big else 27.0) * 0.5) * scale_y
+		var is_big: bool = n == 1
+		var box: Vector2 = BAM_BIG if is_big else small
+		var w: float = box.x * scale_x
+		var h: float = box.y * scale_y
+		var x: float = face_r.position.x + (p[0] - box.x * 0.5) * scale_x
+		var y: float = face_r.position.y + (p[1] - box.y * 0.5) * scale_y
 		var col: Color = r_col if (i % 3 == 1) else g_col
-		
-		# Rounded pill capsule
+
 		var sb := _get_bamboo_stylebox(col, int(round(w * 0.5)))
 		draw_style_box(sb, Rect2(x, y, w, h))
-		
-		# Crisp dividing line across the middle
+
 		var cy: float = face_r.position.y + p[1] * scale_y
-		draw_line(Vector2(x + 1.2, cy), Vector2(x + w - 1.2, cy), cream_line_col, 2.0 * scale_x, true)
-
-
+		draw_line(Vector2(x + 1.2, cy), Vector2(x + w - 1.2, cy), cream_line_col, 2.4 * scale_x, true)

@@ -39,6 +39,8 @@ const FLOOR: float = 3.0
 const COMFORTABLE: float = 4.5
 ## Writes each probed tile to disk so the numbers can be checked against eyes.
 const DUMP_TILES: bool = false
+## Per-channel sum that counts a pixel as touched by the artwork.
+const INK_DIFF: float = 0.06
 
 var _fails: int = 0
 var _worst: float = 999.0
@@ -68,33 +70,23 @@ func _ready() -> void:
 ## Renders a real TileView offscreen and reads the pixels back, which is the
 ## only way to include the body texture, the blocked tint and the atmospheric
 ## wash that the draw path layers on top.
+##
+## Each tile is rendered twice, with and without the suit artwork, so ink and
+## face are separated by differencing rather than by guessing at percentiles.
+## The percentile version worked only while the glyph was a small part of the
+## box: when the glyphs were enlarged the median moved onto the ink and the
+## measured ratio fell, reporting a regression in colours that had not changed.
 func _measure(theme: String, free: bool, probe: Dictionary, mode: String) -> void:
-	var vp := SubViewport.new()
-	vp.size = Vector2i(72, 92)
-	vp.transparent_bg = false
-	vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
-	add_child(vp)
-
-	var view = TileViewScene.instantiate()
-	vp.add_child(view)
-	var t := RiverTile.new()
-	t.suit = probe["suit"]
-	t.rank = probe["rank"]
-	view.theme_override = theme
-	view.setup(t, free)
-	if view.has_method("update_theme_style"):
-		view.update_theme_style()
-
-	await RenderingServer.frame_post_draw
-	await get_tree().process_frame
-	await RenderingServer.frame_post_draw
-	var img: Image = vp.get_texture().get_image()
+	var with_art: Image = await _render(theme, free, probe, false)
+	var without: Image = await _render(theme, free, probe, true)
 	if DUMP_TILES and mode == "none":
-		img.save_png("res://assets/branding/screens/real_game/tile_%s_%s_%s.png" % [
+		with_art.save_png("res://assets/branding/screens/real_game/tile_%s_%s_%s.png" % [
 			theme, "free" if free else "blk", probe["suit"]])
-	vp.queue_free()
 
-	var c := _ink_and_face(img)
+	var c := _ink_and_face(with_art, without)
+	if c.x < 0.0:
+		print("%-20s %-8s %-6s   (no ink)" % [theme, "free" if free else "blocked", probe["suit"]])
+		return
 	var ratio: float = _contrast(c.x, c.y)
 	var flag := ""
 	if ratio < FLOOR:
@@ -109,30 +101,56 @@ func _measure(theme: String, free: bool, probe: Dictionary, mode: String) -> voi
 		theme, "free" if free else "blocked", probe["suit"], ratio, flag])
 
 
-## Separates ink from face inside the glyph box.
+func _render(theme: String, free: bool, probe: Dictionary, skip_art: bool) -> Image:
+	var vp := SubViewport.new()
+	vp.size = Vector2i(72, 92)
+	vp.transparent_bg = false
+	vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	add_child(vp)
+
+	TileView.debug_skip_artwork = skip_art
+	var view = TileViewScene.instantiate()
+	vp.add_child(view)
+	var t := RiverTile.new()
+	t.suit = probe["suit"]
+	t.rank = probe["rank"]
+	view.theme_override = theme
+	view.setup(t, free)
+	if view.has_method("update_theme_style"):
+		view.update_theme_style()
+
+	await RenderingServer.frame_post_draw
+	await get_tree().process_frame
+	await RenderingServer.frame_post_draw
+	var img: Image = vp.get_texture().get_image()
+	vp.queue_free()
+	TileView.debug_skip_artwork = false
+	return img
+
+
+## Ink is every pixel the artwork changed; face is every pixel it did not. Both
+## are taken as medians, so anti-aliased edge pixels - which sit between the two
+## colours and belong to neither - do not drag either number.
 ##
-## The face is the median: it is most of the box whatever the glyph is. The ink
-## is whichever extreme lies further from it, because a theme may print dark
-## glyphs on a light tile or light glyphs on a dark one, and assuming the first
-## reports a pale glyph as invisible.
-##
-## The extremes are the 2nd and 98th percentiles, not the 5th and 92nd. Thin
-## strokes - a character numeral, a dragon glyph - cover only a few per cent of
-## the box, so a 5% tail sampled face against face and returned the same number
-## no matter how the ink colour changed.
-func _ink_and_face(img: Image) -> Vector2:
-	var lums: Array[float] = []
-	for y in range(28, 64):
-		for x in range(16, 56):
-			lums.append(_lum(img.get_pixel(x, y)))
-	if lums.is_empty():
-		return Vector2(0.0, 1.0)
-	lums.sort()
-	var face: float = lums[int(lums.size() * 0.5)]
-	var dark: float = lums[int(lums.size() * 0.02)]
-	var light: float = lums[mini(lums.size() - 1, int(lums.size() * 0.98))]
-	var ink: float = dark if (face - dark) >= (light - face) else light
-	return Vector2(ink, face)
+## Returns (-1, -1) when the artwork changed nothing, which is a broken draw
+## path rather than a passing tile and is reported as such.
+func _ink_and_face(with_art: Image, without: Image) -> Vector2:
+	var ink: Array[float] = []
+	var face: Array[float] = []
+	for y in range(6, 86):
+		for x in range(6, 66):
+			var a: Color = with_art.get_pixel(x, y)
+			var b: Color = without.get_pixel(x, y)
+			var d: float = absf(a.r - b.r) + absf(a.g - b.g) + absf(a.b - b.b)
+			if d > INK_DIFF:
+				ink.append(_lum(a))
+			else:
+				face.append(_lum(a))
+	if ink.is_empty() or face.is_empty():
+		return Vector2(-1.0, -1.0)
+	ink.sort()
+	face.sort()
+	return Vector2(ink[ink.size() / 2], face[face.size() / 2])
 
 
 func _lum(c: Color) -> float:
