@@ -11,6 +11,7 @@ signal tile_long_pressed(view: TileView)
 const RiverTile = preload("res://scripts/core/river_tile.gd")
 const DissolveShader = preload("res://assets/shaders/tile_dissolve.gdshader")
 const StageModifiers = preload("res://scripts/core/stage_modifiers.gd")
+const TileLighting = preload("res://scripts/ui/tile_lighting.gd")
 
 const TILE_W: float = 64.0
 const TILE_H: float = 84.0
@@ -55,6 +56,16 @@ static var _body_tex_cache: Dictionary = {}
 ## against a bare body and isolate the ink. Never set outside scripts/tests.
 static var debug_skip_artwork: bool = false
 
+static var _normal_tex: Texture2D = null
+
+## Pairs the body art with the shared bevel normal map. The silhouette is the
+## same for every theme, so one normal map serves all four.
+static func _get_normal_tex() -> Texture2D:
+	if _normal_tex == null and ResourceLoader.exists(BODY_TEX_DIR + "tile_normal.png"):
+		_normal_tex = load(BODY_TEX_DIR + "tile_normal.png")
+	return _normal_tex
+
+
 static func get_body_texture(theme_id: String) -> Texture2D:
 	if _body_tex_cache.has(theme_id):
 		return _body_tex_cache[theme_id]
@@ -64,6 +75,17 @@ static func get_body_texture(theme_id: String) -> Texture2D:
 		var path := BODY_TEX_DIR + fname
 		if ResourceLoader.exists(path):
 			tex = load(path) as Texture2D
+	var nrm: Texture2D = _get_normal_tex()
+	if tex != null and nrm != null:
+		# CanvasTexture is what carries a normal map into 2D drawing; a plain
+		# Texture2D is lit as though it were flat however many lights are up.
+		var ct := CanvasTexture.new()
+		ct.diffuse_texture = tex
+		ct.normal_texture = nrm
+		var s: float = TileLighting.specular()
+		ct.specular_color = Color(s, s * 0.98, s * 0.94)
+		ct.specular_shininess = 0.35
+		tex = ct
 	_body_tex_cache[theme_id] = tex
 	return tex
 
@@ -297,6 +319,17 @@ static func get_cjk_font() -> Font:
 
 func _init() -> void:
 	custom_minimum_size = Vector2(TILE_W, TILE_H)
+	# The face and its overlays opt out of lighting entirely. Only the body,
+	# which carries the normal map, is a lit surface.
+	var unlit := CanvasItemMaterial.new()
+	unlit.light_mode = CanvasItemMaterial.LIGHT_MODE_UNSHADED
+	material = unlit
+	_body_layer = BodyLayer.new()
+	_body_layer.view = self
+	_body_layer.show_behind_parent = true
+	_body_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_body_layer.size = Vector2(TILE_W, TILE_H)
+	add_child(_body_layer)
 	size = custom_minimum_size
 	pivot_offset = Vector2(TILE_W * 0.5, TILE_H * 0.5)
 	mouse_filter = Control.MOUSE_FILTER_STOP
@@ -320,7 +353,7 @@ func _on_setting_changed(setting_name: String, _val: Variant) -> void:
 
 func update_theme_style() -> void:
 	_init_styleboxes()
-	queue_redraw()
+	_redraw_all()
 
 func _init_styleboxes() -> void:
 	# 1. 3D Biscuit / Lacquer Underside Slab (exact match to HTML --deep #b79f74)
@@ -358,19 +391,19 @@ func _on_mouse_entered() -> void:
 	if is_free and not is_selected and not is_dissolving:
 		var tween := create_tween()
 		tween.tween_property(self, "anim_hover", -3.5, 0.12).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-		queue_redraw()
+		_redraw_all()
 
 func _on_mouse_exited() -> void:
 	if not is_selected and not is_dissolving:
 		var tween := create_tween()
 		tween.tween_property(self, "anim_hover", 0.0, 0.12).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-		queue_redraw()
+		_redraw_all()
 
 func setup(data: RiverTile, free_status: bool) -> void:
 	tile_data = data
 	is_free = free_status
 	is_dissolving = false
-	queue_redraw()
+	_redraw_all()
 
 func get_accent_color() -> Color:
 	if not tile_data:
@@ -398,12 +431,12 @@ func set_selected(sel: bool) -> void:
 		tween.tween_property(self, "anim_lift", -8.5, 0.16).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	else:
 		tween.tween_property(self, "anim_lift", 0.0, 0.14).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-	queue_redraw()
+	_redraw_all()
 
 func set_free_status(free_val: bool) -> void:
 	if is_free != free_val:
 		is_free = free_val
-		queue_redraw()
+		_redraw_all()
 
 func _exit_tree() -> void:
 	if is_instance_valid(_hint_tween):
@@ -419,7 +452,7 @@ func set_hint(val: bool) -> void:
 		_hint_tween = null
 	if is_hinted != val:
 		is_hinted = val
-		queue_redraw()
+		_redraw_all()
 
 func flash_hint(duration: float = 2.5) -> void:
 	set_hint(true)
@@ -441,7 +474,7 @@ func set_revealed(val: bool) -> void:
 		tween.tween_property(self, "anim_lift", -5.5, 0.18).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	else:
 		tween.tween_property(self, "anim_lift", 0.0, 0.15).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-	queue_redraw()
+	_redraw_all()
 
 func flash_revealed(duration: float = 4.0) -> void:
 	set_revealed(true)
@@ -479,6 +512,10 @@ func play_clear_animation() -> void:
 	mat.set_shader_parameter("ash_drift", 36.0)
 	mat.set_shader_parameter("tile_size", size if size.x > 0 else Vector2(64.0, 84.0))
 	material = mat
+	# The body layer takes the dissolve shader too, or the tile face burns away
+	# while the slab underneath it stays whole.
+	if is_instance_valid(_body_layer):
+		_body_layer.material = mat
 	
 	var tween := create_tween()
 	# Step 1: 0.06s Anticipation scale pop & radiant gold flash
@@ -490,7 +527,7 @@ func play_clear_animation() -> void:
 	tween.parallel().tween_method(func(val: float):
 		if is_instance_valid(mat):
 			mat.set_shader_parameter("dissolve_amount", val)
-		queue_redraw()
+		_redraw_all()
 	, 0.0, 1.0, 0.42).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 	tween.parallel().tween_property(self, "position:y", position.y - 18.0, 0.42).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	tween.parallel().tween_property(self, "scale", Vector2(0.90, 0.90), 0.42).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
@@ -505,7 +542,7 @@ func play_strand_ripple() -> void:
 func _process(delta: float) -> void:
 	if tile_data and tile_data.is_open:
 		anim_wild_pulse += delta * 4.8
-		queue_redraw()
+		_redraw_all()
 		
 	if is_pressing and not long_press_fired:
 		if (Time.get_ticks_msec() / 1000.0) - press_start_time >= long_press_threshold:
@@ -530,60 +567,78 @@ func _gui_input(event: InputEvent) -> void:
 					tile_clicked.emit(self)
 				long_press_fired = false
 
-func _draw() -> void:
+## The tile body, drawn into its own CanvasItem so that lights reach it and
+## nothing else.
+##
+## 2D lights in Godot apply per CanvasItem, not per draw call, so while the
+## body and the artwork shared one node every glyph was being lit too. With an
+## additive key light that washed the pale inks straight out - Imperial Gold's
+## dots, which are near-white by design since the legibility pass, went to flat
+## white and lost their colour. A printed glyph should not catch light anyway;
+## the ceramic under it should.
+class BodyLayer extends Control:
+	var view = null
+
+	func _draw() -> void:
+		if view != null:
+			view._draw_body(self)
+
+
+var _body_layer: BodyLayer = null
+
+
+## Redraws the body alongside the face. Every queue_redraw() in this file goes
+## through here, because the body now lives in a child that does not repaint
+## just because its parent did.
+func _redraw_all() -> void:
+	queue_redraw()
+	if is_instance_valid(_body_layer):
+		_body_layer.queue_redraw()
+
+
+func _draw_body(ci: CanvasItem) -> void:
 	if not tile_data:
 		return
-	# CRITICAL FIX: If tile is marked removed by match logic, KEEP DRAWING if is_dissolving is true!
 	if tile_data.is_removed and not is_dissolving:
 		return
-		
+
 	var z: int = tile_data.z
 	var offset_y: float = anim_lift + anim_hover
 	var offset_x: float = anim_shake
-	
-	# 1. Physical Drop Shadows with progressive Z-depth (matching HTML data-z rules)
+
 	if not is_dissolving:
 		var shadow_y: float = 3.5 + z * 3.0
 		var shadow_alpha: float = clampf(0.36 + z * 0.06, 0.36, 0.65)
 		sb_shadow.bg_color = Color(0.01, 0.04, 0.03, shadow_alpha)
 		var shadow_rect := Rect2(offset_x, offset_y + shadow_y, TILE_W, TILE_H - DEPTH_3D)
-		draw_style_box(sb_shadow, shadow_rect)
-	
-	# 2 & 3. Tile body.
-	# face_rect stays the 64x80 top face, because the gold band, wild crest,
-	# glass treatment and symbols are all positioned against it.
+		ci.draw_style_box(sb_shadow, shadow_rect)
+
 	var face_rect := Rect2(offset_x, offset_y, TILE_W, TILE_H - DEPTH_3D)
 	var cur_th: String = get_effective_theme()
 	var body_tex: Texture2D = get_body_texture(cur_th) if USE_RENDERED_BODY else null
 
 	if body_tex != null:
-		# The rendered sprite is a COMPLETE tile body seen face-on, bevelled
-		# edges and all, so it replaces the extrusion slab and the face slab
-		# together. It is drawn into the full TILE_W x TILE_H rect rather than
-		# face_rect: the art is 64:84 and face_rect is 64:80, so drawing it
-		# into face_rect alone would squash it by 5%.
+		# The rendered sprite is a COMPLETE tile body seen face-on, so it
+		# replaces the extrusion slab and the face slab together. It is drawn
+		# into the full TILE_W x TILE_H rect rather than face_rect: the art is
+		# 64:84 and face_rect is 64:80, so face_rect alone would squash it.
 		var body_rect := Rect2(offset_x, offset_y, TILE_W, TILE_H)
-		# Blocked tiles were a separate, darker face colour per theme. One
-		# texture plus a tint keeps the two states from drifting apart.
 		var tint: Color = Color.WHITE if (is_free or is_revealed or is_dissolving) else Color(0.86, 0.86, 0.84, 1.0)
-		draw_texture_rect(body_tex, body_rect, false, tint)
-		# No procedural highlight line or theme framing here: the sprite already
-		# carries its own bevel highlight, and for gold and cherry it carries the
-		# lacquer border too. Drawing the code ornament on top would clash.
+		ci.draw_texture_rect(body_tex, body_rect, false, tint)
 	else:
 		# Procedural fallback: original flat-slab path, used when the rendered
 		# art is missing or USE_RENDERED_BODY is off.
 		sb_extrusion.bg_color = get_theme_back_base(cur_th)
 		sb_extrusion.border_color = get_theme_back_edge(cur_th)
 		var ext_rect := Rect2(offset_x, offset_y + DEPTH_3D, TILE_W, TILE_H - DEPTH_3D)
-		draw_style_box(sb_extrusion, ext_rect)
+		ci.draw_style_box(sb_extrusion, ext_rect)
 
 		sb_base.bg_color = get_theme_face_color(is_free or is_revealed, cur_th)
 		sb_base.border_color = get_theme_border_color(is_free or is_revealed, cur_th)
-		draw_style_box(sb_base, face_rect)
+		ci.draw_style_box(sb_base, face_rect)
 
 		if is_free or is_revealed or is_dissolving:
-			draw_line(face_rect.position + Vector2(6, 1.5), face_rect.position + Vector2(TILE_W - 6, 1.5), Color(1, 1, 1, 0.85), 1.2, true)
+			ci.draw_line(face_rect.position + Vector2(6, 1.5), face_rect.position + Vector2(TILE_W - 6, 1.5), Color(1, 1, 1, 0.85), 1.2, true)
 
 		if cur_th == "theme_imperial_gold":
 			_draw_imperial_gold_framing(face_rect)
@@ -591,6 +646,19 @@ func _draw() -> void:
 			_draw_obsidian_ink_framing(face_rect)
 		elif cur_th == "theme_cherry_blossom":
 			_draw_cherry_blossom_framing(face_rect)
+
+
+func _draw() -> void:
+	if not tile_data:
+		return
+	# CRITICAL FIX: If tile is marked removed by match logic, KEEP DRAWING if is_dissolving is true!
+	if tile_data.is_removed and not is_dissolving:
+		return
+
+	var offset_y: float = anim_lift + anim_hover
+	var offset_x: float = anim_shake
+	var face_rect := Rect2(offset_x, offset_y, TILE_W, TILE_H - DEPTH_3D)
+	var cur_th: String = get_effective_theme()
 
 	# 4. Triple Set 24k Gold Band (Bottom Bezel)
 	if tile_data.size == 3:

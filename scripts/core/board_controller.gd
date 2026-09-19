@@ -16,6 +16,7 @@ const TileShatterDustScene = preload("res://scenes/effects/tile_shatter_dust.tsc
 const FloatingChip = preload("res://scripts/ui/floating_chip.gd")
 const FloatingChipScene = preload("res://scenes/effects/floating_chip.tscn")
 const StageModifiers = preload("res://scripts/core/stage_modifiers.gd")
+const TileLighting = preload("res://scripts/ui/tile_lighting.gd")
 
 const TW: float = 64.0
 const TH: float = 84.0
@@ -40,6 +41,7 @@ func invalidate_legal_sets() -> void:
 	_legal_sets_dirty = true
 
 func _ready() -> void:
+	TileLighting.attach(self)
 	GameManager.flow_updated.connect(_on_flow_updated)
 	if is_instance_valid(MonetizationManager) and MonetizationManager.has_signal("theme_equipped"):
 		MonetizationManager.theme_equipped.connect(_on_theme_equipped)
