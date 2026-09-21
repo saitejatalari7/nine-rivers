@@ -975,8 +975,11 @@ func show_daily_offerings_modal() -> void:
 	_add_seal_header("Daily Meditations", "晨钟暮鼓 · Blessings & offerings", "供")
 	_add_hairline()
 
+	# Offers only appear when an ad can actually be shown. With no ad network in
+	# the build these used to pay out anyway; hiding them is honest, and beats a
+	# button that silently does nothing.
 	var remaining_ads: int = MonetizationManager.get_remaining_rewarded_ads()
-	if remaining_ads > 0:
+	if remaining_ads > 0 and MonetizationManager.is_rewarded_ad_available():
 		_add_tile_row("福", GLYPH_GOLD, "Meditation Blessing",
 			"+60 ◈ pearls · free",
 			"%d left" % remaining_ads, func():
@@ -991,6 +994,8 @@ func show_daily_offerings_modal() -> void:
 				show_daily_offerings_modal()
 			)
 		, UITheme.IVORY_MUTED)
+	elif remaining_ads > 0:
+		_add_sheet_row("Daily Offerings", "Unavailable · try again later", UITheme.IVORY_MUTED)
 	else:
 		_add_sheet_row("Daily Offerings", "Complete · resets at dawn", UITheme.GOLD_CORE)
 

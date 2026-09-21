@@ -9,6 +9,7 @@ signal pearls_updated(new_balance: int)
 signal purchase_succeeded(product_id: String)
 signal purchase_failed(product_id: String, reason: String)
 signal rewarded_ad_rewarded(placement: String, reward_type: String, amount: int)
+signal rewarded_ad_unavailable(placement: String)
 signal interstitial_ad_shown(context: String)
 signal banner_visibility_changed(is_visible: bool)
 signal theme_unlocked(theme_id: String)
@@ -651,22 +652,55 @@ func restore_purchases() -> void:
 func simulate_rewarded_ad(placement: String = "daily_pearls") -> void:
 	show_rewarded_ad(placement, Callable())
 
+## An ad the player never watched is not a reward they earned. buy_product()
+## has always refused to fulfil on a mobile release build with no billing - the
+## same reasoning was never applied here, so with no ad plugin installed every
+## offer paid out immediately: four a day at 60 pearls, for a currency that is
+## otherwise sold for money.
+##
+## The simulated grant survives in the editor and in debug builds, which is
+## where it is useful.
+## Test-only: forces the mobile-release branch so the guard that matters can be
+## exercised from a desktop run. Never set outside scripts/tests.
+static var debug_force_release_mobile: bool = false
+
+
+func _is_release_mobile() -> bool:
+	return debug_force_release_mobile or (OS.has_feature("mobile") and not OS.is_debug_build())
+
+
+func is_rewarded_ad_available() -> bool:
+	return _admob != null and _admob.has_method("show_rewarded_video")
+
+
 func show_rewarded_ad(placement: String, on_reward: Callable = Callable()) -> void:
 	if not can_watch_rewarded_ad():
 		return
-		
+
+	if not is_rewarded_ad_available():
+		if _is_release_mobile():
+			rewarded_ad_unavailable.emit(placement)
+			return
+		# Editor and debug builds keep the simulated grant so the flow can be
+		# exercised without an ad network.
+		_consume_rewarded_charge()
+		_grant_reward(placement, on_reward)
+		return
+
+	_consume_rewarded_charge()
+	_pending_ad_placement = placement
+	_pending_ad_callback = on_reward
+	_admob.show_rewarded_video()
+
+
+## Only called once an ad is actually going to be shown, or once a debug grant
+## is actually made. It used to run before the plugin check, so a refused offer
+## still burned one of the four daily charges.
+func _consume_rewarded_charge() -> void:
 	_check_daily_ad_reset()
 	var cur: int = int(SaveManager.economy.get("rewarded_ads_today", 0))
 	SaveManager.economy["rewarded_ads_today"] = cur + 1
 	SaveManager.request_save()
-	
-	if _admob != null and _admob.has_method("show_rewarded_video"):
-		_pending_ad_placement = placement
-		_pending_ad_callback = on_reward
-		_admob.show_rewarded_video()
-		return
-		
-	_grant_reward(placement, on_reward)
 
 func _grant_reward(placement: String, on_reward: Callable = Callable()) -> void:
 	match placement:
