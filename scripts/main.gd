@@ -67,6 +67,9 @@ func _ready() -> void:
 	GameManager.game_over.connect(_on_game_over)
 	GameManager.flow_updated.connect(_on_flow_updated_shader)
 	
+	if BACK_DIAGNOSTIC:
+		_build_back_diagnostic()
+
 	# Show intro splash on boot
 	_show_intro_splash()
 
@@ -99,7 +102,7 @@ func _input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
 		var k := event as InputEventKey
 		if k.keycode == KEY_BACK or k.physical_keycode == KEY_BACK or k.keycode == KEY_ESCAPE:
-			_handle_back_action()
+			_handle_back_action("key")
 			get_viewport().set_input_as_handled()
 			return
 	if zen_background == null or not zen_background.has_method("add_ripple"):
@@ -118,15 +121,9 @@ func _input(event: InputEvent) -> void:
 	# meaning anything when a real match happens.
 	zen_background.add_ripple(pos, 0.45, false)
 
-## Android's back gesture reaches us one of two ways, and on at least one
-## device neither was arriving: predictive back (opt-out is in
-## android/build/src/main/AndroidManifest.xml) swallows the legacy
-## onBackPressed() that Godot turns into this notification. The key fallback
-## below costs nothing and covers the case where it is delivered as input
-## instead.
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_GO_BACK_REQUEST:
-		_handle_back_action()
+		_handle_back_action("notification")
 
 func _unhandled_input(event: InputEvent) -> void:
 	if splash_screen.visible and event is InputEventMouseButton and event.pressed:
@@ -137,8 +134,22 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 		
 
-func _handle_back_action() -> void:
+## Back can arrive on two routes at once, and godotengine/godot#123454 reports
+## the notification itself firing twice for one press. Either would walk two
+## screens back per gesture, so one press only ever drives one transition.
+const BACK_DEBOUNCE_MS: int = 250
+var _last_back_msec: int = -100000
+
+func _handle_back_action(route: String = "unknown") -> void:
+	var now: int = Time.get_ticks_msec()
+	if now - _last_back_msec < BACK_DEBOUNCE_MS:
+		_report_back_route(route, "debounced")
+		return
+	_last_back_msec = now
+
+	var outcome: String = ""
 	if splash_screen.visible:
+		outcome = "splash->home"
 		splash_screen.visible = false
 		board.visible = true
 		hud.visible = true
@@ -148,9 +159,58 @@ func _handle_back_action() -> void:
 		# Android convention that back quits at the root, and losing a session to
 		# a stray gesture is worse than having no gesture to quit with.
 		if modal._current_screen != "main":
+			outcome = "modal:%s" % modal._current_screen
 			modal.handle_back_pressed()
+		else:
+			outcome = "modal:main (ignored)"
 	elif board.visible:
+		outcome = "board->pause"
 		_on_menu_clicked()
+	else:
+		outcome = "nothing visible"
+	_report_back_route(route, outcome)
+
+# ============================ BACK DIAGNOSTIC ============================
+## Switch this to false to remove the on-screen back banner entirely; nothing
+## else needs changing and the banner layer is then never created.
+const BACK_DIAGNOSTIC: bool = true
+
+var _back_diag: Label = null
+var _back_diag_tween: Tween = null
+
+func _build_back_diagnostic() -> void:
+	var layer := CanvasLayer.new()
+	layer.name = "BackDiagnostic"
+	layer.layer = 90
+	add_child(layer)
+	_back_diag = Label.new()
+	_back_diag.anchor_right = 1.0
+	_back_diag.offset_top = 8.0
+	_back_diag.offset_left = 8.0
+	_back_diag.offset_right = -8.0
+	_back_diag.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_back_diag.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_back_diag.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_back_diag.add_theme_color_override("font_color", Color(1, 1, 1))
+	_back_diag.add_theme_color_override("font_outline_color", Color(0, 0, 0))
+	_back_diag.add_theme_constant_override("outline_size", 8)
+	_back_diag.add_theme_font_size_override("font_size", 34)
+	_back_diag.modulate.a = 0.0
+	layer.add_child(_back_diag)
+
+func _report_back_route(route: String, outcome: String) -> void:
+	# Always logged, so `adb logcat -s godot` answers the question even if the
+	# banner is switched off or the device never renders it.
+	print("[BACK] route=%s outcome=%s" % [route, outcome])
+	if not BACK_DIAGNOSTIC or _back_diag == null:
+		return
+	_back_diag.text = "BACK via %s\n%s" % [route.to_upper(), outcome]
+	if _back_diag_tween != null and _back_diag_tween.is_valid():
+		_back_diag_tween.kill()
+	_back_diag.modulate.a = 1.0
+	_back_diag_tween = create_tween()
+	_back_diag_tween.tween_interval(2.5)
+	_back_diag_tween.tween_property(_back_diag, "modulate:a", 0.0, 0.5)
 
 func _on_flow_updated_shader(flow: int, _suit: String, is_overdrive: bool) -> void:
 	if zen_background and zen_background.has_method("set_flow_level"):
