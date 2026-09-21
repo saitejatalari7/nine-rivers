@@ -62,12 +62,32 @@ func _ready() -> void:
 		await get_tree().process_frame
 		await get_tree().process_frame
 		await get_tree().process_frame
+		# show_modal() scales the card 0.92 -> 1.0 over 0.22s with TRANS_BACK,
+		# which overshoots past 1.0 on the way. Three frames lands mid-tween at a
+		# scale that depends on frame timing, and the bounds check then compares
+		# scaled child positions against unscaled card edges. That is where the
+		# 2-4px phantom overruns came from, and why three runs of this file on
+		# one commit returned 3, 2 and 1 failures.
+		await _settle_modal(modal)
 		_audit_screen(name, modal, vp_h)
 
 	print("")
 	print("Checked %d controls across %d screens." % [checked, screens.size()])
 	print("Failures: %d" % fails)
 	get_tree().quit(1 if fails > 0 else 0)
+
+## Waits out the entry animation and refuses to measure a card that is still
+## moving, so a timing change can never quietly turn this file into noise again.
+func _settle_modal(modal: Node) -> void:
+	var t = modal.get("_show_tween")
+	if t != null and is_instance_valid(t) and t.is_running():
+		await t.finished
+	await get_tree().process_frame
+	var card: Control = modal.get_node("Center/Card")
+	if not card.scale.is_equal_approx(Vector2.ONE):
+		fails += 1
+		print("  card still animating at measure time (scale %s) - numbers below are noise" % card.scale)
+
 
 func _audit_screen(name: String, modal: Node, vp_h: float) -> void:
 	var scroll: ScrollContainer = modal.get_node("Center/Card/Scroll")
