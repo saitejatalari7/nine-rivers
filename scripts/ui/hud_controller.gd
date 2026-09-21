@@ -73,6 +73,10 @@ func _init_dynamic_hud_elements() -> void:
 	# 1. Relics Bar for Timed Run Mode
 	relics_container = HBoxContainer.new()
 	relics_container.name = "RelicsBar"
+	# Decoration over the top of the board. MOUSE_FILTER_PASS still consumes
+	# the tap for anything underneath it in the scene, so PASS was no better
+	# than STOP here.
+	relics_container.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	relics_container.anchors_preset = Control.PRESET_TOP_WIDE
 	relics_container.alignment = BoxContainer.ALIGNMENT_CENTER
 	relics_container.add_theme_constant_override("separation", 10)
@@ -83,6 +87,7 @@ func _init_dynamic_hud_elements() -> void:
 	# 2. Calm Mode 3-Star Live Objectives Header
 	calm_goals_label = Label.new()
 	calm_goals_label.name = "CalmGoals"
+	calm_goals_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	calm_goals_label.anchors_preset = Control.PRESET_TOP_WIDE
 	calm_goals_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	# Below TopBar, which now ends at 208; at 176 it sat on top of the readout.
@@ -276,8 +281,14 @@ func update_board_stats(remaining_tiles: int, legal_moves: int) -> void:
 func _on_score_updated(new_score: int, _delta: int) -> void:
 	target_score = new_score
 
+## How long the flow banner stays up before fading on its own.
+const FLOW_BANNER_HOLD: float = 1.6
+var _flow_fade: Tween = null
+
 func _on_flow_updated(flow: int, suit_name: String, is_overdrive: bool) -> void:
 	if flow < 2:
+		if is_instance_valid(_flow_fade):
+			_flow_fade.kill()
 		var t := create_tween()
 		t.tween_property(flow_banner, "modulate:a", 0.0, 0.15)
 		return
@@ -298,8 +309,16 @@ func _on_flow_updated(flow: int, suit_name: String, is_overdrive: bool) -> void:
 		lbl_flow.text = "Flow ×%d · %s" % [flow, suit_display]
 		lbl_flow.add_theme_color_override("font_color", UITheme.GOLD_CORE)
 		
+	# Fades itself out rather than sitting over the board for as long as the
+	# flow lasts. It is mouse_filter IGNORE now so it no longer eats taps, but
+	# a panel parked on the top rows is still in the way of reading them.
+	if is_instance_valid(_flow_fade):
+		_flow_fade.kill()
 	var tween := create_tween()
 	tween.tween_property(flow_banner, "modulate:a", 1.0, 0.15)
+	_flow_fade = create_tween()
+	_flow_fade.tween_interval(FLOW_BANNER_HOLD)
+	_flow_fade.tween_property(flow_banner, "modulate:a", 0.0, 0.45)
 	# Pulse banner scale on flow advance
 	flow_banner.pivot_offset = flow_banner.size * 0.5
 	var pop_tween := create_tween()

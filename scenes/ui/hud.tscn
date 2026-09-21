@@ -6,6 +6,7 @@
 script = ExtResource("1_hud")
 
 [node name="TopBar" type="HBoxContainer" parent="."]
+mouse_filter = 2
 anchors_preset = 10
 anchor_right = 1.0
 offset_left = 24.0
@@ -22,6 +23,7 @@ theme_override_font_sizes/font_size = 56
 text = "☰"
 
 [node name="Readout" type="PanelContainer" parent="TopBar"]
+mouse_filter = 2
 layout_mode = 2
 size_flags_horizontal = 3
 
@@ -100,6 +102,7 @@ text = "0"
 horizontal_alignment = 1
 
 [node name="TimerWrap" type="VBoxContainer" parent="."]
+mouse_filter = 2
 anchors_preset = 10
 anchor_right = 1.0
 offset_left = 24.0
@@ -115,11 +118,13 @@ text = "1:40"
 horizontal_alignment = 1
 
 [node name="Bar" type="ProgressBar" parent="TimerWrap"]
+mouse_filter = 2
 custom_minimum_size = Vector2(0, 10)
 layout_mode = 2
 show_percentage = false
 
 [node name="FlowBanner" type="PanelContainer" parent="."]
+mouse_filter = 2
 anchors_preset = 5
 anchor_left = 0.5
 anchor_right = 0.5
@@ -130,6 +135,7 @@ offset_bottom = 338.0
 grow_horizontal = 2
 
 [node name="FlowLabel" type="Label" parent="FlowBanner"]
+mouse_filter = 2
 layout_mode = 2
 theme_override_colors/font_color = Color(0.95, 0.76, 0.31, 1)
 theme_override_font_sizes/font_size = 42
@@ -138,13 +144,14 @@ horizontal_alignment = 1
 vertical_alignment = 1
 
 [node name="PropsBar" type="HBoxContainer" parent="."]
+mouse_filter = 2
 anchors_preset = 7
 anchor_left = 0.5
 anchor_top = 1.0
 anchor_right = 0.5
 anchor_bottom = 1.0
 offset_left = -450.0
-offset_top = -219.0
+offset_top = -195.0
 offset_right = 450.0
 offset_bottom = -75.0
 grow_horizontal = 2
@@ -153,21 +160,21 @@ theme_override_constants/separation = 28
 alignment = 1
 
 [node name="BtnUndo" type="Button" parent="PropsBar"]
-custom_minimum_size = Vector2(260, 144)
+custom_minimum_size = Vector2(240, 120)
 layout_mode = 2
-theme_override_font_sizes/font_size = 42
+theme_override_font_sizes/font_size = 38
 text = "Undo\n(3)"
 
 [node name="BtnHint" type="Button" parent="PropsBar"]
-custom_minimum_size = Vector2(260, 144)
+custom_minimum_size = Vector2(240, 120)
 layout_mode = 2
-theme_override_font_sizes/font_size = 42
+theme_override_font_sizes/font_size = 38
 text = "Hint\n(3)"
 
 [node name="BtnShuffle" type="Button" parent="PropsBar"]
-custom_minimum_size = Vector2(260, 144)
+custom_minimum_size = Vector2(240, 120)
 layout_mode = 2
-theme_override_font_sizes/font_size = 42
+theme_override_font_sizes/font_size = 38
 text = "Shuffle\n(3)"
 
 [node name="Toast" type="PanelContainer" parent="."]

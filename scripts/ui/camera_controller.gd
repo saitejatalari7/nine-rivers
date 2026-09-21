@@ -29,7 +29,7 @@ func frame_board(bounds: Rect2, viewport_size: Vector2) -> void:
 	# starts 219 from the bottom, and both move again by the safe-area insets.
 	# The old fixed 190/230 predate that and put the board under both bars.
 	const TOP_BAR_END: float = 208.0
-	const PROPS_BAR_H: float = 219.0
+	const PROPS_BAR_H: float = 195.0
 	var insets: Vector2 = UITheme.get_safe_insets(get_viewport())
 	var top_hud_h: float = insets.x + TOP_BAR_END
 	var bot_props_h: float = insets.y + PROPS_BAR_H

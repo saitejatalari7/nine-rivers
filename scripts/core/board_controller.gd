@@ -64,6 +64,7 @@ func _on_flow_updated(flow: int, _suit: String, _is_overdrive: bool) -> void:
 
 func load_stage(layout_name: String, rng: RandomNumberGenerator = null) -> void:
 	clear_board()
+	_auto_thaw_armed = false
 	stage_match_count = 0
 	tide_caller_used_in_flow = false
 	var tiles := BoardGenerator.deal_board(layout_name, rng)
@@ -128,7 +129,9 @@ func load_stage(layout_name: String, rng: RandomNumberGenerator = null) -> void:
 		
 	board_bounds = Rect2(0, 0, (max_x * 0.5) * TW + TW + max_z * LAYER_OFF_X, (max_y * 0.5) * TH + TH + max_z * LAYER_OFF_Y)
 	
+	_auto_thaw_armed = false
 	update_all_tiles_status()
+	_auto_thaw_armed = true
 	move_completed.emit(live_tiles.size(), get_legal_sets().size())
 
 func _reorder_tile_children() -> void:
@@ -191,14 +194,40 @@ func get_tile_blocked_reason(t: RiverTile, grid: Dictionary) -> String:
 func is_tile_free_grid(t: RiverTile, grid: Dictionary) -> bool:
 	return get_tile_blocked_reason(t, grid) == "free"
 
+## Set once the deal has settled. Without it the first status pass would thaw
+## every frozen tile that happens to start free, and Frost would be over before
+## the player touched anything.
+var _auto_thaw_armed: bool = false
+
 func update_all_tiles_status() -> void:
 	var active := get_active_tiles()
 	var grid := get_spatial_grid(active)
 	for t in active:
 		var v = tile_views.get(t)
-		if is_instance_valid(v):
-			var free := is_tile_free_grid(t, grid)
-			v.setup(t, free)
+		if not is_instance_valid(v):
+			continue
+		var free := is_tile_free_grid(t, grid)
+		# Clearing what blocked a frozen tile cracks its ice. Only on the
+		# transition: a tile that was already free and frozen at the deal stays
+		# frozen, which is what leaves the player something to tap.
+		if _auto_thaw_armed and t.is_frozen and free and not v.is_free:
+			_thaw(t, v)
+		v.setup(t, free)
+
+## Cracks the ice on one tile: state, sound and shards. Shared so a tap and an
+## auto-crack cannot drift apart.
+func _thaw(t: RiverTile, v) -> void:
+	t.is_frozen = false
+	var centre: Vector2 = v.position + Vector2(TW * 0.5, TH * 0.5)
+	AudioManager.play_ice_crack(centre, t.z)
+	var dust = TileShatterDustScene.instantiate()
+	dust.position = centre
+	dust.z_index = v.z_index + 40
+	add_child(dust)
+	if dust.has_method("setup"):
+		# is_glass true gives the icy palette the frost tiles already use.
+		dust.setup(Color(0.70, 0.92, 1.0), false, t.suit, true)
+	v.queue_redraw()
 
 func get_active_tiles() -> Array[RiverTile]:
 	var res: Array[RiverTile] = []
@@ -262,15 +291,11 @@ func _on_tile_clicked(view: TileView) -> void:
 			toast_requested.emit("Blocked on both left and right sides!")
 		return
 		
-	# Frost encasement: first tap cracks the ice and thaws the tile
+	# Frost encasement: a tap still cracks the ice, for the tiles that were
+	# frozen where they lay and never had a blocker to clear.
 	if t.is_frozen:
-		t.is_frozen = false
-		view.play_wrong_shake()
-		# The ice, not the tile underneath it - bright and glassy whatever the
-		# suit, so cracking always sounds like cracking.
-		AudioManager.play_ice_crack(view.position + Vector2(TW * 0.5, TH * 0.5), t.z)
+		_thaw(t, view)
 		toast_requested.emit("Ice cracked! Tile thawed.")
-		view.queue_redraw()
 		return
 		
 	# Deselect if clicked again
@@ -447,6 +472,8 @@ func _resolve_matched_set(group: Array[RiverTile]) -> void:
 		board_cleared.emit()
 	elif legal_moves == 0:
 		no_moves_left.emit()
+	else:
+		_nudge_if_iced_in()
 
 func get_legal_sets() -> Array[Array]:
 	if not _legal_sets_dirty:
@@ -560,12 +587,39 @@ func provide_hint() -> bool:
 	var sets := get_legal_sets()
 	if sets.is_empty():
 		return false
-	var chosen: Array = sets[randi() % sets.size()]
+	# Prefer a set with no ice in it. If every remaining set is iced, the hint
+	# points at ice, and the player has to be told that tapping it is a move -
+	# nothing else on the board says so once auto-thaw has handled the rest.
+	var clear_sets: Array[Array] = []
+	for s in sets:
+		if not _set_has_ice(s):
+			clear_sets.append(s)
+	var pool: Array = clear_sets if not clear_sets.is_empty() else sets
+	var chosen: Array = pool[randi() % pool.size()]
 	for t in chosen:
 		var v = tile_views.get(t)
 		if is_instance_valid(v):
 			v.flash_hint(2.5)
+	if clear_sets.is_empty():
+		toast_requested.emit("Frozen - tap the ice to crack it open.")
 	return true
+
+func _set_has_ice(s: Array) -> bool:
+	for t in s:
+		if t.is_frozen:
+			return true
+	return false
+
+## Fires after a match when every remaining move is behind ice, so a player who
+## has only ever seen tiles auto-thaw is told that they can crack it directly.
+func _nudge_if_iced_in() -> void:
+	var sets := get_legal_sets()
+	if sets.is_empty():
+		return
+	for s in sets:
+		if not _set_has_ice(s):
+			return
+	toast_requested.emit("Frozen - tap the ice to crack it open.")
 
 func undo_last_move() -> bool:
 	if history.is_empty():
