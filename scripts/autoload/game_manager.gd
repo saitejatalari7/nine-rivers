@@ -30,8 +30,13 @@ var hints: int = 3
 var shuffles: int = 3
 
 # Timed Mode / Roguelite parameters
+## max_time is the denominator of the HUD's time bar, and apply_daily_time()
+## raises it to fit a long Daily board. Every mode entry resets it, or a Rapids
+## run started after a Daily draws its full bar against the Daily's ceiling.
+const DEFAULT_MAX_TIME: float = 180.0
+
 var time_left: float = 100.0
-var max_time: float = 180.0
+var max_time: float = DEFAULT_MAX_TIME
 var score_mult: float = 1.0
 var time_gain_rate: float = 1.5
 var penalty_seconds: float = 3.0
@@ -93,6 +98,7 @@ func start_timed_run() -> void:
 	hints = 2
 	shuffles = 2
 	time_left = 100.0
+	max_time = DEFAULT_MAX_TIME
 	score_mult = 1.0
 	time_gain_rate = 1.5
 	penalty_seconds = 3.0
@@ -132,6 +138,7 @@ func start_daily_tide() -> void:
 	hints = 2
 	shuffles = 2
 	time_left = 120.0
+	max_time = DEFAULT_MAX_TIME
 	is_timer_active = true
 	active_relics.clear()
 	
@@ -141,9 +148,16 @@ func start_daily_tide() -> void:
 	time_updated.emit(time_left, max_time)
 	on_stage_started()
 
+## Called at the start of every stage, including the second and later stages of
+## a Rapids run. _on_board_cleared() stops the clock to hold it still under the
+## reward screen, so the next stage has to start it again or the countdown stays
+## frozen for the rest of the run.
 func on_stage_started() -> void:
 	is_first_match_of_stage = true
 	porcelain_guard_active = true
+	if current_mode != GameMode.CALM:
+		is_timer_active = true
+		time_updated.emit(time_left, max_time)
 	if has_relic("golden_net"):
 		hints += 1
 		shuffles += 1
@@ -231,8 +245,9 @@ func register_match(suit: String, is_triple: bool, mastery_level: int = 0,
 	score += pts
 	score_updated.emit(score, pts)
 	
-	# 3. Time return
-	if current_mode != GameMode.CALM:
+	# 3. Time return. Gated on the clock actually running: a match must not add
+	# time to a countdown that is not counting down.
+	if is_timer_active:
 		var bonus: float = time_gain_rate * (1.6 if is_triple else 1.0)
 		if is_triple and has_relic("jade_kiln"):
 			bonus += 5.0
