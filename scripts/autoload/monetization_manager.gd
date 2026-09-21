@@ -376,7 +376,13 @@ func _init_platform_ads() -> void:
 		if _admob.has_signal("on_rewarded_ad_user_earned_reward"):
 			_admob.on_rewarded_ad_user_earned_reward.connect(func(_type, _amt): _on_admob_reward_granted("", 0))
 
+## Only an ad WE asked for pays out. This used to grant on any call: with no
+## pending placement it fell to the catch-all arm of _grant_reward and paid 50
+## pearls for nothing, and firing twice for one ad paid twice. Harmless only
+## while no ad plugin is installed, which is a state issue 04 plans to end.
 func _on_admob_reward_granted(_type: String = "", _amount: int = 0) -> void:
+	if _pending_ad_placement.is_empty():
+		return
 	var placement: String = _pending_ad_placement
 	var cb: Callable = _pending_ad_callback
 	_pending_ad_placement = ""
@@ -386,7 +392,13 @@ func _on_admob_reward_granted(_type: String = "", _amount: int = 0) -> void:
 func _check_daily_ad_reset() -> void:
 	var dt := Time.get_date_dict_from_system(true)
 	var today_str := "%04d-%02d-%02d" % [dt["year"], dt["month"], dt["day"]]
-	if SaveManager.economy.get("last_rewarded_date", "") != today_str:
+	# Only a LATER date refills the charges. Any mismatch used to do it, so
+	# winding the device clock back and forward refilled the four ad charges
+	# indefinitely.
+	var last_seen: String = str(SaveManager.economy.get("last_rewarded_date", ""))
+	if last_seen == today_str:
+		return
+	if last_seen.is_empty() or today_str > last_seen:
 		SaveManager.economy["last_rewarded_date"] = today_str
 		SaveManager.economy["rewarded_ads_today"] = 0
 		SaveManager.request_save()
@@ -670,7 +682,23 @@ func _is_release_mobile() -> bool:
 
 
 func is_rewarded_ad_available() -> bool:
-	return _admob != null and _admob.has_method("show_rewarded_video")
+	# _init_platform_ads accepts either singleton, so both API names count.
+	# Checking only the Godot 3.x name would refuse every offer while a working
+	# Poing plugin was installed.
+	if _admob == null:
+		return false
+	return _admob.has_method("show_rewarded_video") or _admob.has_method("show")
+
+
+## The one question the UI and show_rewarded_ad must both ask, so an offer is
+## shown exactly when taking it would do something. Gating the screen on
+## is_rewarded_ad_available() alone hid the offers in the editor and in debug
+## builds too, which made the simulated grant this file deliberately keeps
+## unreachable from any UI.
+func can_offer_rewarded_ad() -> bool:
+	if not can_watch_rewarded_ad():
+		return false
+	return is_rewarded_ad_available() or not _is_release_mobile()
 
 
 func show_rewarded_ad(placement: String, on_reward: Callable = Callable()) -> void:
@@ -722,7 +750,5 @@ func _grant_reward(placement: String, on_reward: Callable = Callable()) -> void:
 			if on_reward.is_valid():
 				on_reward.call("pearls", 100)
 		_:
-			add_pearls(50)
-			rewarded_ad_rewarded.emit(placement, "pearls", 50)
-			if on_reward.is_valid():
-				on_reward.call("pearls", 50)
+			# An unrecognised placement is a bug, not a 50-pearl payout.
+			push_warning("rewarded ad: unknown placement, granting nothing")

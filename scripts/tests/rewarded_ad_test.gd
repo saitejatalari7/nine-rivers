@@ -55,6 +55,8 @@ func _ready() -> void:
 		"%d -> %d" % [capped_before, MonetizationManager.get_pearls()])
 
 	await _run_release_mobile()
+	_run_offer_gate()
+	await _run_adjacent_holes()
 
 	print("")
 	print("Failures: %d" % _fails)
@@ -90,3 +92,51 @@ func _run_release_mobile() -> void:
 
 	MonetizationManager.rewarded_ad_unavailable.disconnect(conn)
 	MonetizationManager.debug_force_release_mobile = false
+
+
+## The offers must appear exactly when taking one would do something, or the
+## screen either lies or hides a working reward. Gating the UI on
+## is_rewarded_ad_available() alone hid them in debug builds too.
+func _run_offer_gate() -> void:
+	SaveManager.economy["rewarded_ads_today"] = 0
+	MonetizationManager.debug_force_release_mobile = false
+	_check(MonetizationManager.can_offer_rewarded_ad(),
+		"debug build offers the reward it would actually grant",
+		"can_offer=%s" % MonetizationManager.can_offer_rewarded_ad())
+
+	MonetizationManager.debug_force_release_mobile = true
+	_check(not MonetizationManager.can_offer_rewarded_ad(),
+		"release mobile with no ad network offers nothing",
+		"can_offer=%s" % MonetizationManager.can_offer_rewarded_ad())
+	MonetizationManager.debug_force_release_mobile = false
+
+	SaveManager.economy["rewarded_ads_today"] = MonetizationManager.MAX_DAILY_REWARDED_ADS
+	_check(not MonetizationManager.can_offer_rewarded_ad(),
+		"a spent daily cap offers nothing",
+		"can_offer=%s" % MonetizationManager.can_offer_rewarded_ad())
+	SaveManager.economy["rewarded_ads_today"] = 0
+
+
+## A stray reward callback with nothing pending used to fall to the catch-all
+## arm and pay 50 pearls. The clock reset used to fire on ANY date mismatch, so
+## winding the device clock back and forward refilled the charges.
+func _run_adjacent_holes() -> void:
+	var before: int = MonetizationManager.get_pearls()
+	MonetizationManager._on_admob_reward_granted("", 0)
+	MonetizationManager._on_admob_reward_granted("", 0)
+	await get_tree().process_frame
+	_check(MonetizationManager.get_pearls() == before,
+		"a reward callback with nothing pending grants nothing",
+		"%d -> %d over 2 stray calls" % [before, MonetizationManager.get_pearls()])
+
+	var dt := Time.get_date_dict_from_system(true)
+	var today := "%04d-%02d-%02d" % [dt["year"], dt["month"], dt["day"]]
+	SaveManager.economy["last_rewarded_date"] = today
+	SaveManager.economy["rewarded_ads_today"] = MonetizationManager.MAX_DAILY_REWARDED_ADS
+	# A clock wound BACKWARDS must not look like a new day.
+	SaveManager.economy["last_rewarded_date"] = "2099-01-01"
+	_check(MonetizationManager.get_remaining_rewarded_ads() == 0,
+		"a backwards clock does not refill the charges",
+		"remaining=%d" % MonetizationManager.get_remaining_rewarded_ads())
+	SaveManager.economy["last_rewarded_date"] = today
+	SaveManager.economy["rewarded_ads_today"] = 0

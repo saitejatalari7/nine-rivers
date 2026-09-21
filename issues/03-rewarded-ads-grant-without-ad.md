@@ -58,3 +58,35 @@ the important path untested. Verified by deleting the guard: 3 failures, and 0
 with it restored.
 
 Commit: see git log for `fix(ads)`.
+
+## Review follow-up — 2026-09-21
+
+A review agent found that the first fix was correct at the entry point but that
+its UI half over-fired, plus three adjacent holes. All addressed:
+
+- **The offer gate was wrong.** The screen asked `is_rewarded_ad_available()`
+  while `show_rewarded_ad()` refused only when that *and* `_is_release_mobile()`.
+  So the editor and debug builds hid offers that would have granted normally,
+  making the simulated grant unreachable from any UI. Both now ask
+  `can_offer_rewarded_ad()`, so an offer appears exactly when taking it does
+  something.
+- **`_on_admob_reward_granted` bypassed the guard, the cap and the charge.**
+  With no pending placement it fell to the catch-all arm of `_grant_reward` and
+  paid 50 pearls; firing twice for one ad paid twice. It now returns unless a
+  placement is pending, and the catch-all warns instead of paying.
+- **`_check_daily_ad_reset` refilled on any date mismatch**, so winding the
+  device clock back and forward refilled the four charges indefinitely. Only a
+  later date refills now.
+- **`is_rewarded_ad_available()` only recognised the Godot 3.x API name**, so it
+  would have refused every offer while a working Poing plugin was installed.
+  Both names are accepted.
+
+Two the reviewer raised that were deliberately left:
+
+- The real-ad path consumes a charge before showing, so an abandoned ad still
+  burns one of four. That is standard practice and prevents farming by
+  dismissal. The earlier commit message claiming charges are taken "only when
+  an ad is really shown" was inaccurate for that path.
+- Coverage: `ui_layout_audit` and `ui_nav_audit` now walk a one-row Daily
+  Meditations on release-mobile settings, so their coverage of the two offer
+  rows drops. Scores unchanged. Worth revisiting when ads actually work.

@@ -979,7 +979,7 @@ func show_daily_offerings_modal() -> void:
 	# the build these used to pay out anyway; hiding them is honest, and beats a
 	# button that silently does nothing.
 	var remaining_ads: int = MonetizationManager.get_remaining_rewarded_ads()
-	if remaining_ads > 0 and MonetizationManager.is_rewarded_ad_available():
+	if MonetizationManager.can_offer_rewarded_ad():
 		_add_tile_row("福", GLYPH_GOLD, "Meditation Blessing",
 			"+60 ◈ pearls · free",
 			"%d left" % remaining_ads, func():
