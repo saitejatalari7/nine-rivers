@@ -355,16 +355,17 @@ func _check_reachability() -> void:
 	if ProjectSettings.get_setting("application/config/quit_on_go_back", true):
 		_fail("quit_on_go_back is on: the Android back gesture closes the game "
 			+ "instead of opening the pause menu.")
+	# Back no longer leaves the game from the main menu. It used to arm a
+	# two-press exit; losing a session to a stray gesture was worse than having
+	# no gesture to quit with. So the check is that back is inert here, and
+	# above all that it does not navigate somewhere unexpected.
 	await _goto({"builder": "show_main_menu", "args": []})
-	var armed_before: float = main._exit_armed_until
 	main._handle_back_action()
 	await _settle()
-	if main._exit_armed_until <= armed_before:
-		_fail("main menu: back does not arm an exit, so the app cannot be left.")
-	elif _state_key() != HOME:
-		_fail("main menu: back left the menu instead of arming an exit.")
+	if _state_key() != HOME:
+		_fail("main menu: back moved off the main menu; it should do nothing there.")
 	else:
-		print("  main menu: back arms exit, second press leaves (verified)")
+		print("  main menu: back is inert, as intended (verified)")
 
 # ---------------------------------------------------------------- daily tide
 

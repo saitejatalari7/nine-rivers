@@ -320,7 +320,9 @@ func show_main_menu() -> void:
 		"%d ◈" % pearls, func(): show_bazaar_modal())
 
 	_add_tile_row("設", Color("#6d6455"), "Settings", "Audio & accessibility",
-		"", func(): show_settings_menu())
+		"", func():
+			_settings_from_pause = false
+			show_settings_menu())
 
 	show_modal()
 
@@ -471,6 +473,7 @@ func show_pause_menu() -> void:
 
 	_add_separator()
 	_add_toggle_row("設", "Settings", "›", func():
+		_settings_from_pause = true
 		show_settings_menu()
 	, UITheme.IVORY_MUTED)
 	_add_toggle_row("戻", "Quit to Main Menu", "›", func():
@@ -994,6 +997,12 @@ func show_daily_offerings_modal() -> void:
 	)
 	show_modal()
 
+## Remembers which screen opened Settings. Both back paths used to ask
+## GameManager.is_timer_active, which is false while paused and false in Calm
+## for the whole campaign, so Back always went to the main menu and abandoned
+## the board whatever mode you were in.
+var _settings_from_pause: bool = false
+
 func show_settings_menu() -> void:
 	_current_screen = "settings"
 	_clear_content()
@@ -1055,7 +1064,7 @@ func show_settings_menu() -> void:
 
 	_add_separator()
 	_add_button("Back", func():
-		if GameManager.is_timer_active:
+		if _settings_from_pause:
 			show_pause_menu()
 		else:
 			show_main_menu()
@@ -1108,7 +1117,7 @@ func handle_back_pressed() -> void:
 		"bg_detail":
 			show_background_catalog_modal()
 		"settings":
-			if GameManager.is_timer_active:
+			if _settings_from_pause:
 				show_pause_menu()
 			else:
 				show_main_menu()
