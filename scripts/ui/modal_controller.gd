@@ -1366,8 +1366,28 @@ func _add_seal_header(title: String, sub: String, seal_glyph: String) -> void:
 	row.add_theme_constant_override("separation", 18)
 	card_container.add_child(row)
 
+	# The seal leads the row rather than trailing it. At the top right it sat in
+	# the slot every phone user reads as the close button, and being a decorative
+	# PanelContainer it did nothing when tapped. On the left it is what it always
+	# was, a chop stamped beside the title.
+	var seal := PanelContainer.new()
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = UITheme.RED_CINNABAR
+	sb.set_corner_radius_all(4)
+	sb.content_margin_left = 12; sb.content_margin_right = 12
+	sb.content_margin_top = 6; sb.content_margin_bottom = 8
+	seal.add_theme_stylebox_override("panel", sb)
+	seal.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(seal)
+
+	var sl := Label.new()
+	sl.text = seal_glyph
+	UITheme.style_label(sl, "cjk", 44, Color("#fff4ef"))
+	seal.add_child(sl)
+
 	var col := VBoxContainer.new()
 	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	col.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	col.add_theme_constant_override("separation", 2)
 	row.add_child(col)
 
@@ -1386,21 +1406,6 @@ func _add_seal_header(title: String, sub: String, seal_glyph: String) -> void:
 		UITheme.style_label(s, "ui", UITheme.FS_CAPTION, UITheme.IVORY_MUTED,
 			UITheme.W_MEDIUM, 2)
 		col.add_child(s)
-
-	var seal := PanelContainer.new()
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = UITheme.RED_CINNABAR
-	sb.set_corner_radius_all(4)
-	sb.content_margin_left = 12; sb.content_margin_right = 12
-	sb.content_margin_top = 6; sb.content_margin_bottom = 8
-	seal.add_theme_stylebox_override("panel", sb)
-	seal.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	row.add_child(seal)
-
-	var sl := Label.new()
-	sl.text = seal_glyph
-	UITheme.style_label(sl, "cjk", 44, Color("#fff4ef"))
-	seal.add_child(sl)
 
 ## A tappable settings line: carved glyph, label, current value. Hairline rule
 ## underneath instead of a box around it, so ten of these read as one list
