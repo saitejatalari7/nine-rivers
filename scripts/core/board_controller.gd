@@ -41,7 +41,12 @@ func invalidate_legal_sets() -> void:
 	_legal_sets_dirty = true
 
 func _ready() -> void:
-	TileLighting.attach(self)
+	# Onto the parent, not this node. clear_board() frees every child of the
+	# board, so lights parented here died on the first deal and the bevel
+	# lighting never ran in the game at all; they were also children 0 and 1,
+	# which broke the child-order assumption that drives mouse picking.
+	var light_host: Node = get_parent() if get_parent() != null else self
+	TileLighting.attach(light_host)
 	GameManager.flow_updated.connect(_on_flow_updated)
 	if is_instance_valid(MonetizationManager) and MonetizationManager.has_signal("theme_equipped"):
 		MonetizationManager.theme_equipped.connect(_on_theme_equipped)
@@ -704,6 +709,12 @@ func shuffle_remaining_tiles() -> bool:
 	selected_tiles.clear()
 	invalidate_legal_sets()
 	_reorder_tile_children()
+	# A shuffle re-seats every tile, so half the board flips from blocked to
+	# free at once. Auto-thaw read that as the player clearing blockers and
+	# melted most of the ice - three taps took a Frost board from 76 frozen to
+	# 38. Moving a tile is not clearing what covered it.
+	_auto_thaw_armed = false
 	update_all_tiles_status()
+	_auto_thaw_armed = true
 	move_completed.emit(active.size(), get_legal_sets().size())
 	return true

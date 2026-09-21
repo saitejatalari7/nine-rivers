@@ -511,17 +511,24 @@ func _ready() -> void:
 	print("[PASS] Banner/Tile Ad Controls & No-Ads Suppression verified.")
 	
 	# 29. Test Security Anti-Tamper & Checksum Integrity
+	# The contract changed: a save that fails its signature is now REFUSED
+	# outright rather than applied and then clamped. Applying a forged payload
+	# at all was the T04 finding. So the test is that nothing moves.
+	SaveManager.economy["no_ads_purchased"] = false
+	var pearls_before: int = SaveManager.get_pearls()
+	var jade_before: int = SaveManager.get_jade()
 	var fake_tampered_data := {
 		"version": SaveManager.CURRENT_VERSION,
 		"prog": {"river_jade": 999999},
 		"economy": {"pearls": 999999, "no_ads_purchased": true},
 		"checksum": "invalid_fake_checksum_12345"
 	}
-	SaveManager._apply_save_data(fake_tampered_data)
-	assert(SaveManager.economy["no_ads_purchased"] == false, "Tampered save must revoke no_ads_purchased")
-	assert(SaveManager.get_pearls() <= 250, "Tampered pearls must be clamped to safe cap")
-	assert(SaveManager.get_jade() <= 500, "Tampered jade must be clamped to safe cap")
-	print("[PASS] Security Anti-Tamper & Checksum Integrity verified (tampered entitlements revoked).")
+	var accepted: bool = SaveManager._apply_save_data(fake_tampered_data)
+	assert(accepted == false, "A save with a bad checksum must be refused")
+	assert(SaveManager.economy["no_ads_purchased"] == false, "A refused save must not grant no_ads")
+	assert(SaveManager.get_pearls() == pearls_before, "A refused save must not change pearls")
+	assert(SaveManager.get_jade() == jade_before, "A refused save must not change jade")
+	print("[PASS] Security Anti-Tamper & Checksum Integrity verified (forged save refused, state untouched).")
 	
 	# 30. Test Tile Preview Generation & Theme Override Rendering
 	var preview_gold := TileView.create_preview_tile("bam", 1, "theme_imperial_gold", 1.0)

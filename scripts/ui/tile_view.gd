@@ -66,7 +66,7 @@ static var debug_skip_artwork: bool = false
 ## face down toward the ink and costs the contrast that made the ink readable.
 ## Imperial Gold went to 2.63 against a 3.0 floor at the shared 0.86.
 const BLOCKED_TINT: Dictionary = {
-	"theme_imperial_gold": Color(0.95, 0.94, 0.90, 1.0),
+	"theme_imperial_gold": Color(0.90, 0.89, 0.85, 1.0),
 }
 const BLOCKED_TINT_DEFAULT := Color(0.86, 0.86, 0.84, 1.0)
 
