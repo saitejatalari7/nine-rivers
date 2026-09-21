@@ -40,6 +40,7 @@ func _ready() -> void:
 	_v3_out_of_range_numbers_clamped()
 	_v4_unknown_ids_rejected()
 	_v5_int_types_stable_across_reload()
+	_v6_version_2_profile_still_loads()
 
 	print("")
 	print("Passed: %d    Failed: %d" % [_pass, _fail])
@@ -231,8 +232,15 @@ func _p5_background_purchase_now_grants() -> void:
 
 # ---------------------------------------------------------------- #3 validation
 
+## These fixtures are signed, because the loader now refuses an unsigned or
+## wrongly-signed file outright rather than sanitizing it. The attacker modelled
+## here is the one from audit T02, who has the salt out of the APK and can sign
+## whatever they like; what these checks measure is that even a correctly signed
+## payload full of wrong types and impossible numbers cannot break the game.
 func _write_hostile(data: Dictionary) -> void:
 	_wipe_all()
+	data["version"] = SaveManager.CURRENT_VERSION
+	data["checksum"] = SaveManager.signature_for_payload(data)
 	var f := FileAccess.open_encrypted_with_pass(SAVE_PATH, FileAccess.WRITE, SaveManager._ENC_KEY)
 	f.store_string(JSON.stringify(data))
 	f.close()
@@ -332,3 +340,54 @@ func _v5_int_types_stable_across_reload() -> void:
 	_check("whole numbers stay whole across reloads", ok,
 		"after 3 save/load cycles level=%s (%s) jade=%s (%s)" % [
 			str(lvl), type_string(typeof(lvl)), str(jade), type_string(typeof(jade))])
+
+## Every profile on the owner's and the testers' devices was written by a build
+## that stamped version 2 and signed only jade / pearls / no_ads. The loader now
+## refuses a file it cannot verify, so if version 2 were not still accepted on
+## its own terms, shipping this would wipe all of them.
+func _v6_version_2_profile_still_loads() -> void:
+	_wipe_all()
+	_fresh_profile(33, 777)
+	SaveManager.economy["pearls"] = 400
+	SaveManager.economy["unlocked_themes"] = ["classic_jade", "theme_obsidian_ink"]
+	SaveManager.economy["entitlement_source"] = {"theme_obsidian_ink": "pearls"}
+	SaveManager.sanctuary = {"clarity_level": 4, "koi_unlocked": ["kohaku", "sanke"], "decorations": ["bamboo_fountain"]}
+	SaveManager.tile_mastery = {"dot_1": 42}
+
+	# Byte-for-byte the shape the previous build wrote.
+	var legacy := {
+		"prog": SaveManager.prog, "sanctuary": SaveManager.sanctuary,
+		"tile_mastery": SaveManager.tile_mastery, "settings": SaveManager.settings,
+		"economy": SaveManager.economy, "version": 2,
+		"checksum": SaveManager._compute_checksum(SaveManager.prog, SaveManager.economy)
+	}
+	var f := FileAccess.open_encrypted_with_pass(SAVE_PATH, FileAccess.WRITE, SaveManager._ENC_KEY)
+	f.store_string(JSON.stringify(legacy))
+	f.close()
+
+	_fresh_profile(1, 100)
+	SaveManager.sanctuary = {"clarity_level": 1, "koi_unlocked": ["kohaku"], "decorations": ["bamboo_fountain"]}
+	SaveManager.tile_mastery = {}
+	SaveManager.load_game()
+
+	var ok: bool = int(SaveManager.prog.get("level", 0)) == 33 \
+		and SaveManager.get_jade() == 777 \
+		and SaveManager.get_pearls() == 400 \
+		and SaveManager.economy.get("unlocked_themes", []).has("theme_obsidian_ink") \
+		and SaveManager.sanctuary.get("koi_unlocked", []).has("sanke") \
+		and int(SaveManager.tile_mastery.get("dot_1", 0)) == 42
+	_check("a version 2 profile survives the upgrade", ok,
+		"level=%s jade=%d pearls=%d themes=%s koi=%s mastery=%s" % [
+			str(SaveManager.prog.get("level")), SaveManager.get_jade(), SaveManager.get_pearls(),
+			str(SaveManager.economy.get("unlocked_themes")), str(SaveManager.sanctuary.get("koi_unlocked")),
+			str(SaveManager.tile_mastery.get("dot_1"))])
+
+	# And it is re-signed on the way out, so the narrow scheme is used once.
+	SaveManager.save_game()
+	var g := FileAccess.open_encrypted_with_pass(SAVE_PATH, FileAccess.READ, SaveManager._ENC_KEY)
+	var text: String = g.get_as_text()
+	g.close()
+	var json := JSON.new()
+	var restamped: bool = json.parse(text) == OK and int(json.data.get("version", 0)) == SaveManager.CURRENT_VERSION
+	_check("and is re-signed at the current version", restamped,
+		"file version on disk after one save = %s" % str(json.data.get("version") if json.data is Dictionary else "?"))

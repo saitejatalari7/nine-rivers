@@ -54,11 +54,20 @@ func _reset_manager() -> void:
 		"rewarded_ads_today": 0, "last_rewarded_date": ""
 	}
 
+## The version 2 signature: three currency fields and nothing else.
 func _sign(prog: Dictionary, econ: Dictionary) -> String:
 	var j: int = int(prog.get("river_jade", 0))
 	var prl: int = int(econ.get("pearls", 0))
 	var na: bool = bool(econ.get("no_ads_purchased", false))
 	return ("%d|%d|%s|%s" % [j, prl, str(na), LEAKED_SALT]).sha256_text()
+
+## The signature the shipped build computes today. An attacker who unpacked the
+## APK has the salt and the algorithm both, so the honest way to model them is to
+## sign exactly as the game does rather than to pretend the new scheme is a
+## secret. Calling SaveManager's own routine is that, and it keeps this harness
+## from silently stopping being an attack the day the scheme changes again.
+func _sign_current(data: Dictionary) -> String:
+	return SaveManager.signature_for_payload(data)
 
 func _write_plain(data: Dictionary) -> void:
 	var f := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
@@ -122,7 +131,9 @@ func _t02_forged_signature_full_unlock() -> void:
 	var econ := {"pearls": 9999999, "no_ads_purchased": true,
 		"unlocked_themes": ["classic_jade", "theme_imperial_gold", "theme_obsidian_ink", "theme_cherry_blossom"],
 		"active_tile_theme": "theme_imperial_gold"}
-	_write_encrypted({"prog": prog, "economy": econ, "version": 2, "checksum": _sign(prog, econ)})
+	var forged := {"prog": prog, "economy": econ, "version": SaveManager.CURRENT_VERSION}
+	forged["checksum"] = _sign_current(forged)
+	_write_encrypted(forged)
 	_load()
 
 	var pearls: int = SaveManager.get_pearls()
@@ -148,10 +159,16 @@ func _t03_checksum_scope_gap() -> void:
 	for suit in ["dot", "bam", "char"]:
 		for r in range(1, 10):
 			mastery["%s_%d" % [suit, r]] = 9999
+	# Stamped at the version this build writes, so the check measures the current
+	# signature scheme. A file stamped version 2 is still verified on version 2's
+	# narrow terms for the sake of profiles written by older builds, and that
+	# downgrade does re-open this gap - but writing any file at all already needs
+	# the encryption key, and anyone holding that can forge a version 3 signature
+	# outright. It grants nothing beyond T02.
 	_write_encrypted({
 		"prog": prog, "economy": econ, "tile_mastery": mastery,
 		"sanctuary": {"clarity_level": 99, "koi_unlocked": ["kohaku", "sanke", "showa", "ogon", "dragon_koi"], "decorations": []},
-		"version": 2, "checksum": _sign(prog, econ)
+		"version": SaveManager.CURRENT_VERSION, "checksum": _sign(prog, econ)
 	})
 	_load()
 

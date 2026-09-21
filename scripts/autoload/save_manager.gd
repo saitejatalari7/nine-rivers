@@ -52,7 +52,12 @@ var settings: Dictionary = {
 	"high_contrast_borders": false
 }
 
-const CURRENT_VERSION: int = 2
+## 2 -> 3 is a signature-scheme change only, not a data change: version 2 signed
+## three currency fields, version 3 signs the whole profile. Version 2 files are
+## still accepted on their own terms and re-signed the next time they are saved,
+## so existing players keep their progress.
+const CURRENT_VERSION: int = 3
+const NARROW_CHECKSUM_VERSION: int = 2
 
 var _is_dirty: bool = false
 var _batch_timer: float = 0.0
@@ -83,11 +88,57 @@ func _flush_save() -> void:
 const _ENC_KEY := "NR_9R_ZenJade_k892X_P0nd!"
 const _SALT := "NR_ZenPond_Salt_9Rivers_2026!"
 
+## The version 2 signature. Kept only to verify files written by older builds.
 func _compute_checksum(p: Dictionary, e: Dictionary) -> String:
 	var j: int = int(p.get("river_jade", 0))
 	var prl: int = int(e.get("pearls", 0))
 	var na: bool = bool(e.get("no_ads_purchased", false))
 	return ("%d|%d|%s|%s" % [j, prl, str(na), _SALT]).sha256_text()
+
+## A stable text rendering of a loaded value, so the same profile always hashes
+## to the same digest. Dictionary keys are sorted because insertion order is an
+## accident of how the file was parsed, and arrays are sorted because every
+## signed list here is a set of ids whose order carries no meaning.
+func _canonical(value: Variant) -> String:
+	if value is Dictionary:
+		var keys: Array = value.keys()
+		keys.sort_custom(func(a, b): return str(a) < str(b))
+		var parts: PackedStringArray = PackedStringArray()
+		for k in keys:
+			parts.append("%s=%s" % [str(k), _canonical(value[k])])
+		return "{" + ",".join(parts) + "}"
+	if value is Array:
+		var items: PackedStringArray = PackedStringArray()
+		for item in value:
+			items.append(_canonical(item))
+		items.sort()
+		return "[" + ",".join(items) + "]"
+	if value is bool:
+		return "true" if value else "false"
+	if value is float:
+		# JSON hands whole numbers back as floats; 26 and 26.0 must not differ.
+		return str(int(value)) if is_equal_approx(value, floor(value)) else str(value)
+	return str(value)
+
+## The version 3 signature: everything a player could gain by editing the file.
+##
+## It is computed from the SANITIZED payload rather than the raw one, and
+## save_game() signs the same way. That symmetry is the point - a value the
+## loader would clamp or drop is signed in its clamped form by both sides, so an
+## honest profile can never sign itself into a file it will then reject.
+##
+## settings are deliberately left out: nothing there is worth anything, and
+## signing them would mean a preference change could invalidate a profile.
+func signature_for_payload(data: Dictionary) -> String:
+	var parts: Array[String] = [
+		"v3",
+		_canonical(_sanitize_prog(data.get("prog"))),
+		_canonical(_sanitize_economy(data.get("economy"))),
+		_canonical(_sanitize_sanctuary(data.get("sanctuary"))),
+		_canonical(_sanitize_mastery(data.get("tile_mastery"))),
+		_SALT,
+	]
+	return "|".join(parts).sha256_text()
 
 ## Writes the profile atomically: the new data goes to a scratch file and is read
 ## back to prove it is complete, and only then does it replace the live save. The
@@ -104,8 +155,8 @@ func save_game() -> bool:
 		"settings": settings,
 		"economy": economy,
 		"version": CURRENT_VERSION,
-		"checksum": _compute_checksum(prog, economy)
 	}
+	data["checksum"] = signature_for_payload(data)
 
 	# 1. Write the full payload to the scratch file.
 	var file := FileAccess.open_encrypted_with_pass(TEMP_PATH, FileAccess.WRITE, _ENC_KEY)
@@ -322,10 +373,18 @@ func _sanitize_mastery(raw: Variant) -> Dictionary:
 		out[key] = _vint(raw[k], 0, 0, 999999)
 	return out
 
+## Each step transforms the payload from one schema to the next. 2 -> 3 changed
+## only how the file is signed, so there is nothing to move; the entry is here so
+## that the chain is complete and the next real migration has somewhere to go.
 func _migrate_save(data: Dictionary, from_version: int) -> Dictionary:
-	# Extensible migration chain for future versions
-	if from_version < 1:
-		data["version"] = 1
+	var v: int = maxi(1, from_version)
+	while v < CURRENT_VERSION:
+		match v:
+			1, 2:
+				pass
+			_:
+				push_warning("Nine Rivers: no migration step for save version %d." % v)
+		v += 1
 	data["version"] = CURRENT_VERSION
 	return data
 
@@ -341,8 +400,8 @@ func load_game() -> void:
 		var data: Dictionary = _read_save_dict(candidates[i])
 		if data.is_empty():
 			continue
-
-		_apply_save_data(data)
+		if not _apply_save_data(data):
+			continue
 		if i > 0:
 			# The live save was missing or damaged. Rewrite it from the copy that
 			# loaded so the player is not one more bad launch away from losing it.
@@ -353,27 +412,45 @@ func load_game() -> void:
 	if FileAccess.file_exists(SAVE_PATH) or FileAccess.file_exists(BACKUP_PATH):
 		push_error("Nine Rivers: every save copy was unreadable. Starting a fresh profile.")
 
-func _apply_save_data(data: Dictionary) -> void:
+## Verifies one candidate file and, only if it passes, applies it. Returns false
+## if the file was refused, so load_game() can fall through to the next copy.
+##
+## Refusal is the whole point. The old behaviour clamped three currency fields on
+## a signature mismatch and then applied the rest of the tampered payload
+## regardless, which meant a forged file did not have to beat the checksum to
+## hand out levels, cosmetics, streaks and koi - it only had to be present.
+func _apply_save_data(data: Dictionary) -> bool:
 	var file_version: int = int(data.get("version", 1))
+
+	# A file from a build that does not exist yet cannot be read correctly, and
+	# guessing at it is how a newer profile gets quietly mangled by an older
+	# install. Leave it alone and try the next copy.
+	if file_version > CURRENT_VERSION:
+		push_warning("Nine Rivers: save version %d is newer than this build (%d). Refusing it." % [file_version, CURRENT_VERSION])
+		return false
+
+	if not data.has("checksum"):
+		push_warning("Nine Rivers: save has no integrity signature. Refusing it.")
+		return false
+
+	var supplied: String = str(data["checksum"])
+	var verified: bool = supplied == signature_for_payload(data)
+	if not verified and file_version <= NARROW_CHECKSUM_VERSION:
+		# Written by a build that only signed jade / pearls / no_ads. Accept it on
+		# those terms; the next save re-signs the whole profile at version 3.
+		verified = supplied == _compute_checksum(
+			_sanitize_prog(data.get("prog")), _sanitize_economy(data.get("economy")))
+	if not verified:
+		push_warning("Nine Rivers: save integrity check failed. Refusing it.")
+		return false
+
 	if file_version < CURRENT_VERSION:
 		data = _migrate_save(data, file_version)
-		
-	# Coerce and clamp before anything is checked or merged, so the rest of this
-	# function — and the whole game after it — only ever sees well-formed values.
+
+	# Coerce and clamp before anything is merged, so the rest of this function —
+	# and the whole game after it — only ever sees well-formed values.
 	var loaded_prog: Dictionary = _sanitize_prog(data.get("prog"))
 	var loaded_econ: Dictionary = _sanitize_economy(data.get("economy"))
-
-	# Anti-tampering: verify cryptographic integrity checksum if present.
-	# Checked against the sanitized values, which is also what save_game() signs.
-	if data.has("checksum"):
-		var expected := _compute_checksum(loaded_prog, loaded_econ)
-		if str(data["checksum"]) != expected:
-			push_warning("Nine Rivers save integrity mismatch. Enforcing safe currency bounds.")
-			if loaded_econ.has("pearls"):
-				loaded_econ["pearls"] = mini(250, int(loaded_econ["pearls"]))
-			if loaded_prog.has("river_jade"):
-				loaded_prog["river_jade"] = mini(500, int(loaded_prog["river_jade"]))
-			loaded_econ["no_ads_purchased"] = false
 
 	if not loaded_prog.is_empty():
 		prog.merge(loaded_prog, true)
@@ -387,6 +464,7 @@ func _apply_save_data(data: Dictionary) -> void:
 		settings.merge(loaded_settings, true)
 	if not loaded_econ.is_empty():
 		economy.merge(loaded_econ, true)
+	return true
 
 func add_pearls(amount: int) -> void:
 	economy["pearls"] = maxi(0, int(economy.get("pearls", 0)) + amount)
