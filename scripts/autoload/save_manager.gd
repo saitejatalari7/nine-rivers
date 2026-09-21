@@ -516,11 +516,15 @@ func record_level_clear(lvl: int, score: int, stars_earned: int) -> void:
 	add_jade(50 * stars_earned)
 	save_game()
 
-func record_daily_play() -> void:
+## Returns true only when today has not been counted yet, so the caller can
+## pay the daily blessing exactly once. The streak always had this guard; the
+## jade grant did not, because it lived inside the clear screen and was paid
+## out every time that screen was drawn.
+func record_daily_play() -> bool:
 	var dt := Time.get_date_dict_from_system(true)
 	var today_str := "%04d-%02d-%02d" % [dt["year"], dt["month"], dt["day"]]
 	if prog.get("last_daily_date", "") == today_str:
-		return
+		return false
 		
 	var yesterday_dt := Time.get_date_dict_from_unix_time(Time.get_unix_time_from_system() - 86400)
 	var yesterday_str := "%04d-%02d-%02d" % [yesterday_dt["year"], yesterday_dt["month"], yesterday_dt["day"]]
@@ -536,6 +540,7 @@ func record_daily_play() -> void:
 			
 	prog["last_daily_date"] = today_str
 	save_game()
+	return true
 
 func record_tile_mastery(suit: String, rank: int) -> int:
 	var key := "%s_%d" % [suit, rank]

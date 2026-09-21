@@ -23,6 +23,9 @@ var tutorial: TutorialController
 # Reference BoardGenerator's canonical ladder
 const LADDER: Array[String] = BoardGenerator.LADDER
 
+## Paid once per calendar day, on the first Daily Tide cleared that day.
+const DAILY_BLESSING_JADE: int = 150
+
 func _ready() -> void:
 	# Instantiate Tutorial Controller
 	tutorial = TutorialController.new()
@@ -422,8 +425,12 @@ func _on_board_cleared() -> void:
 		modal.show_level_clear(GameManager.current_level, GameManager.score, stars)
 		MonetizationManager.show_interstitial_if_ready(GameManager.current_level, "level_clear")
 	elif GameManager.current_mode == GameManager.GameMode.DAILY:
-		SaveManager.record_daily_play()
-		modal.show_daily_clear(GameManager.score, GameManager.best_flow, int(SaveManager.prog.get("daily_streak", 1)))
+		var first_today: bool = SaveManager.record_daily_play()
+		var blessing: int = DAILY_BLESSING_JADE if first_today else 0
+		if blessing > 0:
+			SaveManager.add_jade(blessing)
+		modal.show_daily_clear(GameManager.score, GameManager.best_flow,
+			int(SaveManager.prog.get("daily_streak", 1)), blessing)
 	else:
 		modal.show_boon_draft()
 

@@ -516,7 +516,10 @@ func show_level_clear(level: int, score: int, stars: int) -> void:
 	, UITheme.IVORY_MUTED)
 	show_modal()
 
-func show_daily_clear(score: int, best_flow: int, streak: int) -> void:
+## blessing is what the caller actually granted, not what it would have granted.
+## The jade used to be added here, which paid out every time this screen was
+## drawn rather than once per daily - replaying the daily farmed it freely.
+func show_daily_clear(score: int, best_flow: int, streak: int, blessing: int = 0) -> void:
 	_current_screen = "daily_clear"
 	_clear_content()
 	_add_seal_header("The Daily Tide", "潮 · Cleared", "潮")
@@ -525,9 +528,9 @@ func show_daily_clear(score: int, best_flow: int, streak: int) -> void:
 	_add_sheet_row("Final Score", str(score), UITheme.GOLD_CORE)
 	_add_sheet_row("Peak Flow Multiplier", "×%d" % best_flow)
 	_add_sheet_row("River Streak", "%d days" % streak)
-	_add_sheet_row("Daily Tide Blessing", "+150 玉")
+	_add_sheet_row("Daily Tide Blessing",
+		"+%d 玉" % blessing if blessing > 0 else "claimed today")
 
-	SaveManager.add_jade(150)
 	_add_separator()
 
 	_add_tile_row("写", GLYPH_GOLD, "Share Scorecard", "Copied to your clipboard", "", func():
