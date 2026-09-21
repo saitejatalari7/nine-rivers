@@ -1,5 +1,10 @@
 # 03 — Rewarded ads pay out with no ad shown
 
+**Status:** PENDING — blocks release
+**Raised:** 2026-09-21
+**Last reviewed:** 2026-09-21
+**Resolved:** —
+
 **Blocks release: yes.** Needs a decision, then a small fix.
 
 `show_rewarded_ad()` at `scripts/autoload/monetization_manager.gd:654` checks

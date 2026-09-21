@@ -1,5 +1,10 @@
 # 06 — Time Rapids and the relic draft
 
+**Status:** PENDING — awaiting owner decision
+**Raised:** 2026-09-21
+**Last reviewed:** 2026-09-21
+**Resolved:** —
+
 **Blocks release: no. Design decision, undecided.**
 
 Owner's words after playing: "nobody knows about that pop up and its purpose.

@@ -1,5 +1,10 @@
 # 12 — Bamboo 1 and 2 are drawn as plain pills
 
+**Status:** DEFERRED — owner chose to leave
+**Raised:** 2026-09-21
+**Last reviewed:** 2026-09-21
+**Resolved:** —
+
 **Blocks release: no — known art gap.**
 
 Measured by `scenes/glyph_metrics.tscn`: bamboo rank 1 spans 31.3% of the tile

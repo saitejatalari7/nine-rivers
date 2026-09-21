@@ -1,5 +1,10 @@
 # 14 — feat/cloud-save-pgs is unmerged
 
+**Status:** PENDING — not scheduled
+**Raised:** 2026-09-21
+**Last reviewed:** 2026-09-21
+**Resolved:** —
+
 **Blocks release: no.**
 
 Two commits on `feat/cloud-save-pgs` add Play Games Services cloud save for

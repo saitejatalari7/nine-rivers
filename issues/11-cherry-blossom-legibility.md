@@ -1,5 +1,10 @@
 # 11 — Cherry Blossom fails legibility
 
+**Status:** DEFERRED — owner chose to leave
+**Raised:** 2026-09-21
+**Last reviewed:** 2026-09-21
+**Resolved:** —
+
 **Blocks release: no — owner chose to leave it.**
 
 `scenes/legibility_check.tscn` reports 12 failures, all Cherry Blossom, across

@@ -1,5 +1,10 @@
 # 16 — IAP flow never tested end to end
 
+**Status:** PENDING — blocks release if paid items ship on day one
+**Raised:** 2026-09-21
+**Last reviewed:** 2026-09-21
+**Resolved:** —
+
 **Blocks release: probably, if paid items ship on day one.**
 
 No purchase has ever been completed against real Google Play Billing. The code

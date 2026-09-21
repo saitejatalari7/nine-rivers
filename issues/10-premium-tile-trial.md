@@ -1,5 +1,10 @@
 # 10 — Premium tile trial after a streak
 
+**Status:** PENDING — awaiting owner decision
+**Raised:** 2026-09-21
+**Last reviewed:** 2026-09-21
+**Resolved:** —
+
 **Blocks release: no. Proposed by the owner. Recommended as post-launch.**
 
 Owner's proposal: after a few days of play, give a short trial of a premium tile

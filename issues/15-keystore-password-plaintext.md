@@ -1,5 +1,10 @@
 # 15 — Keystore password stored in plaintext
 
+**Status:** PENDING — not scheduled
+**Raised:** 2026-09-21
+**Last reviewed:** 2026-09-21
+**Resolved:** —
+
 **Blocks release: no. Hygiene.**
 
 The release keystore password sits in plaintext in `export_presets.cfg`. That

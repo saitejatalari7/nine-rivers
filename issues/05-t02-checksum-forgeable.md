@@ -1,5 +1,10 @@
 # 05 — Save checksum can be forged
 
+**Status:** ACCEPTED — will not fix
+**Raised:** 2026-09-21
+**Last reviewed:** 2026-09-21
+**Resolved:** —
+
 **Blocks release: no — accepted.**
 
 `scenes/security_audit.tscn` reports this as CRITICAL (T02) and will continue

@@ -1,5 +1,10 @@
 # 09 — Daily and Rapids play caps
 
+**Status:** PENDING — awaiting owner decision
+**Raised:** 2026-09-21
+**Last reviewed:** 2026-09-21
+**Resolved:** —
+
 **Blocks release: no. Proposed by the owner, not specced.**
 
 Owner's proposal: Time Rapids limited to 3 runs a day; Daily Tide once a day,

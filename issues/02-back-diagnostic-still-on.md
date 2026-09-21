@@ -1,5 +1,10 @@
 # 02 — BACK_DIAGNOSTIC still enabled
 
+**Status:** PENDING — blocks release
+**Raised:** 2026-09-21
+**Last reviewed:** 2026-09-21
+**Resolved:** —
+
 **Blocks release: yes.** Deliberate, temporary.
 
 `const BACK_DIAGNOSTIC: bool = true` at `scripts/main.gd:176` draws a debug

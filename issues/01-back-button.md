@@ -1,5 +1,10 @@
 # 01 — Android back button does nothing on device
 
+**Status:** PENDING — blocks release
+**Raised:** 2026-09-21
+**Last reviewed:** 2026-09-21
+**Resolved:** —
+
 **Blocks release: yes.** Owner-reported, reproduced on hardware only.
 
 Pressing back on an Android device does nothing at any screen. Three fixes have

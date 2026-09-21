@@ -1,5 +1,10 @@
 # 08 — Spirit Bazaar is too complex
 
+**Status:** PENDING — awaiting owner decision
+**Raised:** 2026-09-21
+**Last reviewed:** 2026-09-21
+**Resolved:** —
+
 **Blocks release: no. Design decision, undecided.**
 
 Owner: "noone understood sprite bazaar. its complex. that koi blessing pearl

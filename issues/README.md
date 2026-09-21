@@ -1,22 +1,66 @@
 # Open issues — Nine Rivers
 
-Snapshot at commit 2c3799d, 2026-09-21.
+**All issues below are PENDING unless marked otherwise.**
 
-| # | Item | Blocks release |
-|---|------|----------------|
-| [01](01-back-button.md) | Android back button does nothing on device | Yes |
-| [02](02-back-diagnostic-still-on.md) | BACK_DIAGNOSTIC still enabled | Yes |
-| [03](03-rewarded-ads-grant-without-ad.md) | Rewarded ads pay out with no ad shown | Yes |
-| [04](04-ads-never-show.md) | Ads never show at all | No |
-| [05](05-t02-checksum-forgeable.md) | Save checksum forgeable | No — accepted |
-| [06](06-time-rapids-and-relics.md) | Time Rapids and the relic draft | No — design |
-| [07](07-scoring-system.md) | Scoring system not understood | No — design |
-| [08](08-spirit-bazaar-complexity.md) | Spirit Bazaar too complex | No — design |
-| [09](09-daily-and-rapids-caps.md) | Daily and Rapids play caps | No — design |
-| [10](10-premium-tile-trial.md) | Premium tile trial after a streak | No — design |
-| [11](11-cherry-blossom-legibility.md) | Cherry Blossom fails legibility | No — deferred |
-| [12](12-bamboo-art.md) | Bamboo 1 and 2 drawn as plain pills | No — deferred |
-| [13](13-tile-glyph-system-font.md) | Tile glyphs use the device font | No |
-| [14](14-cloud-save-branch-unmerged.md) | feat/cloud-save-pgs unmerged | No |
-| [15](15-keystore-password-plaintext.md) | Keystore password in plaintext | No |
-| [16](16-iap-never-tested.md) | IAP flow never tested end to end | Probably |
+Raised: 2026-09-21
+Last reviewed: 2026-09-21
+Against commit: bd059f4
+
+Every issue file carries its own Status, Raised, Last reviewed and Resolved
+line. When one is closed, set Resolved to the date and the commit that did it,
+change Status to RESOLVED, and move its row to the table at the bottom.
+
+## Blocks release
+
+| # | Item | Status |
+|---|------|--------|
+| [01](01-back-button.md) | Android back button does nothing on device | PENDING |
+| [02](02-back-diagnostic-still-on.md) | BACK_DIAGNOSTIC still enabled | PENDING |
+| [03](03-rewarded-ads-grant-without-ad.md) | Rewarded ads pay out with no ad shown | PENDING |
+| [16](16-iap-never-tested.md) | IAP flow never tested end to end | PENDING — if paid items ship day one |
+
+## Awaiting a decision, not defects
+
+| # | Item | Status |
+|---|------|--------|
+| [06](06-time-rapids-and-relics.md) | Time Rapids and the relic draft | PENDING — owner |
+| [07](07-scoring-system.md) | Scoring system not understood | PENDING — owner |
+| [08](08-spirit-bazaar-complexity.md) | Spirit Bazaar too complex | PENDING — owner |
+| [09](09-daily-and-rapids-caps.md) | Daily and Rapids play caps | PENDING — owner |
+| [10](10-premium-tile-trial.md) | Premium tile trial after a streak | PENDING — owner |
+
+## Known, not blocking
+
+| # | Item | Status |
+|---|------|--------|
+| [04](04-ads-never-show.md) | Ads never show at all | PENDING |
+| [05](05-t02-checksum-forgeable.md) | Save checksum forgeable | ACCEPTED — will not fix |
+| [11](11-cherry-blossom-legibility.md) | Cherry Blossom fails legibility | DEFERRED |
+| [12](12-bamboo-art.md) | Bamboo 1 and 2 drawn as plain pills | DEFERRED |
+| [13](13-tile-glyph-system-font.md) | Tile glyphs use the device font | PENDING |
+| [14](14-cloud-save-branch-unmerged.md) | feat/cloud-save-pgs unmerged | PENDING |
+| [15](15-keystore-password-plaintext.md) | Keystore password in plaintext | PENDING |
+
+## Resolved
+
+_None yet._
+
+---
+
+## Fixed earlier on 2026-09-21, before this register existed
+
+Recorded so the register is not mistaken for the whole history.
+
+| Item | Commit |
+|------|--------|
+| HUD controls swallowing taps across the top of every board | `a98f85e` |
+| Frost ice not cracking when its blockers cleared | `a98f85e` |
+| Tile lights freed by clear_board, so bevel lighting never ran | `9d7306f` |
+| Shuffle melting Frost ice | `9d7306f` |
+| Settings → Back abandoning the board | `0c3c5f8` |
+| Layout audit measuring a card mid-animation | `c991b01` |
+| Daily Tide blessing paid for drawing a screen, not clearing the daily | `2c3799d` |
+| Time Rapids clock frozen from stage 2 | `f9bed21` |
+| Save integrity T03, T04, T08 | `49070b6` |
+| Cinnabar seal occupying the close-button slot | `8d64c8b` |
+| Boot splash re-encode, 816 KB | `adef556` |

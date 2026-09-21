@@ -1,5 +1,10 @@
 # 13 — Tile glyphs render in the device's font
 
+**Status:** PENDING — not scheduled
+**Raised:** 2026-09-21
+**Last reviewed:** 2026-09-21
+**Resolved:** —
+
 **Blocks release: no. Worth knowing before release.**
 
 `get_cjk_font()` at `scripts/ui/tile_view.gd:281` builds a `SystemFont` asking
