@@ -655,9 +655,10 @@ func show_tile_catalog_modal() -> void:
 		elif is_unlocked:
 			tag = "Owned"
 		else:
-			# An earned set has no money price; showing one would be a lie.
-			if MonetizationManager.is_earn_only(theme_key):
-				tag = "%s ◈" % _thousands(MonetizationManager.get_pearl_cost(theme_key))
+			# A milestone set has no price of any kind; it has a condition.
+			var need: int = MonetizationManager.get_unlock_level(theme_key)
+			if need > 0:
+				tag = "Stage %d" % need
 			else:
 				tag = MonetizationManager.get_formatted_price(theme_key)
 
@@ -676,6 +677,39 @@ func show_tile_catalog_modal() -> void:
 		show_bazaar_modal()
 	)
 	show_modal()
+
+## Offered, not applied. A set that switches itself on is a surprise; a set the
+## player chooses is a reward. Shown once, when the milestone is first cleared.
+func show_theme_unlocked(theme_key: String) -> void:
+	_current_screen = "theme_unlocked"
+	_clear_content()
+	var detail: Dictionary = TILE_THEME_DETAILS.get(theme_key, {})
+	var parts := _split_name(String(detail.get("name", "New Tile Set")))
+	_add_seal_header("Tile Set Unlocked", "%s · %s" % [parts[1], String(detail.get("subtitle", ""))],
+		_glyph_for(TILE_THEME_GLYPHS, theme_key, "牌"))
+	_add_hairline()
+
+	if detail.has("samples"):
+		_add_tile_preview_row(detail["samples"], theme_key)
+	if detail.has("desc"):
+		_add_description(String(detail["desc"]))
+
+	_add_separator()
+	var captured: String = theme_key
+	_add_tile_row(_glyph_for(TILE_THEME_GLYPHS, theme_key, "牌"),
+		_glyph_col_for(TILE_THEME_GLYPHS, theme_key),
+		"Use these tiles", "Change it any time in the Bazaar", "", func():
+			MonetizationManager.equip_theme(captured)
+			AudioManager.play_win()
+			hide_modal()
+			next_stage_requested.emit()
+	, true)
+	_add_toggle_row("後", "Keep my current set", "›", func():
+		hide_modal()
+		next_stage_requested.emit()
+	, UITheme.IVORY_MUTED)
+	show_modal()
+
 
 func show_tile_detail_modal(theme_key: String) -> void:
 	_current_screen = "tile_detail"
@@ -715,19 +749,22 @@ func show_tile_detail_modal(theme_key: String) -> void:
 		# The price comes from the product rather than a literal: the three paid
 		# sets are 4,000 / 6,000 / 8,000 and the earned one is 2,500, so a hard
 		# coded 1,500 here lied about all four.
-		var cost: int = MonetizationManager.get_pearl_cost(theme_key)
-		var earn_only: bool = MonetizationManager.is_earn_only(theme_key)
-		_add_tile_row("珠", GLYPH_GOLD,
-			"Earn with Spirit Pearls" if earn_only else "Buy with Spirit Pearls",
-			"Earned at the board, never sold" if earn_only else "Pearls you already hold",
-			"%s ◈" % _thousands(cost), func():
-				if MonetizationManager.buy_with_pearls(theme_key, func(): show_tile_detail_modal(theme_key)):
-					AudioManager.play_win()
-					show_tile_detail_modal(theme_key)
-				else:
-					show_treasury_modal()
-		, true)
-		if not earn_only:
+		var need: int = MonetizationManager.get_unlock_level(theme_key)
+		if need > 0:
+			# Nothing to press. A milestone set is not for sale at any price, so
+			# offering a button here would only invite the player to try.
+			_add_sheet_row("Unlocks at", "Stage %d" % need, UITheme.GOLD_CORE)
+			_add_sheet_row("Your furthest stage", str(SaveManager.prog.get("level", 1)), UITheme.IVORY_MUTED)
+		else:
+			var cost: int = MonetizationManager.get_pearl_cost(theme_key)
+			_add_tile_row("珠", GLYPH_GOLD, "Buy with Spirit Pearls",
+				"Pearls you already hold", "%s ◈" % _thousands(cost), func():
+					if MonetizationManager.buy_with_pearls(theme_key, func(): show_tile_detail_modal(theme_key)):
+						AudioManager.play_win()
+						show_tile_detail_modal(theme_key)
+					else:
+						show_treasury_modal()
+			, true)
 			_add_toggle_row("購", "Unlock outright · Play Store",
 				MonetizationManager.get_formatted_price(theme_key), func():
 					MonetizationManager.buy_product(theme_key, func(): show_tile_detail_modal(theme_key))
@@ -1040,7 +1077,7 @@ func handle_back_pressed() -> void:
 		"pause":
 			hide_modal()
 			resume_game_requested.emit()
-		"level_clear", "daily_clear", "game_over":
+		"level_clear", "daily_clear", "game_over", "theme_unlocked":
 			# No hide_modal(): _return_home() puts the main menu up in its place,
 			# and hiding first would race the fade against it.
 			return_home_requested.emit()

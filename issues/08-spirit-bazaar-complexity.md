@@ -65,16 +65,16 @@ currency was dead for the remaining 275:
 
 | Set | Cost | Reached around |
 |-----|------|----------------|
-| Deep Indigo | 2,500 ◈ | level 42 |
 | Imperial Gold | 4,000 ◈ | level 67 |
 | Obsidian Ink | 6,000 ◈ | level 100 |
 | Cherry Blossom | 8,000 ◈ | level 134 |
 
 All four by about level 342, so pearls stay worth something to the end.
 
-Deep Indigo is new and earn-only: it carries a pearl cost and no money price at
-all, so free players have something to work toward that a payer cannot simply
-buy, and earning does not compete with the storefront.
+Deep Indigo is new and is not for sale at any price. It unlocks by reaching
+Calm stage 50 and is offered there - shown, not applied, because a set that
+switches itself on is a surprise while one the player chooses is a reward. A
+milestone reads as an achievement where a price reads as a chore.
 
 What still is not addressed here: nothing explains what pearls are or where
 they come from. One currency removes the confusion between two, but a first-time

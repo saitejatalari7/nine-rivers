@@ -350,6 +350,15 @@ func _restart_current_stage() -> void:
 	camera.frame_board(board.board_bounds, get_viewport_rect().size)
 
 func _next_stage() -> void:
+	# The unlock offer stands in front of the clear screen, so when it closes the
+	# clear screen is still owed.
+	if not _pending_clear.is_empty():
+		var p: Dictionary = _pending_clear
+		_pending_clear = {}
+		modal.show_level_clear(int(p["level"]), int(p["score"]), int(p["stars"]))
+		MonetizationManager.show_interstitial_if_ready(int(p["level"]), "level_clear")
+		return
+
 	if GameManager.current_mode == GameManager.GameMode.CALM:
 		_start_calm_mode(GameManager.current_level + 1)
 	else:
@@ -413,6 +422,10 @@ func _on_shuffle_clicked() -> void:
 func _on_board_move_completed(remaining: int, legal_moves: int) -> void:
 	hud.update_board_stats(remaining, legal_moves)
 
+## Held while the unlock offer is up, so the clear screen can follow it rather
+## than being skipped by it.
+var _pending_clear: Dictionary = {}
+
 func _on_board_cleared() -> void:
 	GameManager.is_timer_active = false
 	hud.visible = false
@@ -425,6 +438,14 @@ func _on_board_cleared() -> void:
 		if GameManager.misplays <= 2: stars += 1
 		if GameManager.props_used == 0: stars += 1
 		SaveManager.record_level_clear(GameManager.current_level, GameManager.score, stars)
+		# A milestone set is offered before the usual clear screen, so it reads as
+		# the event it is rather than a row on a results sheet. Taking it or
+		# leaving it both carry on to the next stage.
+		var granted: Array[String] = MonetizationManager.grant_milestone_themes(GameManager.current_level)
+		if not granted.is_empty():
+			_pending_clear = {"level": GameManager.current_level, "score": GameManager.score, "stars": stars}
+			modal.show_theme_unlocked(granted[0])
+			return
 		modal.show_level_clear(GameManager.current_level, GameManager.score, stars)
 		MonetizationManager.show_interstitial_if_ready(GameManager.current_level, "level_clear")
 	elif GameManager.current_mode == GameManager.GameMode.DAILY:

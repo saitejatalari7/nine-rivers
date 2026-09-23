@@ -88,14 +88,15 @@ const PRODUCTS: Dictionary = {
 		"pearl_cost": 8000,
 		"is_consumable": false
 	},
-	# Earned only: pearls buy it, money never does. It deliberately carries no
-	# price_usd or price_inr, which is what marks it as unpurchasable.
+	# Neither bought nor paid for: reaching Calm level 50 unlocks it. No
+	# pearl_cost and no money price, so no storefront or currency path can
+	# offer it by accident.
 	"theme_indigo": {
 		"id": "theme_indigo",
 		"name": "Deep Indigo Tile Set",
-		"desc": "Polished indigo glaze with pale gold calligraphy. Earned at the board.",
-		"price_str": "2,500 ◈ · earned only",
-		"pearl_cost": 2500,
+		"desc": "Polished indigo glaze with pale gold calligraphy. Reach Stage 50.",
+		"price_str": "Stage 50",
+		"unlock_level": 50,
 		"earn_only": true,
 		"is_consumable": false
 	},
@@ -597,6 +598,27 @@ func get_pearl_cost(product_id: String) -> int:
 ## Earn-only products carry no Play Store price and must never show a purchase
 ## row. Deep Indigo is the one set that cannot be bought, which is the whole
 ## point of it.
+## The Calm stage that unlocks a theme, or 0 if it is not a milestone reward.
+func get_unlock_level(product_id: String) -> int:
+	if not PRODUCTS.has(product_id):
+		return 0
+	return int(PRODUCTS[product_id].get("unlock_level", 0))
+
+
+## Grants any milestone theme the player has now earned. Returns the ids newly
+## granted, so the caller can offer them rather than silently switching.
+func grant_milestone_themes(cleared_level: int) -> Array[String]:
+	var granted: Array[String] = []
+	for pid in PRODUCTS.keys():
+		var lvl: int = get_unlock_level(pid)
+		if lvl > 0 and cleared_level >= lvl and not is_theme_unlocked(pid):
+			unlock_theme(pid)
+			granted.append(pid)
+	if not granted.is_empty():
+		SaveManager.save_game()
+	return granted
+
+
 func is_earn_only(product_id: String) -> bool:
 	if not PRODUCTS.has(product_id):
 		return false
