@@ -30,6 +30,7 @@ const TileLighting = preload("res://scripts/ui/tile_lighting.gd")
 
 const THEMES: Array[String] = [
 	"classic_jade", "theme_imperial_gold", "theme_obsidian_ink", "theme_cherry_blossom",
+	"theme_indigo",
 ]
 ## One tile of each suit, so every glyph colour the theme uses gets sampled.
 const PROBES: Array[Dictionary] = [

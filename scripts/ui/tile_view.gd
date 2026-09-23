@@ -51,6 +51,9 @@ const BODY_TEX_FILES: Dictionary = {
 	"theme_imperial_gold": "tile_gold.png",
 	"theme_obsidian_ink": "tile_obsidian_ink.png",
 	"theme_cherry_blossom": "tile_cherry_blossom.png",
+	# Earned only, never sold. Deep polished indigo, so the ink has to be pale -
+	# the same inversion Imperial Gold went through in reverse.
+	"theme_indigo": "tile_indigo.png",
 }
 
 ## theme_id -> Texture2D, or null when the file is missing. Cached across every
@@ -67,6 +70,7 @@ static var debug_skip_artwork: bool = false
 ## Imperial Gold went to 2.63 against a 3.0 floor at the shared 0.86.
 const BLOCKED_TINT: Dictionary = {
 	"theme_imperial_gold": Color(0.90, 0.89, 0.85, 1.0),
+	"theme_indigo": Color(0.72, 0.74, 0.80, 1.0),
 }
 const BLOCKED_TINT_DEFAULT := Color(0.86, 0.86, 0.84, 1.0)
 
@@ -177,6 +181,8 @@ static func get_col_ink(theme_id: String = "") -> Color:
 		# The face had to be brightened to carry it: black on the old dark gold
 		# measured 2.8, below the 3.0 floor.
 		return Color("#16100a")
+	elif th == "theme_indigo":
+		return Color("#f4e6bd") # Pale gold on deep glaze
 	elif th == "theme_cherry_blossom":
 		return Color("#2e181f")
 	return COL_INK
@@ -200,6 +206,8 @@ static func get_col_red(theme_id: String = "") -> Color:
 		return Color("#ff4757") # Radiant neon vermilion for dark basalt
 	elif th == "theme_imperial_gold":
 		return Color("#7a1410") # Deep cinnabar lacquer
+	elif th == "theme_indigo":
+		return Color("#ffab96") # Pale coral
 	elif th == "theme_cherry_blossom":
 		return Color("#8f2340") # Sakura rose cinnabar
 	var mode: String = SettingsManager.color_blind_mode
@@ -215,6 +223,8 @@ static func get_col_green(theme_id: String = "") -> Color:
 		return Color("#00d2d3") # Radiant electric turquoise
 	elif th == "theme_imperial_gold":
 		return Color("#10402a") # Deep malachite
+	elif th == "theme_indigo":
+		return Color("#a8e0bd") # Pale celadon
 	elif th == "theme_cherry_blossom":
 		return Color("#2f5626") # Tender spring tea bud green
 	var mode: String = SettingsManager.color_blind_mode
@@ -230,6 +240,8 @@ static func get_col_blue(theme_id: String = "") -> Color:
 		return Color("#54a0ff") # Radiant sapphire cyan
 	elif th == "theme_imperial_gold":
 		return Color("#14243f") # Deep cobalt
+	elif th == "theme_indigo":
+		return Color("#bcd4ff") # Pale porcelain sky
 	elif th == "theme_cherry_blossom":
 		return Color("#453a9c") # Soft wisteria iris
 	var mode: String = SettingsManager.color_blind_mode

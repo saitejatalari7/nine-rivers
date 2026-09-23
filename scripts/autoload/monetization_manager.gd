@@ -64,8 +64,8 @@ const PRODUCTS: Dictionary = {
 		"desc": "24k gold leaf filigree faces on imperial lacquer.",
 		"price_usd": "$1.99",
 		"price_inr": "₹99",
-		"price_str": "₹99 / $1.99 (or 1,500 ◈)",
-		"pearl_cost": 1500,
+		"price_str": "₹99 / $1.99 (or 4,000 ◈)",
+		"pearl_cost": 4000,
 		"is_consumable": false
 	},
 	"theme_obsidian_ink": {
@@ -74,8 +74,8 @@ const PRODUCTS: Dictionary = {
 		"desc": "Deep basalt stone tiles with luminous white-jade calligraphy.",
 		"price_usd": "$1.99",
 		"price_inr": "₹99",
-		"price_str": "₹99 / $1.99 (or 1,500 ◈)",
-		"pearl_cost": 1500,
+		"price_str": "₹99 / $1.99 (or 6,000 ◈)",
+		"pearl_cost": 6000,
 		"is_consumable": false
 	},
 	"theme_cherry_blossom": {
@@ -84,8 +84,19 @@ const PRODUCTS: Dictionary = {
 		"desc": "Delicate pale rose porcelain with vermilion engravings.",
 		"price_usd": "$1.99",
 		"price_inr": "₹99",
-		"price_str": "₹99 / $1.99 (or 1,500 ◈)",
-		"pearl_cost": 1500,
+		"price_str": "₹99 / $1.99 (or 8,000 ◈)",
+		"pearl_cost": 8000,
+		"is_consumable": false
+	},
+	# Earned only: pearls buy it, money never does. It deliberately carries no
+	# price_usd or price_inr, which is what marks it as unpurchasable.
+	"theme_indigo": {
+		"id": "theme_indigo",
+		"name": "Deep Indigo Tile Set",
+		"desc": "Polished indigo glaze with pale gold calligraphy. Earned at the board.",
+		"price_str": "2,500 ◈ · earned only",
+		"pearl_cost": 2500,
+		"earn_only": true,
 		"is_consumable": false
 	},
 	"bg_misty_spring": {
@@ -573,6 +584,24 @@ func buy_product(product_id: String, on_success: Callable = Callable()) -> void:
 	if on_success.is_valid():
 		on_success.call()
 	purchase_succeeded.emit(product_id)
+
+## What a set costs in pearls, and whether money can buy it at all. The detail
+## screen used to print a hard-coded 1,500 for every set, which was wrong for
+## all four once the prices were spread.
+func get_pearl_cost(product_id: String) -> int:
+	if not PRODUCTS.has(product_id):
+		return 0
+	return int(PRODUCTS[product_id].get("pearl_cost", 0))
+
+
+## Earn-only products carry no Play Store price and must never show a purchase
+## row. Deep Indigo is the one set that cannot be bought, which is the whole
+## point of it.
+func is_earn_only(product_id: String) -> bool:
+	if not PRODUCTS.has(product_id):
+		return false
+	return bool(PRODUCTS[product_id].get("earn_only", false))
+
 
 func buy_with_pearls(product_id: String, on_success: Callable = Callable()) -> bool:
 	if not PRODUCTS.has(product_id):

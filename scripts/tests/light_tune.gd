@@ -9,7 +9,7 @@ const RiverTile = preload("res://scripts/core/river_tile.gd")
 const TileLighting = preload("res://scripts/ui/tile_lighting.gd")
 
 const THEMES: Array[String] = [
-	"classic_jade", "theme_imperial_gold", "theme_obsidian_ink", "theme_cherry_blossom",
+	"theme_indigo", "classic_jade", "theme_imperial_gold", "theme_obsidian_ink",
 ]
 ## Test-only body swap: poked straight into TileView._body_tex_cache so an
 ## alternative body can be previewed without editing BODY_TEX_FILES.

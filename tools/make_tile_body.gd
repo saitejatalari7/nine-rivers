@@ -18,6 +18,9 @@ extends SceneTree
 const W := 256
 const H := 336
 const CORNER := 22.0
+## Measured range of the cellular field the crackle veins are cut from.
+const CRACKLE_MIN := -0.985
+const CRACKLE_SPAN := 0.841
 
 ## top, bottom, grain, cloud, rim shift, rim depth, patina tint
 const STYLES := {
@@ -30,10 +33,38 @@ const STYLES := {
 		"patina": Color(0.0, 0.0, 0.0),
 		"crystal": 0.10,
 	},
-	# Bright gold lacquer carrying dark ink. Which way round the face and the
-	# ink sit is a real choice and it drives everything else: dark ink needs a
-	# bright face, so the rim has to DARKEN to keep one tile off its neighbour
-	# on a full board, where a dark face wanted a brightened rim instead.
+	# Celadon crackle porcelain - Ru ware. Earned only, never sold, so it has to
+	# look like the reward it is rather than a fifth colourway. The crackle is a
+	# cellular field used as dark veins instead of the bright ones frost uses.
+	"celadon": {
+		"out": "tile_celadon.png",
+		"top": Color(0.780, 0.855, 0.806),
+		"bot": Color(0.612, 0.706, 0.662),
+		"grain": 0.014, "cloud": 0.028,
+		"rim": -0.07, "rim_px": 9.0,
+		"patina": Color(-0.010, 0.006, 0.004),
+		"crystal": 0.0,
+	},
+	# Bright gold lacquer carrying dark ink. Which way round the face and the ink
+	# sit drives everything else: dark ink needs a bright face, so the rim has to
+	# DARKEN to keep one tile off its neighbour on a full board, where a dark face
+	# wanted a brightened rim instead.
+	# Deep indigo lacquer. Distinct from all four shipping themes at a glance:
+	# Jade is white, Gold is warm yellow, Obsidian is near-black, Cherry is pink.
+	# Nothing in the set owns blue.
+	"indigo": {
+		"out": "tile_indigo.png",
+		"top": Color(0.208, 0.259, 0.435),
+		"bot": Color(0.075, 0.098, 0.192),
+		# Barely any grain: polished glaze is smooth, and grain reads as unfired
+		# clay. The look comes from the sheen sweep and the rim instead.
+		"grain": 0.006, "cloud": 0.020,
+		"rim": 0.26, "rim_px": 6.0,
+		"patina": Color(-0.004, 0.002, 0.014),
+		"crystal": 0.0,
+		"sheen": 0.26, "sheen_width": 0.20,
+		"sparkle": 0.55,
+	},
 	"gold": {
 		"out": "tile_gold.png",
 		# Hue matters more than brightness here. At R/G 1.47 this read as dark
@@ -71,6 +102,13 @@ func _init() -> void:
 	cloud.frequency = 0.016
 	cloud.seed = 771
 
+	var crackle_noise := FastNoiseLite.new()
+	crackle_noise.noise_type = FastNoiseLite.TYPE_CELLULAR
+	crackle_noise.frequency = float(s.get("crackle_freq", 0.075))
+	crackle_noise.cellular_return_type = FastNoiseLite.RETURN_DISTANCE2_SUB
+	crackle_noise.cellular_jitter = 0.75
+	crackle_noise.seed = 9137
+
 	var crystal := FastNoiseLite.new()
 	crystal.noise_type = FastNoiseLite.TYPE_CELLULAR
 	crystal.frequency = 0.045
@@ -103,10 +141,40 @@ func _init() -> void:
 				clampf(c.b + patina.b * cl, 0.0, 1.0), c.a)
 			c = _shift(c, grain.get_noise_2d(x, y) * float(s["grain"]))
 
+			var ck: float = float(s.get("crackle", 0.0))
+			if ck > 0.0:
+				# Ridges of the cellular field, not its cells: a thin dark line
+				# where two cells meet is what a crackle glaze actually is.
+				# Measured, not assumed: with RETURN_DISTANCE2_SUB this field runs
+				# about -0.985 to -0.144 and the cell BOUNDARIES sit at the
+				# minimum, not at zero. Taking abs() put the veins exactly where
+				# they were not, which is why two attempts produced a blank tile.
+				var sharp: float = float(s.get("crackle_sharp", 7.0))
+				var t_edge: float = (crackle_noise.get_noise_2d(x, y) - CRACKLE_MIN) / CRACKLE_SPAN
+				var edge: float = 1.0 - clampf(t_edge * sharp, 0.0, 1.0)
+				c = _shift(c, -pow(edge, 0.85) * ck)
 			var cr: float = float(s["crystal"])
 			if cr > 0.0:
 				var v: float = clampf(crystal.get_noise_2d(x, y), 0.0, 1.0)
 				c = _shift(c, pow(v, 3.0) * cr)
+
+			# A broad diagonal band of light across the face. This is what reads as
+			# polish - a glazed surface returns a wide soft highlight, where a matte
+			# one returns none. Baked in rather than lit, so it survives the tile
+			# being drawn at any angle on any board.
+			var sh: float = float(s.get("sheen", 0.0))
+			if sh > 0.0:
+				var u: float = (float(x) / float(W) + float(y) / float(H)) * 0.5
+				var band: float = exp(-pow((u - 0.34) / float(s.get("sheen_width", 0.3)), 2.0))
+				c = _shift(c, band * sh)
+
+			# Sparse crystal specks. Kept rare and tiny: enough to catch the eye
+			# when a tile moves, not enough to read as glitter.
+			var sp: float = float(s.get("sparkle", 0.0))
+			if sp > 0.0:
+				var g: float = grain.get_noise_2d(x * 3.7 + 500.0, y * 3.7 - 220.0)
+				if g > 0.74:
+					c = _shift(c, (g - 0.74) * sp * 9.0)
 
 			var inset: float = -d
 			var rim_px: float = float(s["rim_px"])

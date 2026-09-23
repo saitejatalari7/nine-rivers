@@ -198,7 +198,10 @@ func _p2_forged_no_ads_is_revoked() -> void:
 func _p3_pearl_bought_theme_survives() -> void:
 	_wipe_all()
 	_fresh_profile(5, 500)
-	SaveManager.economy["pearls"] = 5000
+	# Funded from the real price rather than a literal: the sets were respread to
+	# 4,000 / 6,000 / 8,000 and a hard-coded 5,000 silently stopped buying
+	# anything, so this case passed its purchase and failed its assertion.
+	SaveManager.economy["pearls"] = MonetizationManager.get_pearl_cost("theme_cherry_blossom") + 500
 	MonetizationManager.buy_with_pearls("theme_cherry_blossom")
 	var bought: bool = MonetizationManager.is_theme_unlocked("theme_cherry_blossom")
 

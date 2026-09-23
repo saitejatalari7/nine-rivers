@@ -45,6 +45,17 @@ const TILE_THEME_DETAILS: Dictionary = {
 		"tactile": "Deep, resonant mineral clatter. Matched pairs disperse into wisps of midnight basalt mist.",
 		"samples": [["bam", 1], ["char", 9], ["dragon", 1]]
 	},
+	# Earned, never sold. It has no Play Store price, so the detail screen shows
+	# one row rather than a price and a purchase.
+	"theme_indigo": {
+		"id": "theme_indigo",
+		"name": "Deep Indigo (靛青釉)",
+		"subtitle": "Polished Indigo Glaze, Earned at the Board",
+		"desc": "Night-blue porcelain under a high polish, with pale gold calligraphy and a rim where the glaze has pooled and caught the light.",
+		"purpose": "The only set that cannot be bought. Pale ink on a deep face reads cleanly in a dark room without the glare of a light tile.",
+		"tactile": "A low glassy chime. Matched tiles break into cold blue light.",
+		"samples": [["bam", 1], ["char", 9], ["dragon", 2]]
+	},
 	"theme_cherry_blossom": {
 		"id": "theme_cherry_blossom",
 		"name": "Cherry Blossom (落樱白瓷)",
@@ -633,7 +644,7 @@ func show_tile_catalog_modal() -> void:
 	_add_hairline()
 
 	var cur_theme := MonetizationManager.get_active_theme()
-	for theme_key in ["classic_jade", "theme_imperial_gold", "theme_obsidian_ink", "theme_cherry_blossom"]:
+	for theme_key in ["classic_jade", "theme_indigo", "theme_imperial_gold", "theme_obsidian_ink", "theme_cherry_blossom"]:
 		var detail: Dictionary = TILE_THEME_DETAILS[theme_key]
 		var is_active: bool = (cur_theme == theme_key)
 		var is_unlocked: bool = MonetizationManager.is_theme_unlocked(theme_key)
@@ -644,7 +655,11 @@ func show_tile_catalog_modal() -> void:
 		elif is_unlocked:
 			tag = "Owned"
 		else:
-			tag = MonetizationManager.get_formatted_price(theme_key)
+			# An earned set has no money price; showing one would be a lie.
+			if MonetizationManager.is_earn_only(theme_key):
+				tag = "%s ◈" % _thousands(MonetizationManager.get_pearl_cost(theme_key))
+			else:
+				tag = MonetizationManager.get_formatted_price(theme_key)
 
 		var captured_key: String = theme_key
 		var parts := _split_name(detail["name"])
@@ -697,18 +712,26 @@ func show_tile_detail_modal(theme_key: String) -> void:
 	else:
 		# One heavy way in, one light one. Two identical slabs would make the
 		# player read both before choosing either.
-		_add_tile_row("珠", GLYPH_GOLD, "Buy with Spirit Pearls",
-			"Pearls you already hold", "1,500 ◈", func():
+		# The price comes from the product rather than a literal: the three paid
+		# sets are 4,000 / 6,000 / 8,000 and the earned one is 2,500, so a hard
+		# coded 1,500 here lied about all four.
+		var cost: int = MonetizationManager.get_pearl_cost(theme_key)
+		var earn_only: bool = MonetizationManager.is_earn_only(theme_key)
+		_add_tile_row("珠", GLYPH_GOLD,
+			"Earn with Spirit Pearls" if earn_only else "Buy with Spirit Pearls",
+			"Earned at the board, never sold" if earn_only else "Pearls you already hold",
+			"%s ◈" % _thousands(cost), func():
 				if MonetizationManager.buy_with_pearls(theme_key, func(): show_tile_detail_modal(theme_key)):
 					AudioManager.play_win()
 					show_tile_detail_modal(theme_key)
 				else:
 					show_treasury_modal()
 		, true)
-		_add_toggle_row("購", "Unlock outright · Play Store",
-			MonetizationManager.get_formatted_price(theme_key), func():
-				MonetizationManager.buy_product(theme_key, func(): show_tile_detail_modal(theme_key))
-		)
+		if not earn_only:
+			_add_toggle_row("購", "Unlock outright · Play Store",
+				MonetizationManager.get_formatted_price(theme_key), func():
+					MonetizationManager.buy_product(theme_key, func(): show_tile_detail_modal(theme_key))
+			)
 
 	_add_separator()
 	_add_button("Back", func():
@@ -1076,7 +1099,8 @@ const GLYPH_STONE := Color("#6d6455")
 ## 月 moon, 丹 cinnabar-red maple, 岚 mountain mist, 夕 evening.
 const TILE_THEME_GLYPHS: Dictionary = {
 	"classic_jade": "玉", "theme_imperial_gold": "金",
-	"theme_obsidian_ink": "墨", "theme_cherry_blossom": "樱"
+	"theme_obsidian_ink": "墨", "theme_cherry_blossom": "樱",
+	"theme_indigo": "靛"
 }
 const BG_THEME_GLYPHS: Dictionary = {
 	"auto": "流", "emerald_pond": "翠", "moonlit_river": "月",
@@ -1084,6 +1108,7 @@ const BG_THEME_GLYPHS: Dictionary = {
 }
 const GLYPH_COLS: Dictionary = {
 	"classic_jade": GLYPH_JADE, "theme_imperial_gold": GLYPH_GOLD,
+	"theme_indigo": GLYPH_INK,
 	"theme_obsidian_ink": GLYPH_INK, "theme_cherry_blossom": GLYPH_STONE,
 	"auto": GLYPH_JADE, "emerald_pond": GLYPH_JADE, "moonlit_river": GLYPH_INK,
 	"autumn_stream": GLYPH_GOLD, "misty_spring": GLYPH_STONE, "sunset_haven": GLYPH_GOLD
@@ -1540,3 +1565,17 @@ func _add_button(text: String, on_click: Callable, is_gold: bool = false) -> voi
 	b.add_theme_font_size_override("font_size", UITheme.FS_BODY_LG)
 	b.pressed.connect(on_click)
 	card_container.add_child(b)
+
+
+## 4000 -> "4,000". Prices are read at a glance on a phone and an unseparated
+## five-figure number is not.
+static func _thousands(n: int) -> String:
+	var s := str(absi(n))
+	var out := ""
+	var c := 0
+	for i in range(s.length() - 1, -1, -1):
+		out = s[i] + out
+		c += 1
+		if c % 3 == 0 and i > 0:
+			out = "," + out
+	return ("-" if n < 0 else "") + out

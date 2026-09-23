@@ -43,3 +43,39 @@ see [03](03-rewarded-ads-grant-without-ad.md).
 
 Files: `scripts/ui/modal_controller.gd:687` and the screens below it,
 `scripts/autoload/monetization_manager.gd`, `scripts/core/sanctuary_manager.gd`
+
+---
+
+## Resolution — 2026-09-23
+
+One currency. Spirit Pearls are all that remains; River Jade converts at three
+to one on load, which is the rate the shop already implied - a background cost
+1,500 jade or 500 pearls. The Koi Blessings screen went with
+[17](17-invisible-bonuses.md), so the Bazaar is four rows rather than five and
+no two of them take different money.
+
+Earning moved across: 20 pearls per star, 50 for the first daily of the day, 2
+for a wild tile. The HUD purse now follows a `pearls_changed` signal - it had
+been written once when the HUD was built and never again, so pearls earned
+mid-board did not appear until a restart.
+
+Pricing was respread at the same time. At 1,500 flat and 60 pearls a
+three-starred level, every paid set was owned by level 75 of 350 and the
+currency was dead for the remaining 275:
+
+| Set | Cost | Reached around |
+|-----|------|----------------|
+| Deep Indigo | 2,500 ◈ | level 42 |
+| Imperial Gold | 4,000 ◈ | level 67 |
+| Obsidian Ink | 6,000 ◈ | level 100 |
+| Cherry Blossom | 8,000 ◈ | level 134 |
+
+All four by about level 342, so pearls stay worth something to the end.
+
+Deep Indigo is new and earn-only: it carries a pearl cost and no money price at
+all, so free players have something to work toward that a payer cannot simply
+buy, and earning does not compete with the storefront.
+
+What still is not addressed here: nothing explains what pearls are or where
+they come from. One currency removes the confusion between two, but a first-time
+player is still not told anything. Worth a line on the Bazaar screen.
