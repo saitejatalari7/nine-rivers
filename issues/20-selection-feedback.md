@@ -1,9 +1,9 @@
 # 20 — Selecting a tile is not visible enough
 
-**Status:** PENDING — awaiting design discussion
+**Status:** RESOLVED — 2026-09-24
 **Raised:** 2026-09-23
 **Last reviewed:** 2026-09-23
-**Resolved:** —
+**Resolved:** 2026-09-24, `7eed0d9`
 
 Owner, long-standing wish: the select effect is not visible enough that
 something is selected. Wants a shadow, or the tile moving up a little, or

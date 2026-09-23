@@ -1,9 +1,9 @@
 # 23 — Closing the game loses the board in progress
 
-**Status:** PENDING — not scheduled
+**Status:** RESOLVED — 2026-09-24
 **Raised:** 2026-09-23
 **Last reviewed:** 2026-09-23
-**Resolved:** —
+**Resolved:** 2026-09-24, `7eed0d9`
 
 **Blocks release: no, but it is the largest of the three new items.**
 
