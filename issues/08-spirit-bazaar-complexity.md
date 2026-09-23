@@ -1,9 +1,9 @@
 # 08 — Spirit Bazaar is too complex
 
-**Status:** PENDING — awaiting owner decision
+**Status:** RESOLVED — 2026-09-23
 **Raised:** 2026-09-21
 **Last reviewed:** 2026-09-23
-**Resolved:** —
+**Resolved:** 2026-09-23
 
 **Blocks release: no. Design decision, undecided.**
 
