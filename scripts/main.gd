@@ -184,7 +184,7 @@ func _handle_back_action(route: String = "unknown") -> void:
 # ============================ BACK DIAGNOSTIC ============================
 ## Switch this to false to remove the on-screen back banner entirely; nothing
 ## else needs changing and the banner layer is then never created.
-const BACK_DIAGNOSTIC: bool = true
+const BACK_DIAGNOSTIC: bool = false
 
 var _back_diag: Label = null
 var _back_diag_tween: Tween = null

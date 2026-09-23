@@ -106,7 +106,10 @@ func _apply_luxury_theme() -> void:
 	
 	# 2. Menu Talisman Button
 	UITheme.style_circular_button($TopBar/BtnMenu, UITheme.GOLD_CORE)
-	$TopBar/BtnMenu.add_theme_font_size_override("font_size", 56)
+	# Two bars as nodes, not a glyph: this button is the pause control, and every
+	# pause codepoint is either missing or coloured emoji on some Android fonts.
+	for bar in $TopBar/BtnMenu/Glyph.get_children():
+		(bar as ColorRect).color = UITheme.GOLD_CORE
 	
 	# 3. Action Props Buttons (Undo, Hint, Shuffle)
 	UITheme.style_button(btn_undo, false, 18)

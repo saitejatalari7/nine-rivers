@@ -9,8 +9,8 @@ extends Node
 ## Run: godot --rendering-driver opengl3 --audio-driver Dummy --path . scenes/rapids_clock_test.tscn
 
 ## Not read from GameManager, so this harness still runs (and still fails)
-## against a build that predates the DEFAULT_MAX_TIME constant.
-const EXPECTED_MAX_TIME: float = 180.0
+## against a build that sets the ceiling some other way.
+const RAPIDS_START: float = 100.0
 
 var main: Node2D
 var _failures: Array[String] = []
@@ -20,7 +20,7 @@ func _ready() -> void:
 	await _boot()
 	await _t1_clock_runs_after_the_first_stage()
 	await _t2_a_frozen_clock_is_not_topped_up()
-	await _t3_max_time_does_not_leak_between_modes()
+	await _t3_the_bar_opens_full_in_every_mode()
 	_report()
 	get_tree().quit(1 if not _failures.is_empty() else 0)
 
@@ -87,25 +87,28 @@ func _t2_a_frozen_clock_is_not_topped_up() -> void:
 	_check("matches still add time while the clock runs", GameManager.time_left > b2,
 		"time_left %.2f -> %.2f" % [b2, GameManager.time_left])
 
-## apply_daily_time() raises max_time to fit a long Daily board. It is the
-## denominator of the HUD bar, so a Rapids run entered afterwards drew its full
-## 100s against the Daily's ceiling and opened looking nearly empty.
-func _t3_max_time_does_not_leak_between_modes() -> void:
-	print("--- #3  max_time is reset on every mode entry ---")
+## max_time is the HUD bar's denominator. It is the time the mode starts with,
+## so the bar opens full in every mode - it used to be a fixed ceiling the start
+## time was measured against, which opened Rapids at 56%.
+func _t3_the_bar_opens_full_in_every_mode() -> void:
+	print("--- #3  the time bar opens full ---")
 	GameManager.start_daily_tide()
 	GameManager.apply_daily_time(144)
 	await get_tree().process_frame
-	var daily_max: float = GameManager.max_time
-	_check("a long Daily raises max_time", daily_max > EXPECTED_MAX_TIME,
-		"daily max_time=%.0f" % daily_max)
+	var daily_fill: float = GameManager.time_left / GameManager.max_time
+	# Not is_equal_approx: the clock is already running, so a frame of drain
+	# lands a fraction under 1.0 and that is not what this is looking for.
+	_check("a long Daily opens full", daily_fill > 0.99,
+		"time_left=%.0f / max_time=%.0f" % [GameManager.time_left, GameManager.max_time])
 
 	main._start_run_mode()
 	await get_tree().process_frame
 	var fill: float = GameManager.time_left / GameManager.max_time
-	_check("Rapids after a Daily resets max_time", is_equal_approx(GameManager.max_time, EXPECTED_MAX_TIME),
-		"max_time=%.0f (expected %.0f)" % [GameManager.max_time, EXPECTED_MAX_TIME])
-	_check("the Rapids bar opens a little over half full", fill > 0.5 and fill < 0.62,
+	_check("Rapids after a Daily opens full", fill > 0.99,
 		"time_left=%.0f / max_time=%.0f = %.0f%%" % [GameManager.time_left, GameManager.max_time, fill * 100.0])
+	_check("and its ceiling is the Rapids start, not the Daily's",
+		is_equal_approx(GameManager.max_time, RAPIDS_START),
+		"max_time=%.0f (expected %.0f)" % [GameManager.max_time, RAPIDS_START])
 
 func _report() -> void:
 	print("")

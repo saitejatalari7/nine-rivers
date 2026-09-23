@@ -29,9 +29,9 @@ var hints: int = 3
 var shuffles: int = 3
 
 # Timed Mode / Roguelite parameters
-## max_time is the denominator of the HUD's time bar, and apply_daily_time()
-## raises it to fit a long Daily board. Every mode entry resets it, or a Rapids
-## run started after a Daily draws its full bar against the Daily's ceiling.
+## max_time is the denominator of the HUD's time bar. It is always set to the
+## time the mode starts with, so the bar opens full and only ever drains; time
+## won from matches refills it and is capped there.
 const DEFAULT_MAX_TIME: float = 180.0
 
 var time_left: float = 100.0
@@ -94,7 +94,7 @@ func start_timed_run() -> void:
 	hints = 2
 	shuffles = 2
 	time_left = 100.0
-	max_time = DEFAULT_MAX_TIME
+	max_time = time_left
 	score_mult = 1.0
 	time_gain_rate = 1.5
 	penalty_seconds = 3.0
@@ -111,7 +111,7 @@ func start_timed_run() -> void:
 ## the layout is known, since the date seed has to pick that first.
 func apply_daily_time(board_tiles: int) -> void:
 	time_left = clampf(60.0 + float(board_tiles) * 1.5, 100.0, 260.0)
-	max_time = maxf(180.0, time_left + 60.0)
+	max_time = time_left
 	time_updated.emit(time_left, max_time)
 
 
@@ -133,7 +133,7 @@ func start_daily_tide() -> void:
 	hints = 2
 	shuffles = 2
 	time_left = 120.0
-	max_time = DEFAULT_MAX_TIME
+	max_time = time_left
 	is_timer_active = true
 	
 	props_updated.emit(undos, hints, shuffles)

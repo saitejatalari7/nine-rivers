@@ -9,11 +9,11 @@ const UITheme = preload("res://scripts/ui/ui_theme.gd")
 ## Collected from the source: the non-ASCII characters that appear inside
 ## printed strings, excluding CJK (which Noto Serif SC covers wholesale).
 const REQUIRED: Array[String] = [
-	"◈", "☰", "✕", "▰",
+	"◈", "✕", "▰",
 	"★", "☆", "·", "•", "×", "›", "—",
 ]
 const NAMES: Array[String] = [
-	"pearl diamond", "menu bars", "close cross", "flow segment",
+	"pearl diamond", "close cross", "flow segment",
 	"star filled", "star hollow", "middot", "bullet", "times", "chevron", "em dash",
 ]
 
