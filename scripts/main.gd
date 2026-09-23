@@ -484,14 +484,8 @@ func _on_board_cleared() -> void:
 		await get_tree().create_timer(1.1).timeout
 		_next_stage()
 
-## Replaying the tutorial must not cost the player their place. It used to call
-## _start_calm_mode(1), so asking for a refresher at stage 10 dropped you onto
-## stage 1 with no warning - the unlock pointer survived, but the board you were
-## playing did not.
-##
-## The lesson points at whatever tiles are live, so any board will do. Only when
-## there is no board at all does it need to deal one, and then it deals the
-## stage the player is actually up to.
+## The lesson points at whatever tiles are live, so it only needs to deal a board
+## when there is none - and then it deals the stage the player is up to.
 func _on_replay_tutorial() -> void:
 	modal.hide_modal()
 	if board.get_active_tiles().size() < 4:
