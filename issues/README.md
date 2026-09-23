@@ -1,3 +1,5 @@
+| [16](16-iap-never-tested.md) | IAP flow never tested end to end | PENDING — if paid items ship day one |
+| [17](17-invisible-bonuses.md) | Invisible percentage bonuses | PARTIALLY RESOLVED |
 # Open issues — Nine Rivers
 
 **All issues below are PENDING unless marked otherwise.**

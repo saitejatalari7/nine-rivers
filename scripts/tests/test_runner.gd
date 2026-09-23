@@ -236,35 +236,30 @@ func _ready() -> void:
 	assert(turtle_tiles.size() == 144, "Turtle board must have exactly 144 tiles (got %d)" % turtle_tiles.size())
 	print("[PASS] 144-Tile Turtle Layout dealt with 100% solvability.")
 	
-	# 18. Test Koi Sanctuary Blessings
-	const SanctuaryManager = preload("res://scripts/core/sanctuary_manager.gd")
-	# Taisho Sanke (+5% Jade)
-	SaveManager.sanctuary["koi_unlocked"] = ["kohaku", "sanke"]
+	# 18. Test the plain rules the koi blessings used to bend
+	# Sanke (+5% jade), Ogon (+10% Calm score), Dragon Koi (Overdrive at 6) and
+	# Showa (gentler misplay) were all permanent, invisible percentages. They
+	# are gone, so the assertions are that the plain numbers hold.
 	var before_jade := SaveManager.get_jade()
 	SaveManager.add_jade(100)
-	assert(SaveManager.get_jade() == before_jade + 105, "Taisho Sanke must award +5%% River Jade (got %d)" % (SaveManager.get_jade() - before_jade))
-	
-	# Platinum Ogon (+10% Calm score)
-	SaveManager.sanctuary["koi_unlocked"] = ["kohaku", "ogon"]
+	assert(SaveManager.get_jade() == before_jade + 100, "Jade must be awarded exactly, with no hidden bonus (got %d)" % (SaveManager.get_jade() - before_jade))
+
 	GameManager.start_calm(1)
-	var ogon_pts := GameManager.register_match("bam", false)
-	assert(ogon_pts == 110, "Platinum Ogon must award +10%% base Calm score (expected 110, got %d)" % ogon_pts)
-	
-	# Golden Dragon Koi (Flow Overdrive at Flow 6)
-	SaveManager.sanctuary["koi_unlocked"] = ["kohaku", "dragon_koi"]
+	var plain_pts := GameManager.register_match("bam", false)
+	assert(plain_pts == 100, "A plain first match in Calm must score exactly 100 (got %d)" % plain_pts)
+
 	GameManager.flow_level = 6
-	assert(GameManager.is_overdrive_active(), "Golden Dragon Koi must trigger Overdrive at Flow 6")
-	
-	# Showa Sanshoku (Misplay drops flow by only 1)
-	SaveManager.sanctuary["koi_unlocked"] = ["kohaku", "showa"]
+	assert(not GameManager.is_overdrive_active(), "Overdrive must not trigger at Flow 6")
+	GameManager.flow_level = GameManager.OVERDRIVE_FLOW
+	assert(GameManager.is_overdrive_active(), "Overdrive must trigger at Flow %d" % GameManager.OVERDRIVE_FLOW)
+
 	GameManager.flow_level = 4
 	GameManager.register_misplay()
-	assert(GameManager.flow_level == 3, "Showa Sanshoku must reduce misplay flow drop to 1 (got %d)" % GameManager.flow_level)
-	print("[PASS] All Koi Sanctuary blessings verified: Sanke (+5% Jade), Ogon (+10% Score), Dragon Koi (Overdrive @ 6), Showa (Gentle Flow drop).")
+	assert(GameManager.flow_level == 4 - GameManager.MISPLAY_FLOW_DROP, "A misplay must drop Flow by %d (got %d)" % [GameManager.MISPLAY_FLOW_DROP, GameManager.flow_level])
+	print("[PASS] Plain rules verified with no koi blessings: exact jade, base 100, Overdrive at 7, misplay -2.")
 	
 	# 19. Test Tile Mastery Score Boost (+15% for Tier 3)
 	GameManager.start_calm(1)
-	SaveManager.sanctuary["koi_unlocked"] = ["kohaku"] # reset ogon
 	var mastered_pts := GameManager.register_match("bam", false, 3)
 	assert(mastered_pts == 115, "Tier 3 Tile Mastery must award +15%% score (expected 115, got %d)" % mastered_pts)
 	print("[PASS] Tile Mastery Score Boost verified (+15% for Master tier).")

@@ -192,7 +192,6 @@ func _seed_paths() -> Array:
 		{"builder": "show_level_clear", "args": [12, 4820, 3], "pre": "calm", "after_clear": true},
 		{"builder": "show_daily_clear", "args": [3100, 7, 4], "pre": "daily", "after_clear": true},
 		{"builder": "show_game_over", "args": ["No moves remain"], "pre": "run", "after_clear": true},
-		{"builder": "show_sanctuary_menu", "args": []},
 		{"builder": "show_bazaar_modal", "args": []},
 		{"builder": "show_tile_catalog_modal", "args": []},
 		{"builder": "show_tile_detail_modal", "args": ["theme_imperial_gold"]},

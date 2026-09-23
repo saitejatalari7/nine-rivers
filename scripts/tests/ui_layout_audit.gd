@@ -40,7 +40,6 @@ func _ready() -> void:
 		["level_clear", func(): modal.show_level_clear(12, 4820, 3)],
 		["daily_clear", func(): modal.show_daily_clear(3100, 7, 4)],
 		["game_over", func(): modal.show_game_over("No moves remain")],
-		["sanctuary", func(): modal.show_sanctuary_menu()],
 		["bazaar", func(): modal.show_bazaar_modal()],
 		["tile_catalog", func(): modal.show_tile_catalog_modal()],
 		["tile_detail", func(): modal.show_tile_detail_modal("theme_imperial_gold")],

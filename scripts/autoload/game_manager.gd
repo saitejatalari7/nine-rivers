@@ -152,11 +152,15 @@ func on_stage_started() -> void:
 		is_timer_active = true
 		time_updated.emit(time_left, max_time)
 
-const SanctuaryManager = preload("res://scripts/core/sanctuary_manager.gd")
+
+## Flow at which Overdrive kicks in, and what a misplay costs. Both used to be
+## nudged by a koi you had bought - a permanent, invisible few per cent that
+## nobody could perceive. They are plain numbers now.
+const OVERDRIVE_FLOW: int = 7
+const MISPLAY_FLOW_DROP: int = 2
 
 func is_overdrive_active() -> bool:
-	var threshold: int = 6 if SanctuaryManager.is_koi_unlocked("dragon_koi") else 7
-	return flow_level >= threshold
+	return flow_level >= OVERDRIVE_FLOW
 
 func snapshot_state() -> Dictionary:
 	return {
@@ -215,11 +219,10 @@ func register_match(suit: String, is_triple: bool, mastery_level: int = 0,
 	var base: int = 250 if is_triple else 100
 	var flow_mult: int = mini(6, maxi(1, flow_level))
 	var rush_mult: float = 2.0 if StageModifiers.is_rush_active() else 1.0
-	var ogon_mult: float = 1.10 if (current_mode == GameMode.CALM and SanctuaryManager.is_koi_unlocked("ogon")) else 1.0
 	var mastery_mult: float = 1.0 + (float(mastery_level) * 0.05)
 	# score_mult stayed at 1.0 once the Sharper Eye relic went; kept as a field so
 	# a future permanent bonus has somewhere to live.
-	var pts: int = int(round(base * flow_mult * score_mult * rush_mult * ogon_mult * mastery_mult))
+	var pts: int = int(round(base * flow_mult * score_mult * rush_mult * mastery_mult))
 	if is_glass:
 		pts += 500
 	score += pts
@@ -239,8 +242,7 @@ func register_match(suit: String, is_triple: bool, mastery_level: int = 0,
 
 func register_misplay() -> void:
 	misplays += 1
-	var misplay_drop: int = 1 if SanctuaryManager.is_koi_unlocked("showa") else 2
-	flow_level = maxi(0, flow_level - misplay_drop)
+	flow_level = maxi(0, flow_level - MISPLAY_FLOW_DROP)
 	if flow_level == 0:
 		flow_suit = ""
 	var is_overdrive: bool = is_overdrive_active()

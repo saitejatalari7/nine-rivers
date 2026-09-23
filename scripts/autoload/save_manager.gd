@@ -482,12 +482,8 @@ func spend_pearls(amount: int) -> bool:
 	return false
 
 func add_jade(amount: int) -> void:
-	var final_amount: int = amount
-	if amount > 0:
-		var SanctuaryManager = load("res://scripts/core/sanctuary_manager.gd")
-		if SanctuaryManager and SanctuaryManager.is_koi_unlocked("sanke"):
-			final_amount = int(ceil(float(amount) * 1.05))
-	prog["river_jade"] = int(prog.get("river_jade", 0)) + final_amount
+	# A koi used to add 5% here. Nobody could tell, which is why it went.
+	prog["river_jade"] = int(prog.get("river_jade", 0)) + amount
 	# Batched: jade trickles in several times per board, and record_level_clear()
 	# flushes at the end of every stage anyway.
 	request_save()
