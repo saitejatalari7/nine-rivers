@@ -59,6 +59,8 @@ func _ready() -> void:
 	modal.start_daily_requested.connect(_start_daily_mode)
 	modal.restart_stage_requested.connect(_restart_current_stage)
 	modal.next_stage_requested.connect(_next_stage)
+	modal.deadlock_accepted.connect(_on_deadlock_accepted)
+	modal.deadlock_retry.connect(_on_deadlock_retry)
 	modal.resume_game_requested.connect(_resume_game)
 	modal.return_home_requested.connect(_return_home)
 	modal.background_quiet_changed.connect(func(quiet: bool):
@@ -486,7 +488,34 @@ func _on_board_cleared() -> void:
 		_next_stage()
 
 func _on_no_moves_left() -> void:
-	hud.show_toast("No moves left! Use a shuffle or restart.")
+	# A board with no legal move is usually recoverable: a shuffle re-deals what
+	# is left into an arrangement that can be played. When even that is
+	# impossible the player is genuinely stuck through no fault of their own,
+	# and is offered the stage rather than left staring at it.
+	if board.can_reshuffle():
+		hud.show_toast("No moves left! Use a shuffle or restart.")
+		return
+	hud.visible = false
+	modal.show_deadlock(GameManager.current_level, board.get_active_tiles().size())
+
+
+func _on_deadlock_accepted() -> void:
+	# One star, not three. They did not clear it, and a board that hands out a
+	# perfect score for getting stuck would be worth getting stuck on.
+	if GameManager.current_mode == GameManager.GameMode.CALM:
+		SaveManager.record_level_clear(GameManager.current_level, GameManager.score, 1)
+	modal.hide_modal()
+	hud.visible = true
+	if GameManager.current_mode == GameManager.GameMode.CALM:
+		_start_calm_mode(GameManager.current_level + 1)
+	else:
+		_next_stage()
+
+
+func _on_deadlock_retry() -> void:
+	modal.hide_modal()
+	hud.visible = true
+	_restart_current_stage()
 
 func _on_game_over(reason: String) -> void:
 	hud.visible = false

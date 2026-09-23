@@ -703,7 +703,12 @@ func _group_for_shuffle(live: Array) -> Array:
 		if t.is_wild():
 			wilds.append(t)
 			continue
-		var k: String = t.get_match_key()
+		# Keyed by type AND set size. A banded triple and a plain pair of the
+		# same type land in one bucket otherwise, and the group size is taken
+		# from whichever tile happens to be first - a bucket of five then makes
+		# two pairs and strands one tile, which fails the whole grouping. On a
+		# full 144-tile board that happened every time.
+		var k: String = "%s#%d" % [t.get_match_key(), maxi(2, int(t.size))]
 		if not buckets.has(k):
 			buckets[k] = []
 		buckets[k].append(t)
@@ -735,6 +740,32 @@ func _group_for_shuffle(live: Array) -> Array:
 	if not leftovers.is_empty() or not wilds.is_empty():
 		return []
 	return groups
+
+
+## Whether a shuffle could produce a playable board, without performing one.
+## Lets the caller tell a genuine dead end - where no arrangement of what is
+## left can be played - from simply having run out of shuffle charges. The two
+## deserve different answers, and only the first deserves a way out.
+func can_reshuffle() -> bool:
+	var active := get_active_tiles()
+	if active.size() < 2:
+		return false
+	var all_groups: Array = _group_for_shuffle(active)
+	if all_groups.is_empty():
+		return false
+	var pairs: int = 0
+	var triples: int = 0
+	for g in all_groups:
+		if g.size() == 3:
+			triples += 1
+		else:
+			pairs += 1
+	var slots: Array[Dictionary] = []
+	for t in active:
+		slots.append({"x": t.x, "y": t.y, "z": t.z})
+	var probe := RandomNumberGenerator.new()
+	probe.seed = 20260923
+	return not BoardGenerator.peel_dynamic(slots, triples, pairs, probe).is_empty()
 
 
 func shuffle_remaining_tiles() -> bool:

@@ -48,6 +48,7 @@ func _ready() -> void:
 		["treasury", func(): modal.show_treasury_modal()],
 		["daily_offerings", func(): modal.show_daily_offerings_modal()],
 		["theme_unlocked", func(): modal.show_theme_unlocked("theme_indigo")],
+		["deadlock", func(): modal.show_deadlock(12, 4)],
 		["settings", func(): modal.show_settings_menu()],
 		["privacy", func(): modal.show_privacy_modal()],
 		["credits", func(): modal.show_credits_modal()],

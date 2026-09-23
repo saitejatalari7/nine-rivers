@@ -9,6 +9,8 @@ signal start_run_requested()
 signal start_daily_requested()
 signal restart_stage_requested()
 signal next_stage_requested()
+signal deadlock_accepted()
+signal deadlock_retry()
 signal resume_game_requested()
 signal return_home_requested()
 signal replay_tutorial_requested()
@@ -571,6 +573,34 @@ func show_daily_clear(score: int, best_flow: int, streak: int, blessing: int = 0
 	, UITheme.IVORY_MUTED)
 	show_modal()
 
+## Offered when the board has tied itself into a corner: no legal move, and no
+## arrangement of what is left that would produce one. That is not the player's
+## mistake and not something they can undo, so it is framed as a curiosity and
+## they are given the choice rather than a loss.
+##
+## Only ever shown for a genuine dead end. Running out of shuffle charges is a
+## different situation with a different answer; if this appeared there too, a
+## player could skip any hard stage by spending their shuffles first.
+func show_deadlock(level: int, tiles_left: int) -> void:
+	_current_screen = "deadlock"
+	_clear_content()
+	_add_seal_header("The River Knots", "Stage %d" % level, "結")
+	_add_hairline()
+
+	_add_description("There is no move left, and no way to rearrange what remains into one. Boards can tie themselves like this. There was nothing you could have done differently.")
+	_add_sheet_row("Tiles remaining", str(tiles_left), UITheme.GOLD_CORE)
+
+	_add_separator()
+	_add_tile_row("受", GLYPH_GOLD, "Take the stage",
+		"Counted as cleared, one star", "", func():
+			deadlock_accepted.emit()
+	, true)
+	_add_toggle_row("再", "Deal it again", "Fresh board, same stage", func():
+		deadlock_retry.emit()
+	, UITheme.IVORY_MUTED)
+	show_modal()
+
+
 func show_game_over(reason: String) -> void:
 	_current_screen = "game_over"
 	_clear_content()
@@ -1088,7 +1118,7 @@ func handle_back_pressed() -> void:
 		"pause":
 			hide_modal()
 			resume_game_requested.emit()
-		"level_clear", "daily_clear", "game_over", "theme_unlocked":
+		"level_clear", "daily_clear", "game_over", "theme_unlocked", "deadlock":
 			# No hide_modal(): _return_home() puts the main menu up in its place,
 			# and hiding first would race the fade against it.
 			return_home_requested.emit()
