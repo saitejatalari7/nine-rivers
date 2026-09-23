@@ -26,6 +26,8 @@ change Status to RESOLVED, and move its row to the table at the bottom.
 | [08](08-spirit-bazaar-complexity.md) | Spirit Bazaar too complex | PENDING — owner |
 | [09](09-daily-and-rapids-caps.md) | Daily and Rapids play caps | PENDING — owner |
 | [10](10-premium-tile-trial.md) | Premium tile trial after a streak | PENDING — owner |
+| [20](20-selection-feedback.md) | Selecting a tile is not visible enough | PENDING — discuss |
+| [21](21-remove-chinese-from-menus.md) | Remove the Chinese text from menus | PENDING — discuss |
 
 ## Known, not blocking
 
@@ -48,6 +50,7 @@ change Status to RESOLVED, and move its row to the table at the bottom.
 | [07](07-scoring-system.md) | Scoring system not understood | 2026-09-23 | `405b5d6`, `8123c89`, `d397347` |
 | [17](17-invisible-bonuses.md) | Invisible percentage bonuses | 2026-09-23 | `8123c89`, `d397347` |
 | [18](18-onboarding.md) | First-run onboarding | 2026-09-23 | see git log |
+| [19](19-stacked-pair-deadlock.md) | Same-type tiles dealt in one column | 2026-09-23 | see git log |
 
 ---
 

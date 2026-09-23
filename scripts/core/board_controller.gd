@@ -674,23 +674,109 @@ func undo_last_move() -> bool:
 	move_completed.emit(get_active_tiles().size(), get_legal_sets().size())
 	return true
 
+## Re-deals the remaining tiles into the remaining slots so the board is
+## solvable again, rather than permuting them at random and hoping.
+##
+## The old version shuffled slot positions and returned true whatever came out.
+## It could leave no legal move at all, and on a board down to two tiles sitting
+## in one column every permutation is still one tile on top of another - the
+## geometry is unsolvable, not the arrangement. A player hit exactly that at
+## stage 2, pressed Shuffle, and watched a charge disappear for nothing.
+##
+## peel_dynamic builds a clearing order over the slots that are actually left,
+## and the tiles are dealt back along it, so a solution provably exists from the
+## new arrangement. When the slots admit no such order the function reports
+## failure and changes nothing, which lets the caller keep the charge and say
+## something honest.
+## Groups the remaining tiles the way the match rule actually groups them.
+##
+## Grouping by set_id was wrong: a match pairs tiles by their match key, not by
+## the set they were dealt in, so two tiles of one type from different sets are
+## matched together and leave an orphan in each. Every reshuffle attempt failed
+## on "group of 1" for exactly that reason.
+##
+## Returns [] when what is left cannot be grouped into playable sets at all.
+func _group_for_shuffle(live: Array) -> Array:
+	var buckets: Dictionary = {}
+	var wilds: Array = []
+	for t in live:
+		if t.is_wild():
+			wilds.append(t)
+			continue
+		var k: String = t.get_match_key()
+		if not buckets.has(k):
+			buckets[k] = []
+		buckets[k].append(t)
+
+	var groups: Array = []
+	var leftovers: Array = []
+	for k in buckets.keys():
+		var b: Array = buckets[k]
+		while not b.is_empty():
+			# A banded triple asks for three; everything else asks for two.
+			var want: int = maxi(2, int(b[0].size))
+			if b.size() < want:
+				for rem in b:
+					leftovers.append(rem)
+				b = []
+				break
+			var g: Array = []
+			for i in range(want):
+				g.append(b.pop_back())
+			groups.append(g)
+
+	# A wild matches anything, so it can complete an odd leftover. Pair them up
+	# rather than refusing a board that is still playable.
+	while not leftovers.is_empty() and not wilds.is_empty():
+		groups.append([leftovers.pop_back(), wilds.pop_back()])
+	while wilds.size() >= 2:
+		groups.append([wilds.pop_back(), wilds.pop_back()])
+
+	if not leftovers.is_empty() or not wilds.is_empty():
+		return []
+	return groups
+
+
 func shuffle_remaining_tiles() -> bool:
 	var active := get_active_tiles()
 	if active.size() < 2:
 		return false
-		
-	# Collect all free slots of active tiles
-	var slots: Array[Vector3i] = []
+
+	var all_groups: Array = _group_for_shuffle(active)
+	if all_groups.is_empty():
+		return false
+	var pairs: Array = []
+	var triples: Array = []
+	for g in all_groups:
+		if g.size() == 3:
+			triples.append(g)
+		else:
+			pairs.append(g)
+
+	var slots: Array[Dictionary] = []
 	for t in active:
-		slots.append(Vector3i(t.x, t.y, t.z))
-	slots.shuffle()
-	
-	for i in range(active.size()):
-		var t := active[i]
-		var s := slots[i]
-		t.x = s.x
-		t.y = s.y
-		t.z = s.z
+		slots.append({"x": t.x, "y": t.y, "z": t.z})
+
+	var rng := RandomNumberGenerator.new()
+	rng.randomize()
+	var order: Array[Dictionary] = BoardGenerator.peel_dynamic(
+		slots, triples.size(), pairs.size(), rng)
+	if order.is_empty():
+		return false
+
+	# Deal the groups back along the clearing order. Sizes match by
+	# construction: peel_dynamic was asked for exactly these counts.
+	for entry in order:
+		var want: int = int(entry["size"])
+		var g: Array = triples.pop_back() if want == 3 else pairs.pop_back()
+		var placed: Array = entry["slots"]
+		for i in range(g.size()):
+			var t: RiverTile = g[i]
+			t.x = int(placed[i]["x"])
+			t.y = int(placed[i]["y"])
+			t.z = int(placed[i]["z"])
+
+	for t in active:
 		var v = tile_views.get(t)
 		if is_instance_valid(v):
 			var px: float = (t.x * 0.5) * TW + t.z * LAYER_OFF_X
@@ -698,7 +784,7 @@ func shuffle_remaining_tiles() -> bool:
 			var tween := create_tween()
 			tween.tween_property(v, "position", Vector2(px, py), 0.3).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 			v.z_index = t.z * 100 + t.y * 2 + (1 if t.x % 2 == 1 else 0)
-			
+
 	selected_tiles.clear()
 	invalidate_legal_sets()
 	_reorder_tile_children()

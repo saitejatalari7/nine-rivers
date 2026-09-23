@@ -336,10 +336,106 @@ static func deal_board(layout_name: String, rng: RandomNumberGenerator = null) -
 		# Fallback solver if an abnormal custom layout cannot be strictly peeled
 		tiles = _deal_fallback(positions, triple_sets, pair_sets, rng)
 		
+	_resolve_stacked_duplicates(tiles, rng)
+
 	# Designate exactly one specific special tile set in each match as the Crystal Glass Tile
 	_assign_special_glass_set(tiles, rng)
 		
 	return tiles
+
+## Stops two tiles of the same type being dealt directly on top of one another.
+##
+## Two slots in one column can never be free at the same time, so a same-type
+## pair seated that way is a trap: clear the other copies of that type and what
+## is left cannot be matched by anything. The player cannot see it coming, and
+## no shuffle can undo it, because the geometry is the problem and not the
+## arrangement. Tiles never move during play, so the only way a board ends with
+## two stacked tiles that ought to match is if they were dealt that way - which
+## makes this the whole fix rather than a mitigation.
+##
+## Types are swapped between whole sets, never between individual tiles.
+## Solvability comes from the peel ORDER, which is about slots; any assignment
+## of types to those groups is equally solvable, so this cannot make a board
+## unfinishable.
+static func _resolve_stacked_duplicates(tiles: Array[RiverTile], rng: RandomNumberGenerator) -> int:
+	var by_set: Dictionary = {}
+	for t in tiles:
+		if not by_set.has(t.set_id):
+			by_set[t.set_id] = [] as Array[RiverTile]
+		by_set[t.set_id].append(t)
+
+	var set_ids: Array = by_set.keys()
+	var remaining: int = _count_stacked_duplicates(tiles)
+	var guard: int = 0
+	while remaining > 0 and guard < 400:
+		guard += 1
+		var conflict: Array = _first_stacked_duplicate(tiles)
+		if conflict.is_empty():
+			break
+		var a_id = conflict[0].set_id
+		var a_size: int = conflict[0].size
+		# Any other set of the same size will do; the swap is only invalid if it
+		# happens to recreate a conflict, which the score check below catches.
+		var b_id = set_ids[rng.randi() % set_ids.size()]
+		var tries: int = 0
+		while (b_id == a_id or by_set[b_id][0].size != a_size) and tries < 40:
+			b_id = set_ids[rng.randi() % set_ids.size()]
+			tries += 1
+		if b_id == a_id or by_set[b_id][0].size != a_size:
+			break
+
+		_swap_set_types(by_set[a_id], by_set[b_id])
+		var after: int = _count_stacked_duplicates(tiles)
+		if after >= remaining:
+			# No better: put it back rather than wandering.
+			_swap_set_types(by_set[a_id], by_set[b_id])
+		else:
+			remaining = after
+	return remaining
+
+
+static func _swap_set_types(a: Array, b: Array) -> void:
+	var a_suit: String = a[0].suit
+	var a_ranks: Array = []
+	for t in a:
+		a_ranks.append(t.rank)
+	var b_suit: String = b[0].suit
+	var b_ranks: Array = []
+	for t in b:
+		b_ranks.append(t.rank)
+	for i in range(a.size()):
+		a[i].suit = b_suit
+		a[i].rank = int(b_ranks[i % b_ranks.size()])
+	for i in range(b.size()):
+		b[i].suit = a_suit
+		b[i].rank = int(a_ranks[i % a_ranks.size()])
+
+
+static func _stack_map(tiles: Array[RiverTile]) -> Dictionary:
+	var at: Dictionary = {}
+	for t in tiles:
+		at[Vector3i(t.x, t.y, t.z)] = t
+	return at
+
+
+static func _count_stacked_duplicates(tiles: Array[RiverTile]) -> int:
+	var at: Dictionary = _stack_map(tiles)
+	var n: int = 0
+	for t in tiles:
+		var above = at.get(Vector3i(t.x, t.y, t.z + 1))
+		if above != null and above.set_id != t.set_id and above.get_match_key() == t.get_match_key():
+			n += 1
+	return n
+
+
+static func _first_stacked_duplicate(tiles: Array[RiverTile]) -> Array:
+	var at: Dictionary = _stack_map(tiles)
+	for t in tiles:
+		var above = at.get(Vector3i(t.x, t.y, t.z + 1))
+		if above != null and above.set_id != t.set_id and above.get_match_key() == t.get_match_key():
+			return [t, above]
+	return []
+
 
 static func _assign_special_glass_set(tiles: Array[RiverTile], rng: RandomNumberGenerator) -> void:
 	if tiles.is_empty():

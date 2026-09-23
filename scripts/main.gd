@@ -426,13 +426,20 @@ func _on_hint_clicked() -> void:
 		hud.show_toast("No Hints left! Tap ◈ Pearls to visit Bazaar.")
 
 func _on_shuffle_clicked() -> void:
-	if GameManager.shuffles > 0 and board.shuffle_remaining_tiles():
+	if GameManager.shuffles <= 0:
+		hud.show_toast("No Shuffles left! Tap ◈ Pearls to visit Bazaar.")
+		return
+	if board.shuffle_remaining_tiles():
 		GameManager.props_used += 1
 		GameManager.shuffles -= 1
 		GameManager.props_updated.emit(GameManager.undos, GameManager.hints, GameManager.shuffles)
 		hud.show_toast("Board reshuffled!")
-	elif GameManager.shuffles <= 0:
-		hud.show_toast("No Shuffles left! Tap ◈ Pearls to visit Bazaar.")
+		return
+	# The charge is not spent on a refusal. This happens when what is left
+	# cannot be arranged into a solvable board at all - two tiles sharing one
+	# column, for instance, where the lower can never be uncovered. The player
+	# did nothing wrong and should not pay for it.
+	hud.show_toast("This board cannot be untangled. Restart the stage from the menu.")
 
 func _on_board_move_completed(remaining: int, legal_moves: int) -> void:
 	hud.update_board_stats(remaining, legal_moves)
