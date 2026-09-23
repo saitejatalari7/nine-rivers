@@ -136,12 +136,19 @@ const MAX_DAILY_REWARDED_ADS: int = 4
 # 2. Minimum 4 minutes (240s) real-time between full-screen ads
 # 3. Minimum 3 completed stages between full-screen ads
 # 4. Never interrupt active board gameplay
+## When an interstitial may appear. All three have to be satisfied, and all
+## three survive a restart - the previous version kept them in memory and timed
+## from Time.get_ticks_msec(), so closing and reopening the app cleared the cap
+## and a player who restarted between levels saw an ad every single time.
 const INTERSTITIAL_MIN_INTERVAL: float = 240.0
 const INTERSTITIAL_MIN_LEVELS: int = 3
+## Nothing before this stage: three levels are played untroubled first, which is
+## also long enough for onboarding to finish.
 const INTERSTITIAL_START_LEVEL: int = 4
+## Quiet after any purchase. Someone who has just paid should not be sold to
+## again ten seconds later.
+const POST_PURCHASE_QUIET: float = 900.0
 
-var _last_interstitial_time: float = -240.0
-var _stages_cleared_since_ad: int = 0
 var _banner_visible: bool = false
 
 var _billing: Object = null
@@ -359,7 +366,16 @@ func _revoke_product(product_id: String, prod: Dictionary) -> bool:
 
 ## Records how a non-consumable was paid for, so _revoke_unconfirmed() knows
 ## whether Google Play is entitled to take it away again.
+## Any purchase, by money or by pearls, starts a quiet window. Selling to
+## someone who has just bought something is the fastest way to make the next
+## ad feel like a punishment.
+func _note_purchase() -> void:
+	SaveManager.economy["last_purchase_unix"] = _unix_now()
+	SaveManager.request_save()
+
+
 func _mark_entitlement_source(product_id: String, source: String) -> void:
+	_note_purchase()
 	var sources: Dictionary = SaveManager.economy.get("entitlement_source", {})
 	if not (sources is Dictionary):
 		sources = {}
@@ -506,19 +522,40 @@ func get_remaining_rewarded_ads() -> int:
 
 # ================= ZEN INTERSTITIAL FREQUENCY CAPPER =================
 func record_level_cleared() -> void:
-	_stages_cleared_since_ad += 1
+	SaveManager.economy["stages_since_ad"] = int(SaveManager.economy.get("stages_since_ad", 0)) + 1
+
+func _unix_now() -> float:
+	return float(Time.get_unix_time_from_system())
+
+
+## Why an ad is or is not allowed, as a string. Returned rather than logged so
+## a test can assert the reason instead of only the verdict - "no ad appeared"
+## is true for six different reasons and they are not interchangeable.
+func interstitial_block_reason(current_level: int = 4) -> String:
+	if is_no_ads():
+		return "no_ads_purchased"
+	if current_level < INTERSTITIAL_START_LEVEL:
+		return "too_early"
+	if int(SaveManager.economy.get("stages_since_ad", 0)) < INTERSTITIAL_MIN_LEVELS:
+		return "too_few_stages"
+	var now: float = _unix_now()
+	var last_ad: float = float(SaveManager.economy.get("last_interstitial_unix", 0.0))
+	var last_buy_t: float = float(SaveManager.economy.get("last_purchase_unix", 0.0))
+	# Checked before the intervals: a clock wound backwards leaves a timestamp in
+	# the future, and "now - then" is then negative, which reads as recent and
+	# would otherwise be reported as the wrong reason.
+	if last_ad > now or last_buy_t > now:
+		return "clock_moved"
+	if last_ad > 0.0 and now - last_ad < INTERSTITIAL_MIN_INTERVAL:
+		return "too_soon"
+	var last_buy: float = float(SaveManager.economy.get("last_purchase_unix", 0.0))
+	if last_buy > 0.0 and now - last_buy < POST_PURCHASE_QUIET:
+		return "just_purchased"
+	return ""
+
 
 func can_show_interstitial(current_level: int = 4) -> bool:
-	if is_no_ads():
-		return false
-	if current_level < INTERSTITIAL_START_LEVEL:
-		return false
-	if _stages_cleared_since_ad < INTERSTITIAL_MIN_LEVELS:
-		return false
-	var now_sec: float = float(Time.get_ticks_msec()) / 1000.0
-	if now_sec - _last_interstitial_time < INTERSTITIAL_MIN_INTERVAL:
-		return false
-	return true
+	return interstitial_block_reason(current_level).is_empty()
 
 func show_interstitial_if_ready(current_level: int = 4, context: String = "level_clear") -> bool:
 	if can_show_interstitial(current_level):
@@ -527,8 +564,9 @@ func show_interstitial_if_ready(current_level: int = 4, context: String = "level
 	return false
 
 func show_interstitial(context: String = "general") -> void:
-	_last_interstitial_time = float(Time.get_ticks_msec()) / 1000.0
-	_stages_cleared_since_ad = 0
+	SaveManager.economy["last_interstitial_unix"] = _unix_now()
+	SaveManager.economy["stages_since_ad"] = 0
+	SaveManager.request_save()
 	
 	if _admob != null and _admob.has_method("show_interstitial"):
 		_admob.show_interstitial()

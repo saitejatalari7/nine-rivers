@@ -460,6 +460,12 @@ func _ready() -> void:
 	
 	# 26. Test Zen Interstitial Frequency Capper
 	SaveManager.economy["no_ads_purchased"] = false
+	# Earlier suites buy things, and a purchase now buys quiet - without this the
+	# capper is being asked about a player who paid thirty seconds ago, and it
+	# correctly refuses for a reason this suite is not testing.
+	SaveManager.economy["last_purchase_unix"] = 0.0
+	SaveManager.economy["last_interstitial_unix"] = 0.0
+	SaveManager.economy["stages_since_ad"] = 0
 	assert(MonetizationManager.can_show_interstitial(1) == false, "Level 1 onboarding must be ad-free")
 	assert(MonetizationManager.can_show_interstitial(2) == false, "Level 2 onboarding must be ad-free")
 	assert(MonetizationManager.can_show_interstitial(3) == false, "Level 3 onboarding must be ad-free")
@@ -468,7 +474,8 @@ func _ready() -> void:
 	MonetizationManager.record_level_cleared()
 	assert(MonetizationManager.can_show_interstitial(4) == false, "2 cleared stages is below threshold of 3")
 	MonetizationManager.record_level_cleared()
-	assert(MonetizationManager.can_show_interstitial(4) == true, "Level 4+ with 3 stages and cooldown satisfied must allow ad")
+	assert(MonetizationManager.can_show_interstitial(4) == true,
+		"Level 4+ with 3 stages and cooldown satisfied must allow ad (blocked by: %s)" % MonetizationManager.interstitial_block_reason(4))
 	var showed := MonetizationManager.show_interstitial_if_ready(4, "test")
 	assert(showed == true, "show_interstitial_if_ready must succeed")
 	assert(MonetizationManager.can_show_interstitial(4) == false, "Immediate follow-up ad must be blocked by cooldown")

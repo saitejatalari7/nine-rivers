@@ -39,3 +39,45 @@ The integration is written against the Godot 3.x-era "GodotAdMob" plugin.
 This is a rewrite against a current plugin, not a configuration fix.
 
 Files: `scripts/autoload/monetization_manager.gd:369`, `admob_plugin.zip`
+
+---
+
+## Partial — 2026-09-23: the showing policy
+
+The owner asked for ads from day one, but nothing until three levels are played
+and sensible rules after that. The policy half is done and tested; it will
+govern ads the moment ads exist.
+
+| Rule | Value |
+|------|-------|
+| Nothing before | stage 4 — three levels played untroubled, and long enough for onboarding to finish |
+| Stages between ads | 3 |
+| Minimum gap | 4 minutes |
+| Quiet after any purchase | 15 minutes |
+| A player who bought no-ads | never |
+
+## The bug underneath it
+
+The spacing existed already but lived entirely in memory and timed from
+`Time.get_ticks_msec()`, which restarts with the app. Closing and reopening
+cleared the frequency cap, so a player who relaunched between levels would have
+seen an ad every single time. Both counters are persisted now and timed from
+Unix time.
+
+A clock wound backwards leaves a timestamp in the future, which `now - then`
+reports as negative, i.e. recent. That is checked first and reported as
+`clock_moved`, so it reads as quiet rather than as licence.
+
+`interstitial_block_reason()` returns *why*, not just yes or no. "No ad
+appeared" is true for six different reasons and they are not interchangeable - a
+test asserting only the boolean passes just as happily when the wrong rule
+fired. That is exactly what caught the post-purchase window blocking
+test_runner's capper suite: an earlier suite buys something, so the capper was
+being asked about a player who had paid seconds ago.
+
+## Still outstanding
+
+Everything in the original report. No ad SDK ships, the bundled plugin exposes a
+different API from the one the code calls, and there are no ad unit IDs, no
+`initialize()` call, and no AdMob App ID in the manifest. That work needs an
+AdMob account and a device.

@@ -44,6 +44,9 @@ var economy: Dictionary = {
 	"active_background_theme": "auto",
 	"active_mat_theme": "river_felt",
 	"rewarded_ads_today": 0,
+	"stages_since_ad": 0,
+	"last_interstitial_unix": 0.0,
+	"last_purchase_unix": 0.0,
 	"last_rewarded_date": "",
 	# How each non-consumable was obtained: product_id -> "iap" | "pearls" | "jade".
 	# Anything marked "iap" is owned by Google Play, not by this file, and is
@@ -256,6 +259,17 @@ func _vint(value: Variant, fallback: int, min_v: int = -2147483648, max_v: int =
 		return fallback
 	return clampi(int(n), min_v, max_v)
 
+## Unix timestamps come back from JSON as floats and must stay floats: rounding
+## them through _vint would be fine today and wrong the moment anything needs
+## sub-second precision.
+func _vfloat(value: Variant, fallback: float, min_v: float = -1.0e18, max_v: float = 1.0e18) -> float:
+	if not (value is int or value is float or value is bool):
+		return fallback
+	var n: float = float(value)
+	if is_nan(n) or is_inf(n):
+		return fallback
+	return clampf(n, min_v, max_v)
+
 func _vbool(value: Variant, fallback: bool) -> bool:
 	return bool(value) if (value is bool or value is int or value is float) else fallback
 
@@ -326,6 +340,12 @@ func _sanitize_economy(raw: Variant) -> Dictionary:
 	if d.has("no_ads_purchased"): out["no_ads_purchased"] = _vbool(d["no_ads_purchased"], false)
 	if d.has("rewarded_ads_today"): out["rewarded_ads_today"] = _vint(d["rewarded_ads_today"], 0, 0, 99)
 	if d.has("last_rewarded_date"): out["last_rewarded_date"] = _vstr(d["last_rewarded_date"], "")
+	# Ad pacing. These used to live only in memory, so a relaunch cleared the
+	# frequency cap and a player who restarted between levels saw an ad every
+	# time. They are worthless unless they survive the trip through here.
+	if d.has("stages_since_ad"): out["stages_since_ad"] = _vint(d["stages_since_ad"], 0, 0, 999)
+	if d.has("last_interstitial_unix"): out["last_interstitial_unix"] = _vfloat(d["last_interstitial_unix"], 0.0, 0.0)
+	if d.has("last_purchase_unix"): out["last_purchase_unix"] = _vfloat(d["last_purchase_unix"], 0.0, 0.0)
 
 	var themes: Array = _vid_list(d.get("unlocked_themes"), VALID_TILE_THEMES, ["classic_jade"])
 	out["unlocked_themes"] = themes
