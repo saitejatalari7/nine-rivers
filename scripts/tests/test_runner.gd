@@ -258,11 +258,17 @@ func _ready() -> void:
 	assert(GameManager.flow_level == 4 - GameManager.MISPLAY_FLOW_DROP, "A misplay must drop Flow by %d (got %d)" % [GameManager.MISPLAY_FLOW_DROP, GameManager.flow_level])
 	print("[PASS] Plain rules verified with no koi blessings: exact jade, base 100, Overdrive at 7, misplay -2.")
 	
-	# 19. Test Tile Mastery Score Boost (+15% for Tier 3)
+	# 19. Test that scoring is base x Flow x Rush and nothing else
+	# Tile mastery used to add +5% per level here, invisibly. With that gone,
+	# clearing the same tile many times must score exactly the same as the first
+	# time, so this records a lot of mastery and then checks nothing moved.
 	GameManager.start_calm(1)
-	var mastered_pts := GameManager.register_match("bam", false, 3)
-	assert(mastered_pts == 115, "Tier 3 Tile Mastery must award +15%% score (expected 115, got %d)" % mastered_pts)
-	print("[PASS] Tile Mastery Score Boost verified (+15% for Master tier).")
+	for i in 40:
+		SaveManager.record_tile_mastery("bam", 1)
+	assert(SaveManager.get_tile_mastery_level("bam", 1) > 0, "The mastery counter must still record, as a statistic")
+	var mastered_pts := GameManager.register_match("bam", false)
+	assert(mastered_pts == 100, "Mastery must no longer change the score (expected 100, got %d)" % mastered_pts)
+	print("[PASS] Scoring verified as base x Flow x Rush: mastery recorded but no longer paid.")
 	
 	# 20. Test Monetization & Spirit Pearl Economy
 	var init_pearls := MonetizationManager.get_pearls()
@@ -435,7 +441,7 @@ func _ready() -> void:
 	
 	# D. GameManager Glass match bonus score (+500 pts)
 	var prev_score: int = GameManager.score
-	var glass_pts: int = GameManager.register_match("dragon", false, 0, true)
+	var glass_pts: int = GameManager.register_match("dragon", false, true)
 	assert(GameManager.score == prev_score + glass_pts, "Score must increment by glass_pts")
 	assert(glass_pts >= 600, "Glass match must award +500 bonus points")
 	

@@ -347,7 +347,6 @@ func _resolve_matched_set(group: Array[RiverTile]) -> void:
 
 	var is_triple: bool = group.size() >= 3
 	var suit_name: String = group[0].suit
-	var max_mastery: int = 0
 	var last_view_pos := Vector2.ZERO
 	var last_z: int = 0
 	var has_last_pos := false
@@ -360,7 +359,6 @@ func _resolve_matched_set(group: Array[RiverTile]) -> void:
 	for t in group:
 		t.is_removed = true
 		SaveManager.record_tile_mastery(t.suit, t.rank)
-		max_mastery = maxi(max_mastery, SaveManager.get_tile_mastery_level(t.suit, t.rank))
 		var v = tile_views.get(t)
 		if is_instance_valid(v):
 			last_view_pos = v.position
@@ -400,13 +398,13 @@ func _resolve_matched_set(group: Array[RiverTile]) -> void:
 		"gm_snap": gm_snap
 	})
 	
-	# Register match in GameManager with tile mastery score boost and crystal glass bonus
+	# Register the match in GameManager.
 	# Position first: register_match plays the chime, so it needs the centre of
 	# the group that was just cleared.
 	var match_at: Vector2 = Vector2.INF
 	if has_last_pos:
 		match_at = last_view_pos + Vector2(TW * 0.5, TH * 0.5)
-	var pts: int = GameManager.register_match(suit_name, is_triple, max_mastery,
+	var pts: int = GameManager.register_match(suit_name, is_triple,
 		is_glass_match, match_at, last_z)
 	
 	if has_last_pos:

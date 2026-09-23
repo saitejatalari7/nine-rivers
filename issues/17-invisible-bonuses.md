@@ -29,20 +29,26 @@ pond background either.
 Overdrive and the misplay drop are now plain constants — `OVERDRIVE_FLOW` and
 `MISPLAY_FLOW_DROP` in `game_manager.gd`.
 
-## Still present: tile mastery
+## Removed — 2026-09-23: tile mastery
 
 `record_tile_mastery()` counts how often each of the 34 tile types has been
 cleared and awards a level. That level feeds
 `mastery_mult = 1.0 + (mastery_level * 0.05)` at `game_manager.gd:219`, so a
 player who has cleared a lot of one tile scores more for it.
 
-It is shown **nowhere**. No screen, no toast, no counter. It is the last of the
-three invisible multipliers noted in [07](07-scoring-system.md) — `score_mult`
-went with the relics, `ogon_mult` went with the koi.
+It was shown **nowhere** - no screen, no toast, no counter - and it was the last
+of the three invisible multipliers noted in [07](07-scoring-system.md).
 
-Options: surface it so it means something, or remove it and make matches worth
-the same every time. Removing it would also make the scoring formula
-`base x Flow x Rush`, which is explainable in one line.
+The multiplier is gone. The counter still records, as a play statistic that
+costs nothing and that existing saves already carry; deleting the field would
+have discarded real player data for no benefit.
+
+Scoring is now `base x Flow x Rush`, which is one line to explain.
+
+One unknown closed by this. bot_runner's final River Jade varied between runs
+at a fixed seed - 4475 against 4800 - and had done for as long as anyone had
+looked. Mastery accumulating across runs was the cause: it fed the score, the
+score fed the jade. Two consecutive runs now both report 4475.
 
 ## Also dead, found while looking
 

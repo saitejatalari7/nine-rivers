@@ -188,7 +188,7 @@ func restore_state(snap: Dictionary) -> void:
 	if current_mode != GameMode.CALM:
 		time_updated.emit(time_left, max_time)
 
-func register_match(suit: String, is_triple: bool, mastery_level: int = 0,
+func register_match(suit: String, is_triple: bool,
 		is_glass: bool = false, at: Vector2 = Vector2.INF, z: int = 0) -> int:
 	# 1. Flow calculation
 	var is_wild_suit: bool = (suit == "flower" or suit == "season")
@@ -219,10 +219,10 @@ func register_match(suit: String, is_triple: bool, mastery_level: int = 0,
 	var base: int = 250 if is_triple else 100
 	var flow_mult: int = mini(6, maxi(1, flow_level))
 	var rush_mult: float = 2.0 if StageModifiers.is_rush_active() else 1.0
-	var mastery_mult: float = 1.0 + (float(mastery_level) * 0.05)
-	# score_mult stayed at 1.0 once the Sharper Eye relic went; kept as a field so
-	# a future permanent bonus has somewhere to live.
-	var pts: int = int(round(base * flow_mult * score_mult * rush_mult * mastery_mult))
+	# base x Flow x Rush, and nothing else. score_mult stays at 1.0 now that the
+	# relics are gone; it is kept as a field so a future bonus that the player
+	# can actually see has somewhere to live.
+	var pts: int = int(round(base * flow_mult * score_mult * rush_mult))
 	if is_glass:
 		pts += 500
 	score += pts

@@ -360,7 +360,9 @@ func _sanitize_settings(raw: Variant) -> Dictionary:
 	if d.has("color_blind_mode"): out["color_blind_mode"] = _vstr(d["color_blind_mode"], "none", VALID_COLOR_BLIND)
 	return out
 
-## tile_mastery drives a permanent score multiplier, so it is bounded too.
+## tile_mastery is a play statistic now - it drove a permanent, invisible +5%
+## score multiplier per level until that was removed. Still bounded, because it
+## is still loaded from a file the player can edit.
 func _sanitize_mastery(raw: Variant) -> Dictionary:
 	var out: Dictionary = {}
 	if not (raw is Dictionary):
@@ -548,6 +550,7 @@ func record_tile_mastery(suit: String, rank: int) -> int:
 	request_save()
 	return current_count
 
+## Kept for the record it holds; nothing reads it for gameplay any more.
 func get_tile_mastery_level(suit: String, rank: int) -> int:
 	var key := "%s_%d" % [suit, rank]
 	var count: int = int(tile_mastery.get(key, 0))
