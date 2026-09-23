@@ -1,11 +1,10 @@
-| [16](16-iap-never-tested.md) | IAP flow never tested end to end | PENDING — if paid items ship day one |
 # Open issues — Nine Rivers
 
 **All issues below are PENDING unless marked otherwise.**
 
 Raised: 2026-09-21
 Last reviewed: 2026-09-23
-Against commit: d397347
+Against commit: 7b20c6c
 
 Every issue file carries its own Status, Raised, Last reviewed and Resolved
 line. When one is closed, set Resolved to the date and the commit that did it,
@@ -28,6 +27,7 @@ change Status to RESOLVED, and move its row to the table at the bottom.
 | [10](10-premium-tile-trial.md) | Premium tile trial after a streak | PENDING — owner |
 | [20](20-selection-feedback.md) | Selecting a tile is not visible enough | PENDING — discuss |
 | [21](21-remove-chinese-from-menus.md) | Remove the Chinese text from menus | PENDING — discuss |
+| [25](25-menu-wording-too-clever.md) | Menu names are too clever | PENDING — discuss |
 
 ## Known, not blocking
 
@@ -40,6 +40,9 @@ change Status to RESOLVED, and move its row to the table at the bottom.
 | [13](13-tile-glyph-system-font.md) | Tile glyphs use the device font | PENDING |
 | [14](14-cloud-save-branch-unmerged.md) | feat/cloud-save-pgs unmerged | PENDING |
 | [15](15-keystore-password-plaintext.md) | Keystore password in plaintext | PENDING |
+| [22](22-pause-icon.md) | Pause control is a hamburger, not a pause symbol | PENDING |
+| [23](23-no-resume-after-close.md) | Closing the game loses the board in progress | PENDING |
+| [24](24-timer-bar-starts-half-full.md) | Time bar starts about half full | PENDING |
 
 ## Resolved
 
