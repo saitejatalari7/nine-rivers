@@ -66,10 +66,7 @@ func _ready() -> void:
 	modal.background_quiet_changed.connect(func(quiet: bool):
 		if zen_background and zen_background.has_method("set_quiet"):
 			zen_background.set_quiet(quiet))
-	modal.replay_tutorial_requested.connect(func():
-		_start_calm_mode(1)
-		tutorial.start_tutorial(board)
-	)
+	modal.replay_tutorial_requested.connect(_on_replay_tutorial)
 	
 	# Wire GameManager
 	GameManager.game_over.connect(_on_game_over)
@@ -486,6 +483,23 @@ func _on_board_cleared() -> void:
 		hud.show_toast("Stage %d cleared" % GameManager.current_stage_no)
 		await get_tree().create_timer(1.1).timeout
 		_next_stage()
+
+## Replaying the tutorial must not cost the player their place. It used to call
+## _start_calm_mode(1), so asking for a refresher at stage 10 dropped you onto
+## stage 1 with no warning - the unlock pointer survived, but the board you were
+## playing did not.
+##
+## The lesson points at whatever tiles are live, so any board will do. Only when
+## there is no board at all does it need to deal one, and then it deals the
+## stage the player is actually up to.
+func _on_replay_tutorial() -> void:
+	modal.hide_modal()
+	if board.get_active_tiles().size() < 4:
+		_start_calm_mode(int(SaveManager.prog.get("level", 1)))
+	board.visible = true
+	hud.visible = true
+	tutorial.start_tutorial(board)
+
 
 func _on_no_moves_left() -> void:
 	# A board with no legal move is usually recoverable: a shuffle re-deals what

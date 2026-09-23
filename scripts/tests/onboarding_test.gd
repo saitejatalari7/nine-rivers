@@ -57,6 +57,8 @@ func _ready() -> void:
 	_check(bool(SaveManager.prog.get("tutorial_completed", false)),
 		"and it is not shown again", "flag=%s" % str(SaveManager.prog.get("tutorial_completed")))
 
+	await _test_replay_keeps_progress(main)
+
 	print("")
 	print("Failures: %d" % _fails)
 	get_tree().quit(1 if _fails > 0 else 0)
@@ -73,3 +75,29 @@ func _check(ok: bool, what: String, detail: String) -> void:
 	if not ok:
 		_fails += 1
 	print("  %s  %-46s %s" % ["PASS" if ok else "FAIL", what, detail])
+
+
+## Replaying the tutorial must not cost the player their place. It used to deal
+## stage 1 unconditionally, so asking for a refresher at stage 10 dropped you
+## out of the board you were playing.
+func _test_replay_keeps_progress(main) -> void:
+	SaveManager.prog["level"] = 10
+	SaveManager.prog["tutorial_completed"] = true
+	main._start_calm_mode(10)
+	await get_tree().create_timer(0.6).timeout
+	var board = main.get_node("Board")
+	var before_level: int = GameManager.current_level
+	var before_tiles: int = board.get_active_tiles().size()
+
+	main._on_replay_tutorial()
+	await get_tree().create_timer(0.6).timeout
+
+	_check(GameManager.current_level == before_level,
+		"replaying the tutorial keeps the current stage",
+		"stage %d -> %d" % [before_level, GameManager.current_level])
+	_check(board.get_active_tiles().size() == before_tiles,
+		"and does not re-deal the board",
+		"%d tiles -> %d" % [before_tiles, board.get_active_tiles().size()])
+	_check(main.get_node("TutorialController").visible,
+		"and the lesson actually starts", "")
+	main.get_node("TutorialController")._finish()
