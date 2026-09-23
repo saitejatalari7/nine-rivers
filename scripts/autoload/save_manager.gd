@@ -26,8 +26,15 @@ var sanctuary: Dictionary = {
 
 var tile_mastery: Dictionary = {}
 
+## Declared so a test can assert the starting balance without parsing the
+## dictionary below it.
+const DEFAULT_ECONOMY_PEARLS: int = 0
+
 var economy: Dictionary = {
-	"pearls": 250,
+	# Nothing to start with. 250 was a leftover from when pearls were premium-only
+	# and it bought nothing anyway - the cheapest item is a 500-pearl background -
+	# so it read as a balance that was always just short.
+	"pearls": 0,
 	"no_ads_purchased": false,
 	"unlocked_themes": ["classic_jade"],
 	"active_tile_theme": "classic_jade",
