@@ -280,14 +280,11 @@ static func peel_dynamic(positions: Array[Dictionary], num_triples: int, num_pai
 			
 	return []
 
-static func deal_board(layout_name: String, rng: RandomNumberGenerator = null) -> Array[RiverTile]:
-	if rng == null:
-		rng = RandomNumberGenerator.new()
-		if forced_seed != 0:
-			rng.seed = forced_seed
-		else:
-			rng.randomize()
-		
+## Deals once, without the stacked-pair repair. Split out so a board that
+## cannot be repaired can simply be dealt again.
+## Deals once, without the stacked-pair repair. Split out so a board that
+## cannot be repaired can simply be dealt again from a different draw.
+static func _deal_once(layout_name: String, rng: RandomNumberGenerator) -> Array[RiverTile]:
 	var positions := get_layout_positions(layout_name)
 	var total: int = positions.size()
 	var triples_count: int = 2 if total <= 40 else (4 if total <= 72 else 6)
@@ -336,11 +333,36 @@ static func deal_board(layout_name: String, rng: RandomNumberGenerator = null) -
 		# Fallback solver if an abnormal custom layout cannot be strictly peeled
 		tiles = _deal_fallback(positions, triple_sets, pair_sets, rng)
 		
-	_resolve_stacked_duplicates(tiles, rng)
+	return tiles
 
-	# Designate exactly one specific special tile set in each match as the Crystal Glass Tile
+
+static func deal_board(layout_name: String, rng: RandomNumberGenerator = null) -> Array[RiverTile]:
+	if rng == null:
+		rng = RandomNumberGenerator.new()
+		if forced_seed != 0:
+			rng.seed = forced_seed
+		else:
+			rng.randomize()
+
+	var base_seed: int = int(rng.seed)
+	var tiles: Array[RiverTile] = _deal_once(layout_name, rng)
+
+	# A board that still has a trap after the repair is discarded and dealt
+	# again from a nudged seed, rather than shipped with a known dead end in it.
+	# Deterministic: the same input seed always walks the same retry sequence.
+	if _resolve_stacked_duplicates(tiles, rng) > 0:
+		for attempt in range(1, 9):
+			var retry := RandomNumberGenerator.new()
+			retry.seed = base_seed + attempt * 7919
+			tiles = _deal_once(layout_name, retry)
+			if _resolve_stacked_duplicates(tiles, retry) == 0:
+				break
+		if _count_stacked_duplicates(tiles) > 0:
+			push_error("Nine Rivers: could not deal %s without an unclearable stacked pair" % layout_name)
+
+	# Designate exactly one specific special tile set in each match as the
+	# Crystal Glass Tile.
 	_assign_special_glass_set(tiles, rng)
-		
 	return tiles
 
 ## Stops two tiles of the same type being dealt directly on top of one another.
@@ -357,7 +379,14 @@ static func deal_board(layout_name: String, rng: RandomNumberGenerator = null) -
 ## Solvability comes from the peel ORDER, which is about slots; any assignment
 ## of types to those groups is equally solvable, so this cannot make a board
 ## unfinishable.
-static func _resolve_stacked_duplicates(tiles: Array[RiverTile], rng: RandomNumberGenerator) -> int:
+##
+## The search is exhaustive rather than random. The first version sampled swap
+## partners and gave up after 400 draws, so it could return a board with a
+## known trap still in it - unlikely, never once observed in thousands of deals,
+## but a hole that only closes by removing the guesswork. Every same-size set is
+## now tried in turn, and the loop can only end when the count reaches zero or
+## no single swap anywhere improves it.
+static func _resolve_stacked_duplicates(tiles: Array[RiverTile], _rng: RandomNumberGenerator) -> int:
 	var by_set: Dictionary = {}
 	for t in tiles:
 		if not by_set.has(t.set_id):
@@ -366,31 +395,32 @@ static func _resolve_stacked_duplicates(tiles: Array[RiverTile], rng: RandomNumb
 
 	var set_ids: Array = by_set.keys()
 	var remaining: int = _count_stacked_duplicates(tiles)
-	var guard: int = 0
-	while remaining > 0 and guard < 400:
-		guard += 1
+
+	while remaining > 0:
 		var conflict: Array = _first_stacked_duplicate(tiles)
 		if conflict.is_empty():
 			break
 		var a_id = conflict[0].set_id
 		var a_size: int = conflict[0].size
-		# Any other set of the same size will do; the swap is only invalid if it
-		# happens to recreate a conflict, which the score check below catches.
-		var b_id = set_ids[rng.randi() % set_ids.size()]
-		var tries: int = 0
-		while (b_id == a_id or by_set[b_id][0].size != a_size) and tries < 40:
-			b_id = set_ids[rng.randi() % set_ids.size()]
-			tries += 1
-		if b_id == a_id or by_set[b_id][0].size != a_size:
+
+		var improved: bool = false
+		for b_id in set_ids:
+			if b_id == a_id or by_set[b_id][0].size != a_size:
+				continue
+			_swap_set_types(by_set[a_id], by_set[b_id])
+			var after: int = _count_stacked_duplicates(tiles)
+			if after < remaining:
+				remaining = after
+				improved = true
+				break
+			_swap_set_types(by_set[a_id], by_set[b_id])
+
+		# Nothing anywhere helps. Returning the count rather than looping lets
+		# the caller see it; deal_board treats a non-zero result as a board to
+		# throw away rather than one to ship.
+		if not improved:
 			break
 
-		_swap_set_types(by_set[a_id], by_set[b_id])
-		var after: int = _count_stacked_duplicates(tiles)
-		if after >= remaining:
-			# No better: put it back rather than wandering.
-			_swap_set_types(by_set[a_id], by_set[b_id])
-		else:
-			remaining = after
 	return remaining
 
 

@@ -47,6 +47,21 @@ failures, 0 shuffle fallbacks.
 `stack_trap_test` checks all 350 stages and 60 daily seeds. Removing the repair
 makes it report 61 and 1; restoring it returns both to zero.
 
+## Closing the last hole — 2026-09-23
+
+The first repair sampled swap partners at random and gave up after 400 draws,
+so it could in principle return a board with a trap still in it. Never observed
+in thousands of deals, but a probability rather than a guarantee.
+
+The search is exhaustive now: every same-size set is tried in turn, and the
+loop ends only when the count reaches zero or no single swap anywhere improves
+it. If a board still cannot be repaired it is discarded and dealt again from a
+nudged seed, up to eight times, and only then does it log an error. Retries are
+deterministic, so a given seed always walks the same sequence.
+
+Measured after: 350 stages, 60 daily seeds and 3,000 random deals across all
+101 layouts, all zero. Campaign validator still 0 replay failures.
+
 ## Also changed, though no longer the cure
 
 Shuffle used to permute slot positions at random and return true whatever came
