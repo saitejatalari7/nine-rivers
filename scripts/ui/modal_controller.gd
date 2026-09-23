@@ -584,18 +584,18 @@ func show_daily_clear(score: int, best_flow: int, streak: int, blessing: int = 0
 func show_deadlock(level: int, tiles_left: int) -> void:
 	_current_screen = "deadlock"
 	_clear_content()
-	_add_seal_header("The River Knots", "Stage %d" % level, "結")
+	_add_seal_header("Deadlock", "Stage %d · no moves remain" % level, "結")
 	_add_hairline()
 
-	_add_description("There is no move left, and no way to rearrange what remains into one. Boards can tie themselves like this. There was nothing you could have done differently.")
+	_add_description("No tiles can be matched, and rearranging them will not help. This board cannot be finished.")
 	_add_sheet_row("Tiles remaining", str(tiles_left), UITheme.GOLD_CORE)
 
 	_add_separator()
-	_add_tile_row("受", GLYPH_GOLD, "Take the stage",
+	_add_tile_row("受", GLYPH_GOLD, "Complete this level",
 		"Counted as cleared, one star", "", func():
 			deadlock_accepted.emit()
 	, true)
-	_add_toggle_row("再", "Deal it again", "Fresh board, same stage", func():
+	_add_toggle_row("再", "Retry", "Fresh board, same stage", func():
 		deadlock_retry.emit()
 	, UITheme.IVORY_MUTED)
 	show_modal()
