@@ -2,7 +2,7 @@
 
 **Status:** PENDING — awaiting owner decision
 **Raised:** 2026-09-21
-**Last reviewed:** 2026-09-21
+**Last reviewed:** 2026-09-23
 **Resolved:** —
 
 **Blocks release: no. Proposed by the owner, not specced.**

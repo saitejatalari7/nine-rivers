@@ -1,9 +1,9 @@
 # 17 — Invisible percentage bonuses
 
-**Status:** PARTIALLY RESOLVED — 2026-09-23
+**Status:** RESOLVED
 **Raised:** 2026-09-23
 **Last reviewed:** 2026-09-23
-**Resolved:** —
+**Resolved:** 2026-09-23
 
 Owner, on the koi blessings: "i dont want people to think something of 5%. no
 one cares."

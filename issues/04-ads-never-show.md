@@ -2,7 +2,7 @@
 
 **Status:** PENDING — not scheduled
 **Raised:** 2026-09-21
-**Last reviewed:** 2026-09-21
+**Last reviewed:** 2026-09-23
 **Resolved:** —
 
 **Blocks release: no** — revenue is zero either way. But zero is the current state.

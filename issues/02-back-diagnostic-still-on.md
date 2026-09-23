@@ -2,7 +2,7 @@
 
 **Status:** PENDING — blocks release
 **Raised:** 2026-09-21
-**Last reviewed:** 2026-09-21
+**Last reviewed:** 2026-09-23
 **Resolved:** —
 
 **Blocks release: yes.** Deliberate, temporary.

@@ -1,12 +1,11 @@
 | [16](16-iap-never-tested.md) | IAP flow never tested end to end | PENDING — if paid items ship day one |
-| [17](17-invisible-bonuses.md) | Invisible percentage bonuses | PARTIALLY RESOLVED |
 # Open issues — Nine Rivers
 
 **All issues below are PENDING unless marked otherwise.**
 
 Raised: 2026-09-21
-Last reviewed: 2026-09-21
-Against commit: bd059f4
+Last reviewed: 2026-09-23
+Against commit: d397347
 
 Every issue file carries its own Status, Raised, Last reviewed and Resolved
 line. When one is closed, set Resolved to the date and the commit that did it,
@@ -18,15 +17,12 @@ change Status to RESOLVED, and move its row to the table at the bottom.
 |---|------|--------|
 | [01](01-back-button.md) | Android back button does nothing on device | PENDING |
 | [02](02-back-diagnostic-still-on.md) | BACK_DIAGNOSTIC still enabled | PENDING |
-| [03](03-rewarded-ads-grant-without-ad.md) | Rewarded ads pay out with no ad shown | PENDING |
 | [16](16-iap-never-tested.md) | IAP flow never tested end to end | PENDING — if paid items ship day one |
 
 ## Awaiting a decision, not defects
 
 | # | Item | Status |
 |---|------|--------|
-| [06](06-time-rapids-and-relics.md) | Time Rapids and the relic draft | PENDING — owner |
-| [07](07-scoring-system.md) | Scoring system not understood | PENDING — owner |
 | [08](08-spirit-bazaar-complexity.md) | Spirit Bazaar too complex | PENDING — owner |
 | [09](09-daily-and-rapids-caps.md) | Daily and Rapids play caps | PENDING — owner |
 | [10](10-premium-tile-trial.md) | Premium tile trial after a streak | PENDING — owner |
@@ -45,7 +41,12 @@ change Status to RESOLVED, and move its row to the table at the bottom.
 
 ## Resolved
 
-_None yet._
+| # | Item | Resolved | Commit |
+|---|------|----------|--------|
+| [03](03-rewarded-ads-grant-without-ad.md) | Rewarded ads pay out with no ad shown | 2026-09-21, extended 09-23 | `0397c28`, `c3a69c7` |
+| [06](06-time-rapids-and-relics.md) | Time Rapids and the relic draft | 2026-09-23 | `405b5d6` |
+| [07](07-scoring-system.md) | Scoring system not understood | 2026-09-23 | `405b5d6`, `8123c89`, `d397347` |
+| [17](17-invisible-bonuses.md) | Invisible percentage bonuses | 2026-09-23 | `8123c89`, `d397347` |
 
 ---
 
