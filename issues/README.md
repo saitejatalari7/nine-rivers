@@ -47,6 +47,7 @@ change Status to RESOLVED, and move its row to the table at the bottom.
 | [06](06-time-rapids-and-relics.md) | Time Rapids and the relic draft | 2026-09-23 | `405b5d6` |
 | [07](07-scoring-system.md) | Scoring system not understood | 2026-09-23 | `405b5d6`, `8123c89`, `d397347` |
 | [17](17-invisible-bonuses.md) | Invisible percentage bonuses | 2026-09-23 | `8123c89`, `d397347` |
+| [18](18-onboarding.md) | First-run onboarding | 2026-09-23 | see git log |
 
 ---
 

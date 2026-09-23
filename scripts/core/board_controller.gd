@@ -5,6 +5,10 @@ signal move_completed(remaining_tiles: int, legal_moves: int)
 signal tile_matched(world_pos: Vector2)
 signal board_cleared()
 signal no_moves_left()
+## A tap that was refused because the tile is not free. Onboarding uses it: the
+## lesson "a covered tile will not move" is completed by trying it, and nothing
+## is matched, so move_completed never fires.
+signal blocked_tap(tile: RiverTile)
 signal toast_requested(message: String)
 
 const RiverTile = preload("res://scripts/core/river_tile.gd")
@@ -269,16 +273,27 @@ func _handle_magnetic_tap(pos: Vector2) -> void:
 	if best_view:
 		_on_tile_clicked(best_view)
 
+## While onboarding is pointing at specific tiles, only those tiles answer. A
+## first-time player who wanders off mid-instruction ends up somewhere the
+## script cannot follow, and the lesson breaks rather than the player learning
+## anything. Empty means no restriction, which is every other moment in the
+## game.
+var tutorial_focus: Array[RiverTile] = []
+
 func _on_tile_clicked(view: TileView) -> void:
-	clear_all_hints()
 	var t: RiverTile = view.tile_data
 	if not t or t.is_removed:
 		return
+	if not tutorial_focus.is_empty() and not tutorial_focus.has(t):
+		view.play_wrong_shake()
+		return
+	clear_all_hints()
 		
 	var active := get_active_tiles()
 	var grid := get_spatial_grid(active)
 	var reason := get_tile_blocked_reason(t, grid)
 	if reason != "free":
+		blocked_tap.emit(t)
 		view.play_wrong_shake()
 		AudioManager.play_tile_clack(0.7, view.position + Vector2(TW * 0.5, TH * 0.5), t.z, t.suit)
 		if reason == "covered":

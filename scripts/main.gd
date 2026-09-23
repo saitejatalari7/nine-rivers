@@ -46,6 +46,8 @@ func _ready() -> void:
 	board.board_cleared.connect(_on_board_cleared)
 	board.no_moves_left.connect(_on_no_moves_left)
 	board.toast_requested.connect(func(msg): hud.show_toast(msg))
+	board.blocked_tap.connect(func(tile): tutorial.notify_blocked_tap(tile))
+	board.move_completed.connect(func(_r, _l): tutorial.notify_match())
 	
 	# Wire Zen Background theme notifications
 	if zen_background and zen_background.has_signal("theme_changed"):
@@ -64,7 +66,7 @@ func _ready() -> void:
 			zen_background.set_quiet(quiet))
 	modal.replay_tutorial_requested.connect(func():
 		_start_calm_mode(1)
-		tutorial.start_tutorial()
+		tutorial.start_tutorial(board)
 	)
 	
 	# Wire GameManager
@@ -272,7 +274,9 @@ func _start_calm_mode(level: int) -> void:
 	camera.frame_board(board.board_bounds, get_viewport_rect().size)
 	
 	if level == 1 and not SaveManager.prog.get("tutorial_completed", false):
-		tutorial.start_tutorial()
+		# The board is handed over so the lesson can point at real tiles rather
+		# than describe them.
+		tutorial.start_tutorial(board)
 
 func _start_run_mode() -> void:
 	# The menu hides the row when the runs are spent, but the signal can also
