@@ -295,10 +295,29 @@ var is_pressing: bool = false
 var long_press_threshold: float = 0.42
 var long_press_fired: bool = false
 
-var anim_lift: float = 0.0
-var anim_shake: float = 0.0
+## Tweened by hand, so each one repaints when it changes. A tween only writes
+## the property; without a setter the body layer kept whatever it was drawn
+## with when the tween started, which is how a lifted tile ended up separated
+## from its own slab.
+var anim_lift: float = 0.0:
+	set(v):
+		if is_equal_approx(anim_lift, v):
+			return
+		anim_lift = v
+		_redraw_all()
+var anim_shake: float = 0.0:
+	set(v):
+		if is_equal_approx(anim_shake, v):
+			return
+		anim_shake = v
+		_redraw_all()
 var anim_wild_pulse: float = 0.0
-var anim_hover: float = 0.0
+var anim_hover: float = 0.0:
+	set(v):
+		if is_equal_approx(anim_hover, v):
+			return
+		anim_hover = v
+		_redraw_all()
 var _hint_tween: Tween = null
 var _reveal_tween: Tween = null
 
@@ -448,15 +467,26 @@ func get_accent_color() -> Color:
 		_:
 			return COL_GOLD
 
+## A picked-up tile draws over its neighbours; without this the lift disappears
+## behind whatever is stacked in front of it.
+const SELECT_Z_BOOST: int = 400
+const SELECT_SCALE: float = 1.08
+
 func set_selected(sel: bool) -> void:
 	if is_selected == sel:
 		return
 	is_selected = sel
+	# Lift, grow, and rise above the neighbours. On a dark felt the cast shadow
+	# alone cannot carry height - there is nothing for it to darken - so the
+	# scale is what makes a picked-up tile read as picked up.
+	z_index += SELECT_Z_BOOST if sel else -SELECT_Z_BOOST
 	var tween := create_tween()
 	if sel:
-		tween.tween_property(self, "anim_lift", -8.5, 0.16).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		tween.tween_property(self, "anim_lift", -13.0, 0.16).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		tween.parallel().tween_property(self, "scale", Vector2(SELECT_SCALE, SELECT_SCALE), 0.16).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	else:
 		tween.tween_property(self, "anim_lift", 0.0, 0.14).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		tween.parallel().tween_property(self, "scale", Vector2.ONE, 0.14).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	_redraw_all()
 
 func set_free_status(free_val: bool) -> void:
@@ -633,10 +663,19 @@ func _draw_body(ci: CanvasItem) -> void:
 	var offset_x: float = anim_shake
 
 	if not is_dissolving:
-		var shadow_y: float = 3.5 + z * 3.0
-		var shadow_alpha: float = clampf(0.36 + z * 0.06, 0.36, 0.65)
+		# The shadow stays on the table while the tile rises. It used to carry
+		# offset_y like everything else, so a selected tile and its shadow moved
+		# together and the lift read as nothing at all - which is why selection
+		# was hard to see. A shadow that stays put, spreads and softens is what
+		# actually sells height.
+		var lift: float = maxf(0.0, -(anim_lift + anim_hover))
+		var shadow_y: float = 3.5 + z * 3.0 + lift * 0.30
+		var shadow_alpha: float = clampf(0.36 + z * 0.06 - lift * 0.013, 0.14, 0.65)
+		var spread: float = lift * 0.26
 		sb_shadow.bg_color = Color(0.01, 0.04, 0.03, shadow_alpha)
-		var shadow_rect := Rect2(offset_x, offset_y + shadow_y, TILE_W, TILE_H - DEPTH_3D)
+		sb_shadow.set_corner_radius_all(int(9.0 + lift * 0.5))
+		var shadow_rect := Rect2(offset_x - spread, shadow_y,
+			TILE_W + spread * 2.0, TILE_H - DEPTH_3D)
 		ci.draw_style_box(sb_shadow, shadow_rect)
 
 	var face_rect := Rect2(offset_x, offset_y, TILE_W, TILE_H - DEPTH_3D)

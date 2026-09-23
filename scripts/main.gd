@@ -67,6 +67,9 @@ func _ready() -> void:
 		if zen_background and zen_background.has_method("set_quiet"):
 			zen_background.set_quiet(quiet))
 	modal.replay_tutorial_requested.connect(_on_replay_tutorial)
+	modal.resume_session_requested.connect(func():
+		if not _resume_session():
+			_start_calm_mode(int(SaveManager.prog.get("level", 1))))
 	
 	# Wire GameManager
 	GameManager.game_over.connect(_on_game_over)
@@ -135,6 +138,11 @@ func _input(event: InputEvent) -> void:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_GO_BACK_REQUEST:
 		_handle_back_action("notification")
+	# Android kills a backgrounded app without warning, so the board has to be on
+	# disk before the app loses focus, not when it is told it is closing.
+	if what in [NOTIFICATION_WM_CLOSE_REQUEST, NOTIFICATION_APPLICATION_PAUSED,
+			NOTIFICATION_APPLICATION_FOCUS_OUT]:
+		_capture_session()
 
 func _unhandled_input(event: InputEvent) -> void:
 	if splash_screen.visible and event is InputEventMouseButton and event.pressed:
@@ -240,9 +248,16 @@ func _on_tile_matched_ripple(world_pos: Vector2) -> void:
 
 func _on_theme_changed(theme_data: Dictionary, new_level: int) -> void:
 	if new_level > 1 and hud:
-		hud.show_toast("Realm: %s (%s)" % [theme_data.get("name", ""), theme_data.get("name_zh", "")])
+		hud.show_toast("Realm: %s" % theme_data.get("name", ""))
 
 func _return_home() -> void:
+	# Leaving for the menu ends the board. Keeping the session here would offer
+	# the player a board they walked away from as if they had been interrupted.
+	#
+	# Only when there IS a board: the boot splash finishes by calling this, and
+	# wiping the session there would mean nothing could ever be resumed.
+	if board.get_active_tiles().size() > 0:
+		SaveManager.clear_session()
 	board.clear_board()
 	board.visible = false
 	hud.visible = false
@@ -448,6 +463,7 @@ func _on_board_move_completed(remaining: int, legal_moves: int) -> void:
 var _pending_clear: Dictionary = {}
 
 func _on_board_cleared() -> void:
+	SaveManager.clear_session()
 	GameManager.is_timer_active = false
 	hud.visible = false
 	AudioManager.play_win()
@@ -484,6 +500,86 @@ func _on_board_cleared() -> void:
 		await get_tree().create_timer(1.1).timeout
 		_next_stage()
 
+## ===================== SESSION (resume after a close) =====================
+## Writes the board straight to disk rather than marking it dirty: the caller is
+## a shutdown or background notification, and SaveManager may already have taken
+## its own turn at that notification before this one runs.
+func _capture_session() -> void:
+	if not hud.visible or board.get_active_tiles().size() < 2:
+		return
+	if tutorial != null and tutorial.visible:
+		return
+	SaveManager.session = {
+		"tiles": board.snapshot_tiles(),
+		"mode": int(GameManager.current_mode),
+		"level": GameManager.current_level,
+		"stage_no": GameManager.current_stage_no,
+		"layout": GameManager.current_layout_name,
+		"daily_seed": GameManager.daily_seed,
+		"modifier": int(StageModifiers.active_modifier),
+		"score": GameManager.score,
+		"flow_level": GameManager.flow_level,
+		"flow_suit": GameManager.flow_suit,
+		"best_flow": GameManager.best_flow,
+		"misplays": GameManager.misplays,
+		"props_used": GameManager.props_used,
+		"undos": GameManager.undos,
+		"hints": GameManager.hints,
+		"shuffles": GameManager.shuffles,
+		"time_left": GameManager.time_left,
+		"max_time": GameManager.max_time,
+	}
+	SaveManager.save_game()
+
+## Puts the player back on the board they left. A Rapids run resumed this way is
+## the same run: record_rapids_start() ran when it began and is not called again,
+## so closing the app cannot buy a fourth run.
+func _resume_session() -> bool:
+	var s: Dictionary = SaveManager.session
+	if s.is_empty():
+		return false
+	var mode: int = int(s.get("mode", 0))
+	GameManager.current_mode = mode as GameManager.GameMode
+	GameManager.current_level = int(s.get("level", 1))
+	GameManager.current_stage_no = int(s.get("stage_no", 1))
+	GameManager.current_layout_name = String(s.get("layout", "turtle"))
+	GameManager.daily_seed = int(s.get("daily_seed", 0))
+	StageModifiers.active_modifier = int(s.get("modifier", 0)) as StageModifiers.Modifier
+
+	board.visible = true
+	hud.visible = true
+	if not board.restore_stage(s.get("tiles", [])):
+		SaveManager.clear_session()
+		return false
+
+	GameManager.score = int(s.get("score", 0))
+	GameManager.flow_level = int(s.get("flow_level", 0))
+	GameManager.flow_suit = String(s.get("flow_suit", ""))
+	GameManager.best_flow = int(s.get("best_flow", 0))
+	GameManager.misplays = int(s.get("misplays", 0))
+	GameManager.props_used = int(s.get("props_used", 0))
+	GameManager.undos = int(s.get("undos", 0))
+	GameManager.hints = int(s.get("hints", 0))
+	GameManager.shuffles = int(s.get("shuffles", 0))
+	GameManager.max_time = float(s.get("max_time", 180.0))
+	GameManager.time_left = float(s.get("time_left", GameManager.max_time))
+	GameManager.is_first_match_of_stage = GameManager.flow_level <= 0
+
+	var hud_no: int = GameManager.current_level if mode == 0 else GameManager.current_stage_no
+	hud.setup_hud(GameManager.current_mode, hud_no)
+	GameManager.props_updated.emit(GameManager.undos, GameManager.hints, GameManager.shuffles)
+	GameManager.score_updated.emit(GameManager.score, 0)
+	GameManager.flow_updated.emit(GameManager.flow_level, GameManager.flow_suit,
+		GameManager.is_overdrive_active())
+	GameManager.is_timer_active = mode != 0
+	GameManager.time_updated.emit(GameManager.time_left, GameManager.max_time)
+
+	if zen_background and zen_background.has_method("set_level"):
+		zen_background.set_level(GameManager.current_level)
+	camera.frame_board(board.board_bounds, get_viewport_rect().size)
+	modal.hide_modal()
+	return true
+
 ## The lesson points at whatever tiles are live, so it only needs to deal a board
 ## when there is none - and then it deals the stage the player is up to.
 func _on_replay_tutorial() -> void:
@@ -508,6 +604,7 @@ func _on_no_moves_left() -> void:
 
 
 func _on_deadlock_accepted() -> void:
+	SaveManager.clear_session()
 	# One star, not three. They did not clear it, and a board that hands out a
 	# perfect score for getting stuck would be worth getting stuck on.
 	if GameManager.current_mode == GameManager.GameMode.CALM:
@@ -526,6 +623,7 @@ func _on_deadlock_retry() -> void:
 	_restart_current_stage()
 
 func _on_game_over(reason: String) -> void:
+	SaveManager.clear_session()
 	hud.visible = false
 	modal.show_game_over(reason)
 	MonetizationManager.show_interstitial_if_ready(GameManager.current_level, "game_over")

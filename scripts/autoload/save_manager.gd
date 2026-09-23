@@ -28,6 +28,16 @@ var sanctuary: Dictionary = {
 
 var tile_mastery: Dictionary = {}
 
+## The board in progress, or empty. Written on the same notifications that flush
+## the profile, so an Android kill while the app sits in the background does not
+## cost the player their board.
+##
+## Deliberately outside the signature: it is not worth anything on its own, it
+## changes on every match, and signing it would mean a mid-board write could
+## invalidate a profile. It is sanitized on load instead, and a session that
+## does not restore cleanly is dropped.
+var session: Dictionary = {}
+
 ## Declared so a test can assert the starting balance without parsing the
 ## dictionary below it.
 const DEFAULT_ECONOMY_PEARLS: int = 0
@@ -166,6 +176,7 @@ func save_game() -> bool:
 		"tile_mastery": tile_mastery,
 		"settings": settings,
 		"economy": economy,
+		"session": session,
 		"version": CURRENT_VERSION,
 	}
 	data["checksum"] = signature_for_payload(data)
@@ -296,6 +307,76 @@ func _vid_list(value: Variant, allowed: Array, required: Array) -> Array:
 			if s in allowed and not (s in out):
 				out.append(s)
 	return out
+
+## The session is not signed, so nothing in it is trusted. Every field is
+## coerced and clamped, and the tile list is checked entry by entry: the whole
+## session is dropped rather than a bad tile being patched into a good board.
+const SESSION_MAX_TILES: int = 200
+
+func _sanitize_session(raw: Variant) -> Dictionary:
+	if not (raw is Dictionary):
+		return {}
+	var d: Dictionary = raw
+	var tiles_raw: Variant = d.get("tiles")
+	if not (tiles_raw is Array):
+		return {}
+	var tiles: Array = tiles_raw
+	if tiles.is_empty() or tiles.size() > SESSION_MAX_TILES:
+		return {}
+	var clean_tiles: Array = []
+	for entry in tiles:
+		if not (entry is Dictionary):
+			return {}
+		var t: Dictionary = entry
+		clean_tiles.append({
+			"x": _vint(t.get("x"), 0, 0, 40),
+			"y": _vint(t.get("y"), 0, 0, 40),
+			"z": _vint(t.get("z"), 0, 0, 12),
+			"suit": String(t.get("suit", "dot")),
+			"rank": _vint(t.get("rank"), 1, 1, 9),
+			"set_id": _vint(t.get("set_id"), 0, 0, SESSION_MAX_TILES),
+			"size": _vint(t.get("size"), 2, 2, 3),
+			"open": bool(t.get("open", false)),
+			"gone": bool(t.get("gone", false)),
+			"frozen": bool(t.get("frozen", false)),
+			"glass": bool(t.get("glass", false)),
+		})
+	return {
+		"tiles": clean_tiles,
+		"mode": _vint(d.get("mode"), 0, 0, 2),
+		"level": _vint(d.get("level"), 1, 1, MAX_LEVEL),
+		"stage_no": _vint(d.get("stage_no"), 1, 1, 999),
+		"layout": String(d.get("layout", "turtle")),
+		"daily_seed": _vint(d.get("daily_seed"), 0, 0),
+		"modifier": _vint(d.get("modifier"), 0, 0, 3),
+		"score": _vint(d.get("score"), 0, 0),
+		"flow_level": _vint(d.get("flow_level"), 0, 0, 99),
+		"flow_suit": String(d.get("flow_suit", "")),
+		"best_flow": _vint(d.get("best_flow"), 0, 0, 99),
+		"misplays": _vint(d.get("misplays"), 0, 0),
+		"props_used": _vint(d.get("props_used"), 0, 0),
+		"undos": _vint(d.get("undos"), 0, 0, 9),
+		"hints": _vint(d.get("hints"), 0, 0, 9),
+		"shuffles": _vint(d.get("shuffles"), 0, 0, 9),
+		"time_left": _vfloat(d.get("time_left"), 0.0, 0.0, 600.0),
+		"max_time": _vfloat(d.get("max_time"), 180.0, 1.0, 600.0),
+	}
+
+func store_session(data: Dictionary) -> void:
+	session = data
+	request_save()
+
+## Called the moment a board stops being resumable - cleared, lost, given up or
+## left for the menu. A stale session is worse than none: it would offer the
+## player a board they have already finished.
+func clear_session() -> void:
+	if session.is_empty():
+		return
+	session = {}
+	request_save()
+
+func has_session() -> bool:
+	return not session.is_empty()
 
 func _sanitize_prog(raw: Variant) -> Dictionary:
 	var out: Dictionary = {}
@@ -501,6 +582,7 @@ func _apply_save_data(data: Dictionary) -> bool:
 	# one from the file, and the pearls it converts into have to land on top of
 	# the pearls from the same file.
 	_migrate_jade_to_pearls()
+	session = _sanitize_session(data.get("session"))
 	return true
 
 ## Emitted whenever the purse moves, so the HUD readout does not have to be

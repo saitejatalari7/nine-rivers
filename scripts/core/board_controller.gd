@@ -77,6 +77,13 @@ func load_stage(layout_name: String, rng: RandomNumberGenerator = null) -> void:
 			if t.z >= 1 or (t.x + t.y) % 5 == 0:
 				t.is_frozen = true
 	
+	_seat_tiles(true)
+
+## Builds a view for every tile in live_tiles and settles the board around them.
+## Shared by a fresh deal and by a session restored from disk; the restore skips
+## the dealing wave, because a board the player was already looking at should be
+## there when they come back, not deal itself again.
+func _seat_tiles(animate: bool) -> void:
 	var max_x: int = 0
 	var max_y: int = 0
 	var max_z: int = 0
@@ -96,8 +103,11 @@ func load_stage(layout_name: String, rng: RandomNumberGenerator = null) -> void:
 		return a.x < b.x
 	)
 		
-	# Instantiate tile visual nodes
+	# Instantiate tile visual nodes. A restored board has already-matched tiles
+	# in the list, for the geometry and for the bounds above; they get no view.
 	for t in live_tiles:
+		if t.is_removed:
+			continue
 		var view: TileView = TileViewScene.instantiate()
 		add_child(view)
 		
@@ -105,18 +115,21 @@ func load_stage(layout_name: String, rng: RandomNumberGenerator = null) -> void:
 		var py: float = (t.y * 0.5) * TH + (max_z - t.z) * LAYER_OFF_Y
 		var target_pos := Vector2(px, py)
 		
-		# Cascading staggered deal animation (0.35s total wave)
-		var delay: float = clampf((t.z * 0.06) + (t.y * 0.012) + (t.x * 0.006), 0.0, 0.38)
-		view.position = target_pos - Vector2(0, 50.0)
-		view.modulate.a = 0.0
-		view.scale = Vector2(0.85, 0.85)
-		
-		var tween := view.create_tween()
-		tween.tween_interval(delay)
-		tween.tween_property(view, "position", target_pos, 0.22).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-		tween.parallel().tween_property(view, "scale", Vector2.ONE, 0.20).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-		tween.parallel().tween_property(view, "modulate:a", 1.0, 0.16)
-		
+		if animate:
+			# Cascading staggered deal animation (0.35s total wave)
+			var delay: float = clampf((t.z * 0.06) + (t.y * 0.012) + (t.x * 0.006), 0.0, 0.38)
+			view.position = target_pos - Vector2(0, 50.0)
+			view.modulate.a = 0.0
+			view.scale = Vector2(0.85, 0.85)
+
+			var tween := view.create_tween()
+			tween.tween_interval(delay)
+			tween.tween_property(view, "position", target_pos, 0.22).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+			tween.parallel().tween_property(view, "scale", Vector2.ONE, 0.20).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+			tween.parallel().tween_property(view, "modulate:a", 1.0, 0.16)
+		else:
+			view.position = target_pos
+
 		view.z_index = t.z * 100 + t.y * 2 + (1 if t.x % 2 == 1 else 0)
 		
 		view.tile_clicked.connect(_on_tile_clicked)
@@ -133,6 +146,59 @@ func load_stage(layout_name: String, rng: RandomNumberGenerator = null) -> void:
 	update_all_tiles_status()
 	_auto_thaw_armed = true
 	move_completed.emit(live_tiles.size(), get_legal_sets().size())
+
+## The board as plain data, for a session written to disk. Only what cannot be
+## re-derived: the layout name replays the geometry, but which tiles were dealt
+## where, and which of them are gone, cannot be worked out from anything else.
+func snapshot_tiles() -> Array:
+	var out: Array = []
+	for t in live_tiles:
+		out.append({
+			"x": t.x, "y": t.y, "z": t.z,
+			"suit": t.suit, "rank": t.rank,
+			"set_id": t.set_id, "size": t.size,
+			"open": t.is_open, "gone": t.is_removed,
+			"frozen": t.is_frozen, "glass": t.is_glass,
+		})
+	return out
+
+## Rebuilds a board from snapshot_tiles(). Returns false and leaves the board
+## empty if the data is unusable, so a truncated or hand-edited session is
+## refused rather than half-restored.
+##
+## The undo history is deliberately not restored. Undo works on board snapshots
+## taken in memory, and carrying them through a save would multiply the file
+## size by the length of the stack for a feature nobody reaches for after
+## closing the app.
+func restore_stage(tiles_data: Array) -> bool:
+	clear_board()
+	_auto_thaw_armed = false
+	stage_match_count = 0
+	var rebuilt: Array[RiverTile] = []
+	for entry in tiles_data:
+		if not (entry is Dictionary):
+			return false
+		var d: Dictionary = entry
+		var t := RiverTile.new(
+			int(d.get("x", 0)), int(d.get("y", 0)), int(d.get("z", 0)),
+			String(d.get("suit", "dot")), int(d.get("rank", 1)),
+			int(d.get("set_id", 0)), int(d.get("size", 2)))
+		t.is_open = bool(d.get("open", false))
+		t.is_removed = bool(d.get("gone", false))
+		t.is_frozen = bool(d.get("frozen", false))
+		t.is_glass = bool(d.get("glass", false))
+		rebuilt.append(t)
+	if rebuilt.is_empty():
+		return false
+	live_tiles = rebuilt
+	selected_tiles.clear()
+	history.clear()
+	_seat_tiles(false)
+	invalidate_legal_sets()
+	update_all_tiles_status()
+	_auto_thaw_armed = true
+	move_completed.emit(get_active_tiles().size(), get_legal_sets().size())
+	return true
 
 func _reorder_tile_children() -> void:
 	var views: Array[TileView] = []

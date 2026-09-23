@@ -12,6 +12,8 @@ signal next_stage_requested()
 signal deadlock_accepted()
 signal deadlock_retry()
 signal resume_game_requested()
+## The board the player was on when the app closed, not the pause menu's Resume.
+signal resume_session_requested()
 signal return_home_requested()
 signal replay_tutorial_requested()
 signal background_quiet_changed(quiet: bool)
@@ -296,11 +298,25 @@ func show_main_menu() -> void:
 	_add_hairline()
 
 	# THE RACK.
-	_add_tile_row(UITheme.RED_CINNABAR, "Continue",
-		"Stage %d of %d" % [cur_lvl, StagePlan.TOTAL_LEVELS], "", func():
-			hide_modal()
-			start_calm_requested.emit(cur_lvl)
-	, true)
+	# A board left in progress is offered ahead of a fresh one. Anything else
+	# would deal over the top of the board they were interrupted on.
+	if SaveManager.has_session():
+		var s_lvl: int = int(SaveManager.session.get("level", cur_lvl))
+		var s_left: int = 0
+		for t in SaveManager.session.get("tiles", []):
+			if not bool((t as Dictionary).get("gone", false)):
+				s_left += 1
+		_add_tile_row(UITheme.RED_CINNABAR, "Resume",
+			"Stage %d · %d tiles left" % [s_lvl, s_left], "", func():
+				hide_modal()
+				resume_session_requested.emit()
+		, true)
+	else:
+		_add_tile_row(UITheme.RED_CINNABAR, "Continue",
+			"Stage %d of %d" % [cur_lvl, StagePlan.TOTAL_LEVELS], "", func():
+				hide_modal()
+				start_calm_requested.emit(cur_lvl)
+		, true)
 
 	_add_tile_row(Color("#1f7a52"), "Levels",
 		"%d chapters" % StagePlan.CHAPTERS,
