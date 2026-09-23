@@ -4,7 +4,7 @@
 
 Raised: 2026-09-21
 Last reviewed: 2026-09-23
-Against commit: 7b20c6c
+Against commit: 10b11e4
 
 Every issue file carries its own Status, Raised, Last reviewed and Resolved
 line. When one is closed, set Resolved to the date and the commit that did it,
@@ -15,7 +15,6 @@ change Status to RESOLVED, and move its row to the table at the bottom.
 | # | Item | Status |
 |---|------|--------|
 | [01](01-back-button.md) | Android back button does nothing on device | PENDING |
-| [02](02-back-diagnostic-still-on.md) | BACK_DIAGNOSTIC still enabled | PENDING |
 | [16](16-iap-never-tested.md) | IAP flow never tested end to end | PENDING — if paid items ship day one |
 
 ## Awaiting a decision, not defects
@@ -26,8 +25,6 @@ change Status to RESOLVED, and move its row to the table at the bottom.
 | [09](09-daily-and-rapids-caps.md) | Daily and Rapids play caps | PENDING — owner |
 | [10](10-premium-tile-trial.md) | Premium tile trial after a streak | PENDING — owner |
 | [20](20-selection-feedback.md) | Selecting a tile is not visible enough | PENDING — discuss |
-| [21](21-remove-chinese-from-menus.md) | Remove the Chinese text from menus | PENDING — discuss |
-| [25](25-menu-wording-too-clever.md) | Menu names are too clever | PENDING — discuss |
 
 ## Known, not blocking
 
@@ -40,9 +37,7 @@ change Status to RESOLVED, and move its row to the table at the bottom.
 | [13](13-tile-glyph-system-font.md) | Tile glyphs use the device font | PENDING |
 | [14](14-cloud-save-branch-unmerged.md) | feat/cloud-save-pgs unmerged | PENDING |
 | [15](15-keystore-password-plaintext.md) | Keystore password in plaintext | PENDING |
-| [22](22-pause-icon.md) | Pause control is a hamburger, not a pause symbol | PENDING |
 | [23](23-no-resume-after-close.md) | Closing the game loses the board in progress | PENDING |
-| [24](24-timer-bar-starts-half-full.md) | Time bar starts about half full | PENDING |
 
 ## Resolved
 
@@ -54,6 +49,11 @@ change Status to RESOLVED, and move its row to the table at the bottom.
 | [17](17-invisible-bonuses.md) | Invisible percentage bonuses | 2026-09-23 | `8123c89`, `d397347` |
 | [18](18-onboarding.md) | First-run onboarding | 2026-09-23 | see git log |
 | [19](19-stacked-pair-deadlock.md) | Same-type tiles dealt in one column | 2026-09-23 | see git log |
+| [02](02-back-diagnostic-still-on.md) | BACK_DIAGNOSTIC still enabled | 2026-09-23 | `10b11e4` |
+| [21](21-remove-chinese-from-menus.md) | Remove the Chinese text from menus | 2026-09-23 | `10b11e4` |
+| [22](22-pause-icon.md) | Pause control is a hamburger | 2026-09-23 | `10b11e4` |
+| [24](24-timer-bar-starts-half-full.md) | Time bar starts about half full | 2026-09-23 | `10b11e4` |
+| [25](25-menu-wording-too-clever.md) | Menu names are too clever | 2026-09-23 | `10b11e4` |
 
 ---
 

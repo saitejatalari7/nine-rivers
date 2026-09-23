@@ -1,9 +1,9 @@
 # 21 — Remove the Chinese text from the menus
 
-**Status:** PENDING — awaiting design discussion
+**Status:** RESOLVED — 2026-09-23
 **Raised:** 2026-09-23
 **Last reviewed:** 2026-09-23
-**Resolved:** —
+**Resolved:** 2026-09-23, `10b11e4`
 
 Owner: remove all Chinese words from the menus, including the red seal glyph
 discussed earlier.

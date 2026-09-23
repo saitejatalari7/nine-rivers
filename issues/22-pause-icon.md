@@ -1,9 +1,9 @@
 # 22 — Pause control is a hamburger, not a pause symbol
 
-**Status:** PENDING — not scheduled
+**Status:** RESOLVED — 2026-09-23
 **Raised:** 2026-09-23
 **Last reviewed:** 2026-09-23
-**Resolved:** —
+**Resolved:** 2026-09-23, `10b11e4`
 
 **Blocks release: no.** Small, safe, cosmetic.
 

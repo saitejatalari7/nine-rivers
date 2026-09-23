@@ -1,9 +1,9 @@
 # 25 — Menu names are too clever
 
-**Status:** PENDING — awaiting design discussion
+**Status:** RESOLVED — 2026-09-23
 **Raised:** 2026-09-23
 **Last reviewed:** 2026-09-23
-**Resolved:** —
+**Resolved:** 2026-09-23, `10b11e4`
 
 **Blocks release: no.** Text only, but it touches nearly every screen.
 

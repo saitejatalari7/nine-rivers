@@ -1,9 +1,9 @@
 # 24 — The time bar starts about half full
 
-**Status:** PENDING — not scheduled
+**Status:** RESOLVED — 2026-09-23
 **Raised:** 2026-09-23
 **Last reviewed:** 2026-09-23
-**Resolved:** —
+**Resolved:** 2026-09-23, `10b11e4`
 
 **Blocks release: no.** Cosmetic, but it reads as a bug to a player.
 
