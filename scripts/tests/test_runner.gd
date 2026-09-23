@@ -58,12 +58,6 @@ func _ready() -> void:
 	assert(GameManager.misplays == 1, "Misplays must be 1")
 	print("[PASS] Misplay Flow reset verified.")
 	
-	# 6. Test Roguelite Relics
-	GameManager.acquire_relic({"id": "sharper_eye", "name": "Sharper Eye"})
-	assert(GameManager.has_relic("sharper_eye"), "Relic must be registered")
-	assert(GameManager.score_mult > 1.0, "Score multiplier must increase")
-	print("[PASS] Roguelite relic system verified: Sharper Eye active.")
-	
 	# 7. Test Save & Jade Persistence
 	var initial_jade := SaveManager.get_jade()
 	SaveManager.record_level_clear(1, 2500, 3)
@@ -121,39 +115,28 @@ func _ready() -> void:
 	assert(sets.size() == 3, "3 matching free tiles must produce 3 combinations (got %d)" % sets.size())
 	print("[PASS] Combinatorial Legal Sets verified: 3 matching tiles -> 3 legal sets.")
 	
-	# 12. Test Boons Integration
-	# Lotus Blessing
+	# 12. Test Flow without relics
+	# The relic system is gone, so Flow is now the plain rule: first match sets
+	# Flow 1, a matching suit advances it by one, a misplay steps it down, and
+	# repeated misplays reach zero. These used to be masked by Lotus Blessing,
+	# Spring Breeze and Porcelain Guard.
 	GameManager.start_calm(1)
-	GameManager.acquire_relic({"id": "lotus_blessing", "name": "Lotus Blessing"})
 	GameManager.on_stage_started()
 	GameManager.register_match("dot", false)
-	assert(GameManager.flow_level == 3, "Lotus Blessing must give Flow 3 on first match (got %d)" % GameManager.flow_level)
-	
-	# Spring Breeze
-	GameManager.acquire_relic({"id": "spring_breeze", "name": "Spring Breeze"})
+	assert(GameManager.flow_level == 1, "First match must set Flow 1 (got %d)" % GameManager.flow_level)
+
+	GameManager.register_match("dot", false)
+	assert(GameManager.flow_level == 2, "A matching suit must advance Flow by 1 (got %d)" % GameManager.flow_level)
+
 	var prev_flow := GameManager.flow_level
-	GameManager.register_match("flower", false)
-	assert(GameManager.flow_level == prev_flow + 2, "Spring Breeze must advance flow by +2 on Flower match")
-	
-	# Porcelain Guard
-	GameManager.acquire_relic({"id": "porcelain_guard", "name": "Porcelain Guard"})
-	var flow_before_misplay := GameManager.flow_level
 	GameManager.register_misplay()
-	assert(GameManager.flow_level == flow_before_misplay, "Porcelain Guard must protect flow on first misplay")
+	assert(GameManager.flow_level < prev_flow, "A misplay must step Flow down with no guard relic")
+
 	GameManager.register_misplay()
-	assert(GameManager.flow_level == flow_before_misplay - 2, "Second misplay without guard must step down flow by 2")
 	GameManager.register_misplay()
 	GameManager.register_misplay()
 	assert(GameManager.flow_level == 0, "Repeated misplays must reach 0")
-	
-	# Golden Net
-	var prev_hints := GameManager.hints
-	var prev_shuffles := GameManager.shuffles
-	GameManager.acquire_relic({"id": "golden_net", "name": "Golden Net"})
-	GameManager.on_stage_started()
-	assert(GameManager.hints == prev_hints + 2, "Golden Net must grant bonus hint on acquisition and stage start")
-	assert(GameManager.shuffles == prev_shuffles + 2, "Golden Net must grant bonus shuffle on acquisition and stage start")
-	print("[PASS] All Boons integrated and verified: Lotus Blessing, Spring Breeze, Porcelain Guard, Golden Net.")
+	print("[PASS] Flow verified without relics: advance, misplay step-down, floor at 0.")
 	
 	# 13. Test Stage Modifiers (Fog, Rush, Frost)
 	StageModifiers.reset()

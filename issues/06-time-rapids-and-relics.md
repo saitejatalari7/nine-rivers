@@ -51,3 +51,48 @@ entirely, so changes here cannot touch the 350-level campaign or existing saves.
 Report: `audit/time_rapids_report.html`
 Files: `scripts/core/boon_pool.gd`, `scripts/ui/modal_controller.gd` (boon_draft),
 `scripts/autoload/game_manager.gd`, `scripts/main.gd`
+
+---
+
+## Resolution — 2026-09-23
+
+Owner's decision: keep Time Rapids, remove the relics. "simple is better
+according to me."
+
+The relic system is gone entirely — `boon_pool.gd` deleted, the draft screen
+removed, and all 17 relics with it. A cleared Rapids stage now shows a brief
+"Stage N cleared" toast and deals the next board, with nothing to choose.
+
+Removed with it: `active_relics`, `has_relic()`, `acquire_relic()`,
+`relic_acquired`, `porcelain_guard_active`, the HUD relics bar, and every relic
+branch in scoring, Flow, time, props and jade. Fourteen behaviours that used to
+depend on which relics a player held now simply always apply.
+
+Flow is the plain rule again: first match sets Flow 1, a matching suit advances
+it by one, a misplay steps it down, repeated misplays reach zero. Lotus
+Blessing, Spring Breeze and Porcelain Guard used to mask all of that, and
+test_runner tested the masked version — its relic suites are replaced with one
+that tests the plain rule.
+
+`score_mult` stays at 1.0 now that Sharper Eye is gone, which also removes one
+of the three invisible multipliers noted in [07](07-scoring-system.md).
+
+Three things surfaced while doing it, none of them in the original report:
+
+- Removing the Tide Surge branch orphaned an `else`, and main.gd stopped
+  parsing. Every symbol in it went missing and four audits reported nonsense
+  before the cause was found. Worth remembering that a GDScript parse failure
+  presents as "function does not exist", not as a parse error, at the call site.
+- `ui_nav_audit` starts a mode by calling `_start_run_mode()` directly, but the
+  buttons that start a mode also close the menu. A stale modal was left up and
+  read as the screen state for the whole flow. Calm hid this because its clear
+  screen replaced the modal; Rapids, with no clear screen any more, exposed it.
+- The splash tween called `_return_home()` on a delay with no check that the
+  splash was still up, so a stale callback could haul the player back to the
+  main menu. Guarded.
+
+Not done here: the 3-runs-a-day cap is [09](09-daily-and-rapids-caps.md) and
+still open.
+
+test_runner 32/32, nav audit passes, bot 25/25, layout 0, rapids clock 9/9,
+hardening 16/16, frost, hud_input, ads, daily all 0.

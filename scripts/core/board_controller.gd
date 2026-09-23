@@ -32,7 +32,6 @@ var history: Array[Dictionary] = [] # For Undo
 var board_bounds := Rect2()
 var current_max_z: int = 0
 var stage_match_count: int = 0
-var tide_caller_used_in_flow: bool = false
 
 var _cached_legal_sets: Array[Array] = []
 var _legal_sets_dirty: bool = true
@@ -47,7 +46,6 @@ func _ready() -> void:
 	# which broke the child-order assumption that drives mouse picking.
 	var light_host: Node = get_parent() if get_parent() != null else self
 	TileLighting.attach(light_host)
-	GameManager.flow_updated.connect(_on_flow_updated)
 	if is_instance_valid(MonetizationManager) and MonetizationManager.has_signal("theme_equipped"):
 		MonetizationManager.theme_equipped.connect(_on_theme_equipped)
 
@@ -57,21 +55,10 @@ func _on_theme_equipped(_theme_id: String) -> void:
 		if is_instance_valid(view) and view.has_method("update_theme_style"):
 			view.update_theme_style()
 
-func _on_flow_updated(flow: int, _suit: String, _is_overdrive: bool) -> void:
-	if flow == 0:
-		tide_caller_used_in_flow = false
-	elif flow >= 7 and GameManager.has_relic("tide_caller") and not tide_caller_used_in_flow:
-		tide_caller_used_in_flow = true
-		get_tree().create_timer(0.25).timeout.connect(func():
-			if auto_clear_one_set():
-				toast_requested.emit("Tide Caller: Tidal wave cleared a set!")
-		)
-
 func load_stage(layout_name: String, rng: RandomNumberGenerator = null) -> void:
 	clear_board()
 	_auto_thaw_armed = false
 	stage_match_count = 0
-	tide_caller_used_in_flow = false
 	var tiles := BoardGenerator.deal_board(layout_name, rng)
 	live_tiles = tiles
 	selected_tiles.clear()
@@ -437,28 +424,18 @@ func _resolve_matched_set(group: Array[RiverTile]) -> void:
 		AudioManager.play_wild_strand()
 		toast_requested.emit("%d orphaned tile now Wild!" % ripples.size())
 		
-	# Phoenix Feather: Triples reveal all covered tiles for 4s
-	if is_triple and GameManager.has_relic("phoenix_feather"):
-		reveal_covered_tiles(4.0)
-		toast_requested.emit("Phoenix Feather: Covered tiles revealed!")
-		
-	# Wild tile Jade bonus / Jade Whisper: 5 Jade (or 10 with Jade Whisper)
+	# Wild tiles pay a small Jade bonus.
 	var has_wild: bool = false
 	for t in group:
 		if t.is_wild():
 			has_wild = true
 			break
 	if has_wild:
-		var jade_gain: int = 10 if GameManager.has_relic("jade_whisper") else 5
+		var jade_gain: int = 5
 		SaveManager.add_jade(jade_gain)
 		toast_requested.emit("+%d 玉 River Jade" % jade_gain)
 
-	# Dragon Bell: Every 4th match rings bell to highlight a legal set
 	stage_match_count += 1
-	if GameManager.has_relic("dragon_bell") and stage_match_count % 4 == 0:
-		provide_hint()
-		AudioManager.play_combo_high()
-		toast_requested.emit("Dragon Bell chimed!")
 		
 	# Camera punch on Flow Overdrive
 	if GameManager.is_overdrive_active():

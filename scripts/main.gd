@@ -88,6 +88,12 @@ func _show_intro_splash() -> void:
 	tween.tween_interval(0.15)
 	tween.tween_property($SplashScreen/SplashTexture, "modulate:a", 0.0, 0.4)
 	tween.tween_callback(func():
+		# Only finish the splash if the splash is still up. Tapping through it,
+		# or any route that dismisses it first, used to leave this callback armed
+		# to fire 0.55s later and haul the player back to the main menu from
+		# wherever they had got to.
+		if not splash_screen.visible:
+			return
 		splash_screen.visible = false
 		board.visible = true
 		hud.visible = true
@@ -395,16 +401,12 @@ func _on_hint_clicked() -> void:
 		hud.show_toast("No Hints left! Tap ◈ Pearls to visit Bazaar.")
 
 func _on_shuffle_clicked() -> void:
-	var free_surge: bool = GameManager.has_relic("tide_surge") and GameManager.time_left < 20.0 and GameManager.current_mode != GameManager.GameMode.CALM
-	if (GameManager.shuffles > 0 or free_surge) and board.shuffle_remaining_tiles():
+	if GameManager.shuffles > 0 and board.shuffle_remaining_tiles():
 		GameManager.props_used += 1
-		if free_surge:
-			hud.show_toast("Tide Surge! Free shuffle under 20s.")
-		else:
-			GameManager.shuffles -= 1
-			GameManager.props_updated.emit(GameManager.undos, GameManager.hints, GameManager.shuffles)
-			hud.show_toast("Board reshuffled!")
-	elif GameManager.shuffles <= 0 and not free_surge:
+		GameManager.shuffles -= 1
+		GameManager.props_updated.emit(GameManager.undos, GameManager.hints, GameManager.shuffles)
+		hud.show_toast("Board reshuffled!")
+	elif GameManager.shuffles <= 0:
 		hud.show_toast("No Shuffles left! Tap ◈ Pearls to visit Bazaar.")
 
 func _on_board_move_completed(remaining: int, legal_moves: int) -> void:
@@ -432,7 +434,12 @@ func _on_board_cleared() -> void:
 		modal.show_daily_clear(GameManager.score, GameManager.best_flow,
 			int(SaveManager.prog.get("daily_streak", 1)), blessing)
 	else:
-		modal.show_boon_draft()
+		# Straight into the next board. There used to be a relic draft here; it
+		# was the thing testers understood least and it is gone, so a cleared
+		# stage now just leads to the next one.
+		hud.show_toast("Stage %d cleared" % GameManager.current_stage_no)
+		await get_tree().create_timer(1.1).timeout
+		_next_stage()
 
 func _on_no_moves_left() -> void:
 	hud.show_toast("No moves left! Use a shuffle or restart.")

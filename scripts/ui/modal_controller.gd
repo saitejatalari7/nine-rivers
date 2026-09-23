@@ -2,7 +2,7 @@ class_name ModalController
 extends CanvasLayer
 
 ## Nine Rivers (九河) — Imperial Modal & Relic Deck Controller
-## Features lacquered scroll framing, golden crest headers, tarot-style relic cards, and responsive level grid.
+## Features lacquered scroll framing, golden crest headers, and responsive level grid.
 
 signal start_calm_requested(level: int)
 signal start_run_requested()
@@ -14,7 +14,6 @@ signal return_home_requested()
 signal replay_tutorial_requested()
 signal background_quiet_changed(quiet: bool)
 
-const BoonPool = preload("res://scripts/core/boon_pool.gd")
 const UITheme = preload("res://scripts/ui/ui_theme.gd")
 const StagePlan = preload("res://scripts/core/stage_plan.gd")
 
@@ -551,80 +550,6 @@ func show_daily_clear(score: int, best_flow: int, streak: int, blessing: int = 0
 	, UITheme.IVORY_MUTED)
 	show_modal()
 
-func show_boon_draft() -> void:
-	_current_screen = "boon_draft"
-	_clear_content()
-	_add_seal_header("Stage Cleared", "賞 · Draft one relic", "賞")
-	_add_hairline()
-
-	var drafts: Array[Dictionary] = BoonPool.get_draft_choices(3, GameManager.active_relics)
-	for b in drafts:
-		# A relic is a thing you pick up, so it is drawn as a tile you can lift
-		# off the rack, not as a bordered card in a stack of bordered cards.
-		var card := PanelContainer.new()
-		# +32 for the tile stylebox margins the inner Button loses.
-		card.custom_minimum_size = Vector2(0, UITheme.TOUCH_MIN + 32.0)
-		card.add_theme_stylebox_override("panel", _make_tile_box())
-
-		var row := HBoxContainer.new()
-		row.add_theme_constant_override("separation", 18)
-
-		var g := Label.new()
-		g.text = String(b.get("icon", "宝"))
-		g.custom_minimum_size = Vector2(68, 0)
-		g.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		g.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		UITheme.style_label(g, "cjk", 52, GLYPH_JADE)
-		row.add_child(g)
-
-		var vbox := VBoxContainer.new()
-		vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		vbox.alignment = BoxContainer.ALIGNMENT_CENTER
-		vbox.add_theme_constant_override("separation", 3)
-
-		var h_title := Label.new()
-		h_title.text = b["name"]
-		UITheme.style_label(h_title, "ui", UITheme.FS_BODY_LG, TILE_INK, UITheme.W_SEMIBOLD)
-
-		var l_desc := Label.new()
-		l_desc.text = b["desc"]
-		UITheme.style_label(l_desc, "ui", UITheme.FS_CAPTION, TILE_SUBINK)
-		l_desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-
-		vbox.add_child(h_title)
-		vbox.add_child(l_desc)
-		row.add_child(vbox)
-		card.add_child(row)
-
-		# A real Button, not a gui_input handler: gives it a pressed state.
-		var relic_btn := Button.new()
-		relic_btn.flat = true
-		relic_btn.focus_mode = Control.FOCUS_ALL
-		var clear := StyleBoxEmpty.new()
-		for st in ["normal", "hover", "focus"]:
-			relic_btn.add_theme_stylebox_override(st, clear)
-		var ink := StyleBoxFlat.new()
-		ink.bg_color = Color(0, 0, 0, 0.10)
-		ink.set_corner_radius_all(9)
-		relic_btn.add_theme_stylebox_override("pressed", ink)
-		card.add_child(relic_btn)
-		UITheme.add_press_feedback(relic_btn)
-
-		var b_copy := b
-		relic_btn.pressed.connect(func():
-			GameManager.acquire_relic(b_copy)
-			hide_modal()
-			next_stage_requested.emit()
-		)
-		
-		card_container.add_child(card)
-
-	_add_separator()
-	_add_toggle_row("戻", "Abandon Run · Main Menu", "›", func():
-		return_home_requested.emit()
-	, UITheme.IVORY_MUTED)
-	show_modal()
-
 func show_game_over(reason: String) -> void:
 	_current_screen = "game_over"
 	_clear_content()
@@ -1134,7 +1059,7 @@ func handle_back_pressed() -> void:
 		"pause":
 			hide_modal()
 			resume_game_requested.emit()
-		"level_clear", "daily_clear", "game_over", "boon_draft":
+		"level_clear", "daily_clear", "game_over":
 			# No hide_modal(): _return_home() puts the main menu up in its place,
 			# and hiding first would race the fade against it.
 			return_home_requested.emit()

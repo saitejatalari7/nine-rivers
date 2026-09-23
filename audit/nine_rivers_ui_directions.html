@@ -1,0 +1,639 @@
+<title>Nine Rivers UI Directions</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Ma+Shan+Zheng&family=Noto+Serif+SC:wght@300;400;600;700&family=Outfit:wght@200;300;400;500;600&display=swap">
+
+<style>
+:root{
+  --paper:#ece9e2; --surface:#f7f5f1; --surface-2:#e2ded5;
+  --ink:#16181a; --ink-2:#3f4449; --muted:#6c7278; --line:#cfcabf;
+
+  /* lifted from the game's own constants */
+  --pond:#041712; --pond-2:#07222c; --night:#020c12;
+  --jade:#1f7a52; --jade-lit:#57bd92;
+  --gold:#f2c14e; --gold-bright:#fff2b8; --gold-dark:#c2902c;
+  --cinnabar:#c0392b; --seal:#b0342a;
+  --ivory:#fdf8ec; --rice:#f0e6d2; --biscuit:#b79f74;
+
+  --f-brush:"Ma Shan Zheng",cursive;
+  --f-song:"Noto Serif SC",Georgia,serif;
+  --f-ui:"Outfit","Helvetica Neue",Arial,sans-serif;
+
+  --s0:1rem; --s1:1.15rem; --s2:1.45rem; --s3:2rem; --s4:2.9rem;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --paper:#0e1113; --surface:#15191c; --surface-2:#1e2327;
+  --ink:#e8eaec; --ink-2:#c2c7cc; --muted:#8b9298; --line:#2b3136;
+}}
+:root[data-theme="dark"]{
+  --paper:#0e1113; --surface:#15191c; --surface-2:#1e2327;
+  --ink:#e8eaec; --ink-2:#c2c7cc; --muted:#8b9298; --line:#2b3136;
+}
+
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--f-ui);font-size:var(--s0);line-height:1.6;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1120px;margin:0 auto;padding-inline:20px;padding-block:0 80px}
+h1,h2,h3{margin:0;text-wrap:balance;font-weight:500}
+p{margin:0}
+.eyebrow{font-family:var(--f-ui);font-size:.7rem;letter-spacing:.22em;text-transform:uppercase;color:var(--muted);font-weight:500}
+
+/* ---------- masthead ---------- */
+.masthead{display:grid;gap:20px;padding-block:56px 32px;border-bottom:1px solid var(--line)}
+.seal-mark{
+  width:44px;height:44px;background:var(--seal);color:#fff;
+  display:grid;place-items:center;border-radius:4px;
+  font-family:var(--f-song);font-size:1.5rem;font-weight:700;line-height:1;
+  box-shadow:0 2px 0 rgba(0,0,0,.25) inset;
+}
+.masthead h1{font-family:var(--f-song);font-size:var(--s4);line-height:1.05;letter-spacing:-.02em;font-weight:600}
+.lede{font-size:var(--s1);color:var(--ink-2);max-width:62ch;font-weight:300}
+
+section{margin-top:64px}
+.sec-head{display:grid;gap:8px;margin-bottom:26px}
+.sec-head h2{font-family:var(--f-song);font-size:var(--s2);font-weight:600}
+.prose{max-width:64ch;display:grid;gap:14px;color:var(--ink-2);font-weight:300}
+.prose strong{color:var(--ink);font-weight:500}
+
+/* ---------- phone frame ---------- */
+.stage{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(288px,1fr));
+  gap:28px;align-items:start;
+}
+.phone{
+  width:100%;max-width:340px;aspect-ratio:9/16;margin-inline:auto;
+  border-radius:26px;overflow:hidden;position:relative;
+  background:radial-gradient(120% 80% at 50% 0%,var(--pond-2) 0%,var(--pond) 45%,var(--night) 100%);
+  box-shadow:0 18px 50px rgba(0,0,0,.45),0 0 0 1px rgba(242,193,78,.14);
+  font-family:var(--f-ui);color:var(--ivory);
+  isolation:isolate;
+}
+.phone::after{ /* faint water caustic, so panels have something to float on */
+  content:"";position:absolute;inset:0;pointer-events:none;z-index:0;
+  background:
+    radial-gradient(38% 22% at 22% 28%,rgba(31,122,82,.20),transparent 70%),
+    radial-gradient(30% 18% at 78% 62%,rgba(31,122,82,.14),transparent 70%),
+    radial-gradient(50% 30% at 50% 108%,rgba(242,193,78,.07),transparent 70%);
+}
+.screen{position:relative;z-index:1;height:100%;display:flex;flex-direction:column;padding:16px 14px 14px}
+
+.cap{
+  text-align:center;margin-top:14px;font-size:.82rem;color:var(--muted);
+  font-weight:300;max-width:340px;margin-inline:auto;
+}
+.cap b{color:var(--ink);font-weight:500}
+
+/* ---------- A: the rack ---------- */
+.topline{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+.crest{display:flex;align-items:center;gap:9px}
+.crest .zh{font-family:var(--f-brush);font-size:1.5rem;color:var(--gold);line-height:1}
+.crest .en{font-size:.6rem;letter-spacing:.3em;text-transform:uppercase;color:rgba(253,248,236,.5)}
+.purse{
+  display:flex;align-items:center;gap:6px;font-size:.72rem;color:var(--gold);
+  border:1px solid rgba(242,193,78,.3);border-radius:999px;padding:4px 10px;
+  font-variant-numeric:tabular-nums;
+}
+
+.rack{display:grid;gap:9px;flex:1;align-content:center;perspective:900px}
+/* Each menu row IS a mahjong tile, lying face-up on the water. */
+.mtile{
+  position:relative;display:grid;grid-template-columns:44px 1fr auto;
+  align-items:center;gap:13px;
+  padding:12px 14px 14px;border:0;width:100%;text-align:left;cursor:pointer;
+  border-radius:7px;
+  background:linear-gradient(177deg,var(--ivory) 0%,#f6efdf 62%,#ece0c6 100%);
+  box-shadow:
+    0 3px 0 0 var(--biscuit),      /* the tile's own 3D underside */
+    0 7px 12px rgba(0,0,0,.42),
+    inset 0 1.5px 0 rgba(255,255,255,.9);
+  color:#232b26;
+  font-family:var(--f-ui);
+  transition:transform .22s cubic-bezier(.2,.8,.3,1),box-shadow .22s;
+}
+.mtile:hover,.mtile:focus-visible{
+  transform:translateY(-3px);
+  box-shadow:0 5px 0 0 var(--biscuit),0 12px 20px rgba(0,0,0,.5),inset 0 1.5px 0 rgba(255,255,255,.9);
+  outline:none;
+}
+.mtile:active{transform:translateY(1px);box-shadow:0 1px 0 0 var(--biscuit),0 4px 8px rgba(0,0,0,.4)}
+.mtile .glyph{
+  font-family:var(--f-song);font-size:1.6rem;font-weight:600;line-height:1;
+  text-align:center;color:var(--jade);
+}
+.mtile.is-gold .glyph{color:var(--gold-dark)}
+.mtile.is-red .glyph{color:var(--cinnabar)}
+.mtile .label{display:grid;gap:1px}
+.mtile .label b{font-size:.94rem;font-weight:500;letter-spacing:.01em}
+.mtile .label span{font-size:.66rem;color:#6d6455;letter-spacing:.1em;text-transform:uppercase}
+.mtile .meta{font-size:.72rem;color:#8a7f6b;font-variant-numeric:tabular-nums}
+/* gold band on the "featured" tile, exactly like a banded triple in play */
+.mtile.banded::before{
+  content:"";position:absolute;left:5px;right:5px;bottom:4px;height:4px;border-radius:2px;
+  background:linear-gradient(90deg,var(--gold-dark),var(--gold),var(--gold-bright),var(--gold-dark));
+}
+
+/* ---------- A: sub-ui leaf ---------- */
+.leaf{
+  position:absolute;inset:0;z-index:3;display:flex;flex-direction:column;
+  background:linear-gradient(180deg,rgba(4,23,18,.72),rgba(2,12,18,.9));
+  backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px);
+  opacity:0;pointer-events:none;transition:opacity .2s ease;
+  padding:16px 14px 14px;
+}
+.leaf.open{opacity:1;pointer-events:auto}
+.sheet{
+  flex:1;border-radius:9px;overflow:hidden;display:flex;flex-direction:column;
+  background:
+    repeating-linear-gradient(101deg,rgba(183,159,116,.05) 0 2px,transparent 2px 6px),
+    linear-gradient(176deg,var(--rice) 0%,#e9dcc2 100%);
+  color:#2b2519;
+  box-shadow:0 12px 30px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.7);
+  transform:translateY(14px) scale(.97);opacity:0;
+  transition:transform .26s cubic-bezier(.2,.8,.3,1),opacity .26s;
+}
+.leaf.open .sheet{transform:none;opacity:1}
+.sheet-head{
+  padding:16px 16px 12px;border-bottom:1px solid rgba(120,100,60,.22);
+  display:flex;align-items:flex-start;justify-content:space-between;gap:12px;
+}
+.sheet-head h4{margin:0;font-family:var(--f-song);font-size:1.15rem;font-weight:600;letter-spacing:.01em}
+.sheet-head .sub{font-size:.66rem;letter-spacing:.18em;text-transform:uppercase;color:#8a7c5d;margin-top:3px}
+.stamp{
+  width:34px;height:34px;flex:none;background:var(--seal);color:#fff;border-radius:3px;
+  display:grid;place-items:center;font-family:var(--f-song);font-size:1.05rem;font-weight:700;
+  box-shadow:0 1px 2px rgba(0,0,0,.35);
+}
+.sheet-body{padding:12px 16px;overflow-y:auto;flex:1;display:grid;gap:0;align-content:start}
+.row{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:11px 0;border-bottom:1px solid rgba(120,100,60,.16);font-size:.87rem;
+}
+.row:last-child{border-bottom:0}
+.row .k{color:#5d543f;font-weight:400}
+.row .v{font-weight:500;font-variant-numeric:tabular-nums}
+.row .v.on{color:var(--jade)}
+.swatches{display:flex;gap:7px}
+.sw{width:26px;height:34px;border-radius:3px;box-shadow:0 1px 0 rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.55)}
+.sheet-foot{padding:12px 16px 14px;display:grid;gap:8px;border-top:1px solid rgba(120,100,60,.22)}
+.act{
+  border:0;border-radius:6px;padding:11px;font-family:var(--f-ui);font-size:.88rem;font-weight:500;
+  cursor:pointer;letter-spacing:.02em;
+}
+.act.primary{background:linear-gradient(180deg,var(--gold),var(--gold-dark));color:#2b2008;box-shadow:0 2px 0 #9a7014}
+.act.ghost{background:transparent;color:#6b6250;border:1px solid rgba(120,100,60,.32)}
+
+/* ---------- HUD strip ---------- */
+.hud{
+  display:flex;align-items:center;gap:8px;justify-content:space-between;
+  padding:9px 12px;border-radius:8px;margin-bottom:12px;
+  background:rgba(4,20,16,.55);border:1px solid rgba(242,193,78,.16);
+  backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px);
+}
+.stat{display:grid;gap:1px}
+.stat .k{font-size:.54rem;letter-spacing:.2em;text-transform:uppercase;color:rgba(253,248,236,.45)}
+.stat .v{font-size:.95rem;font-weight:500;font-variant-numeric:tabular-nums;color:var(--ivory)}
+.flowbar{flex:1;height:3px;border-radius:2px;background:rgba(253,248,236,.13);overflow:hidden;margin:0 4px}
+.flowbar i{display:block;height:100%;width:62%;background:linear-gradient(90deg,var(--jade-lit),var(--gold))}
+
+/* ---------- B: scroll ---------- */
+.scroll-panel{
+  flex:1;display:flex;flex-direction:column;border-radius:3px;position:relative;
+  background:linear-gradient(176deg,#f3ead6 0%,#e6d8b8 100%);
+  color:#2b2519;box-shadow:0 14px 34px rgba(0,0,0,.55);
+  margin-block:6px;
+}
+.roller{
+  height:15px;background:linear-gradient(180deg,#5a3f22,#3a2814 60%,#241a0e);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.18);
+  border-radius:3px;position:relative;
+}
+.roller::before,.roller::after{
+  content:"";position:absolute;top:50%;translate:0 -50%;width:7px;height:21px;border-radius:2px;
+  background:linear-gradient(180deg,var(--gold),var(--gold-dark));
+}
+.roller::before{left:-4px}.roller::after{right:-4px}
+.scroll-inner{padding:16px 17px;display:grid;gap:12px;align-content:start;flex:1}
+.vtitle{font-family:var(--f-brush);font-size:1.9rem;color:var(--cinnabar);line-height:1}
+.hair{height:1px;background:linear-gradient(90deg,transparent,rgba(120,100,60,.45),transparent)}
+.slist{display:grid;gap:0}
+.sitem{
+  display:flex;align-items:baseline;justify-content:space-between;gap:10px;
+  padding:10px 0;border-bottom:1px solid rgba(120,100,60,.18);cursor:pointer;
+}
+.sitem:last-child{border-bottom:0}
+.sitem .n{font-family:var(--f-song);font-size:.95rem;font-weight:500}
+.sitem .n i{font-style:normal;color:#8a7c5d;font-size:.66rem;letter-spacing:.16em;text-transform:uppercase;display:block;margin-top:2px}
+.sitem .go{font-family:var(--f-song);color:var(--cinnabar);font-size:.9rem}
+
+/* ---------- C: lotus ---------- */
+.pads{flex:1;display:grid;gap:11px;align-content:center;padding:4px}
+.pad{
+  position:relative;border-radius:50% 50% 50% 8px;
+  padding:15px 18px;cursor:pointer;
+  background:linear-gradient(140deg,rgba(31,122,82,.46),rgba(7,34,44,.72));
+  border:1px solid rgba(87,189,146,.3);
+  box-shadow:0 8px 20px rgba(0,0,0,.42),inset 0 1px 0 rgba(255,255,255,.1);
+  transition:transform .25s cubic-bezier(.2,.8,.3,1);
+}
+.pad:hover{transform:translateY(-3px) rotate(-.6deg)}
+.pad h5{margin:0;font-family:var(--f-song);font-size:1rem;font-weight:600;color:var(--ivory)}
+.pad p{font-size:.7rem;color:rgba(253,248,236,.55);margin-top:3px;font-weight:300}
+.pad .num{
+  position:absolute;right:15px;top:50%;translate:0 -50%;
+  font-family:var(--f-brush);font-size:1.5rem;color:var(--gold);opacity:.8;
+}
+
+/* ---------- system notes ---------- */
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:2px;background:var(--line);border:1px solid var(--line);margin-top:22px}
+.cell{background:var(--surface);padding:20px;display:grid;gap:8px;align-content:start}
+.cell h4{margin:0;font-family:var(--f-song);font-size:1rem;font-weight:600}
+.cell p{font-size:.88rem;color:var(--ink-2);font-weight:300}
+.cell code{font-family:ui-monospace,Consolas,monospace;font-size:.8em;background:var(--surface-2);padding:1px 5px;border-radius:2px;color:var(--ink)}
+.no{color:var(--cinnabar);font-weight:500}
+.yes{color:var(--jade);font-weight:500}
+
+.tablewrap{overflow-x:auto;border:1px solid var(--line);margin-top:20px}
+table{border-collapse:collapse;width:100%;min-width:520px;background:var(--surface)}
+th,td{text-align:left;padding:10px 14px;font-size:.87rem;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:.64rem;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);font-weight:500;background:var(--surface-2)}
+tbody tr:last-child td{border-bottom:none}
+
+footer{margin-top:72px;padding-top:22px;border-top:1px solid var(--line);color:var(--muted);font-size:.85rem;max-width:66ch;font-weight:300}
+@media (max-width:560px){:root{--s4:2.1rem;--s3:1.65rem;--s2:1.3rem}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+
+  <header class="masthead">
+    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+      <div class="seal-mark">印</div>
+      <span class="eyebrow">Nine Rivers 九河 · Interface directions</span>
+    </div>
+    <h1>The interface should be made of the same things as the game</h1>
+    <p class="lede">
+      Three directions, all playable below. Each takes one real object from the
+      game's own world and makes the whole interface out of it — rather than
+      putting Chinese decoration on a generic mobile menu.
+    </p>
+  </header>
+
+  <section>
+    <div class="sec-head">
+      <span class="eyebrow">The problem to solve</span>
+      <h2>Why the current menu reads as a template</h2>
+    </div>
+    <div class="prose">
+      <p>
+        Looking at your live screenshots: every option is a <strong>full-width
+        rounded rectangle with a gold border and an emoji</strong>, stacked eight
+        deep. That's the default shape of a mobile menu — and emoji icons are the
+        single strongest tell that a UI wasn't art-directed, because they're
+        someone else's artwork rendered in someone else's style.
+      </p>
+      <p>
+        The opportunity is sitting right there in the game: <strong>you just built
+        beautiful tiles.</strong> Ivory ceramic, gold leaf, basalt, rose porcelain —
+        with real bevels and real material. If the menu is made of those same
+        surfaces, the interface stops being a layer on top of the game and becomes
+        part of it. No other Mahjong game does this, because most don't have the
+        tile art to spend.
+      </p>
+    </div>
+  </section>
+
+  <!-- ============ DIRECTION A ============ -->
+  <section>
+    <div class="sec-head">
+      <span class="eyebrow">Direction A · recommended</span>
+      <h2>The Rack — every menu item is a tile</h2>
+    </div>
+    <div class="prose" style="margin-bottom:24px">
+      <p>
+        Menu rows are literal mahjong tiles lying face-up on the water: ivory
+        ceramic face, the warm biscuit underside showing as a 3&nbsp;px lip, a
+        carved glyph where a suit symbol would be. They <strong>press like tiles</strong>
+        — the lip compresses on tap, the same tactile language as play.
+      </p>
+      <p>
+        The featured row carries the <strong>gold band of a banded triple</strong>,
+        which already means "this one is worth more" to anyone who has played a
+        single level. That's a UI accent the player has been taught by the game.
+      </p>
+      <p><strong>Tap any tile below to open its sub-UI.</strong></p>
+    </div>
+
+    <div class="stage">
+      <div>
+        <div class="phone">
+          <div class="screen">
+            <div class="topline">
+              <div class="crest">
+                <span class="zh">九河</span>
+                <span class="en">Nine Rivers</span>
+              </div>
+              <div class="purse">◈ 250</div>
+            </div>
+
+            <div class="rack">
+              <button class="mtile banded is-red" data-leaf="journey">
+                <span class="glyph">河</span>
+                <span class="label"><b>Continue Journey</b><span>Stage 26 of 50</span></span>
+                <span class="meta">★ 68</span>
+              </button>
+              <button class="mtile" data-leaf="map">
+                <span class="glyph">図</span>
+                <span class="label"><b>Stages Map</b><span>Chapters I – V</span></span>
+                <span class="meta">26/50</span>
+              </button>
+              <button class="mtile is-red" data-leaf="run">
+                <span class="glyph">急</span>
+                <span class="label"><b>Timed Rapids</b><span>Roguelite run</span></span>
+                <span class="meta">5:00</span>
+              </button>
+              <button class="mtile" data-leaf="tide">
+                <span class="glyph">潮</span>
+                <span class="label"><b>The Daily Tide</b><span>Global challenge</span></span>
+                <span class="meta">—</span>
+              </button>
+              <button class="mtile" data-leaf="koi">
+                <span class="glyph">鯉</span>
+                <span class="label"><b>Koi Sanctuary</b><span>Zen garden</span></span>
+                <span class="meta">1/5</span>
+              </button>
+              <button class="mtile is-gold" data-leaf="bazaar">
+                <span class="glyph">市</span>
+                <span class="label"><b>Spirit Bazaar</b><span>Tiles &amp; ponds</span></span>
+                <span class="meta">◈ 250</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- SUB-UI -->
+          <div class="leaf" id="leafA">
+            <div class="sheet">
+              <div class="sheet-head">
+                <div>
+                  <h4 id="leafTitle">Spirit Bazaar</h4>
+                  <div class="sub" id="leafSub">市 · Tiles &amp; Ponds</div>
+                </div>
+                <div class="stamp">選</div>
+              </div>
+              <div class="sheet-body" id="leafBody"></div>
+              <div class="sheet-foot">
+                <button class="act primary">Equip this set</button>
+                <button class="act ghost" data-close>Back to the rack</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="cap"><b>Main UI.</b> Tiles on water. Tap one — the sub-UI unfolds as paper over it.</p>
+      </div>
+
+      <div>
+        <div class="phone">
+          <div class="screen">
+            <div class="hud">
+              <div class="stat"><span class="k">Stage</span><span class="v">L26</span></div>
+              <div class="flowbar"><i></i></div>
+              <div class="stat" style="text-align:right"><span class="k">Score</span><span class="v">14,280</span></div>
+            </div>
+            <div class="leaf open" style="position:relative;inset:auto;flex:1;padding:0;background:none;backdrop-filter:none">
+              <div class="sheet">
+                <div class="sheet-head">
+                  <div>
+                    <h4>Imperial Gold</h4>
+                    <div class="sub">皇家金叶 · 24k on lacquer</div>
+                  </div>
+                  <div class="stamp">金</div>
+                </div>
+                <div class="sheet-body">
+                  <div class="row"><span class="k">Preview</span>
+                    <span class="swatches">
+                      <i class="sw" style="background:linear-gradient(170deg,#ffd76b,#c2902c)"></i>
+                      <i class="sw" style="background:linear-gradient(170deg,#fdf8ec,#b79f74)"></i>
+                      <i class="sw" style="background:linear-gradient(170deg,#3a4450,#14181b)"></i>
+                    </span>
+                  </div>
+                  <div class="row"><span class="k">Tactical</span><span class="v">Gilded faces catch the light</span></div>
+                  <div class="row"><span class="k">Dissolution</span><span class="v">Golden sand shower</span></div>
+                  <div class="row"><span class="k">Owned</span><span class="v on">Yes · restored</span></div>
+                  <div class="row"><span class="k">Price</span><span class="v">₹99 · or 1,500 ◈</span></div>
+                </div>
+                <div class="sheet-foot">
+                  <button class="act primary">Equip this set</button>
+                  <button class="act ghost">Back to tile sets</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p class="cap"><b>Sub-UI.</b> Rice paper, hairline rules, a cinnabar seal instead of an icon. No emoji anywhere.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ DIRECTION B ============ -->
+  <section>
+    <div class="sec-head">
+      <span class="eyebrow">Direction B</span>
+      <h2>The Hanging Scroll — 立轴</h2>
+    </div>
+    <div class="prose" style="margin-bottom:24px">
+      <p>
+        The whole menu is a hanging scroll with turned wooden rollers and gold
+        end-caps. Sub-screens <strong>unroll downward</strong> rather than sliding
+        in. Quieter and more literary than A — stronger for the Calm Journey,
+        weaker for the roguelite mode, which wants urgency.
+      </p>
+    </div>
+    <div class="stage">
+      <div>
+        <div class="phone">
+          <div class="screen">
+            <div class="topline">
+              <div class="crest"><span class="zh">九河</span></div>
+              <div class="purse">◈ 250</div>
+            </div>
+            <div class="scroll-panel">
+              <div class="roller"></div>
+              <div class="scroll-inner">
+                <div class="vtitle">九河图</div>
+                <div class="hair"></div>
+                <div class="slist">
+                  <div class="sitem"><span class="n">継続 Continue<i>Stage 26</i></span><span class="go">›</span></div>
+                  <div class="sitem"><span class="n">図 Stages Map<i>Chapters I–V</i></span><span class="go">›</span></div>
+                  <div class="sitem"><span class="n">急 Timed Rapids<i>Roguelite</i></span><span class="go">›</span></div>
+                  <div class="sitem"><span class="n">潮 Daily Tide<i>Global</i></span><span class="go">›</span></div>
+                  <div class="sitem"><span class="n">鯉 Koi Sanctuary<i>Garden</i></span><span class="go">›</span></div>
+                  <div class="sitem"><span class="n">市 Spirit Bazaar<i>Store</i></span><span class="go">›</span></div>
+                </div>
+              </div>
+              <div class="roller"></div>
+            </div>
+          </div>
+        </div>
+        <p class="cap"><b>Calm and literary.</b> Best if the game leans meditative over arcade.</p>
+      </div>
+      <div class="prose" style="align-self:center">
+        <p><span class="yes">Strength:</span> unmistakably Chinese without a single cliché dragon or lantern. The rollers and gold caps do all the work.</p>
+        <p><span class="no">Risk:</span> scrolls imply stillness. Timed Rapids and Flow Overdrive need energy, and a scroll fights that.</p>
+        <p>It also constrains layout badly — a scroll wants one narrow column, so the Bazaar's tile grid has nowhere to live.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ DIRECTION C ============ -->
+  <section>
+    <div class="sec-head">
+      <span class="eyebrow">Direction C</span>
+      <h2>The Pond Surface — lotus pads</h2>
+    </div>
+    <div class="prose" style="margin-bottom:24px">
+      <p>
+        Options are lotus pads floating on the live pond you already render.
+        Tapping one sends a ripple through the water — the background becomes
+        part of the interaction rather than wallpaper behind it.
+      </p>
+    </div>
+    <div class="stage">
+      <div>
+        <div class="phone">
+          <div class="screen">
+            <div class="topline">
+              <div class="crest"><span class="zh">九河</span></div>
+              <div class="purse">◈ 250</div>
+            </div>
+            <div class="pads">
+              <div class="pad"><h5>Continue Journey</h5><p>Stage 26 of 50</p><span class="num">河</span></div>
+              <div class="pad"><h5>Timed Rapids</h5><p>Roguelite run</p><span class="num">急</span></div>
+              <div class="pad"><h5>The Daily Tide</h5><p>Global challenge</p><span class="num">潮</span></div>
+              <div class="pad"><h5>Koi Sanctuary</h5><p>Zen garden</p><span class="num">鯉</span></div>
+              <div class="pad"><h5>Spirit Bazaar</h5><p>Tiles &amp; ponds</p><span class="num">市</span></div>
+            </div>
+          </div>
+        </div>
+        <p class="cap"><b>Most atmospheric, least legible.</b> Organic shapes fight dense information.</p>
+      </div>
+      <div class="prose" style="align-self:center">
+        <p><span class="yes">Strength:</span> it makes your existing <code>zen_pond_background.gd</code> load-bearing instead of decorative, and ripples on tap are genuinely delightful.</p>
+        <p><span class="no">Risk:</span> irregular shapes are hard to align, hard to scan, and hard to fit numbers into. A Bazaar price list on a lotus pad will look wrong.</p>
+        <p>Strongest as an <em>accent</em> — use pads for the Koi Sanctuary only, where the content really is a pond.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ SYSTEM ============ -->
+  <section>
+    <div class="sec-head">
+      <span class="eyebrow">Whichever you pick</span>
+      <h2>The rules that make it read as premium</h2>
+    </div>
+    <div class="grid2">
+      <div class="cell">
+        <h4>Kill every emoji</h4>
+        <p>🎵 📳 👁️ 🀄 are someone else's artwork in someone else's style, and they render differently on every Android skin. Replace with <strong>carved glyphs</strong> (音 振 眼) in the game's own serif, or thin gold line icons. This one change does more than anything else on this page.</p>
+      </div>
+      <div class="cell">
+        <h4>Hairlines, not borders</h4>
+        <p>Every panel currently has a 1&nbsp;px gold box around it. Boxes inside boxes flatten hierarchy. Use a <strong>single hairline rule</strong> that fades at both ends, and let spacing do the separating.</p>
+      </div>
+      <div class="cell">
+        <h4>One seal, not many accents</h4>
+        <p>Cinnabar red is the strongest colour you have. Spend it in <strong>exactly one place per screen</strong> — the seal stamp, or the confirm action. Everywhere else is jade, gold and ivory.</p>
+      </div>
+      <div class="cell">
+        <h4>Stop full-width stacking</h4>
+        <p>Eight identical full-width buttons give the eye nothing to grip. Vary the row height, let the primary action be visibly heavier, and put secondary items behind one entry point.</p>
+      </div>
+      <div class="cell">
+        <h4>Frost over the pond, not over black</h4>
+        <p>Blur the <em>live</em> background so the koi drift behind the panel. That is what makes a UI feel like it's floating in the world. Real blur only on full-screen modals — a pre-blurred translucent panel with fine noise reads the same for a fraction of the cost on budget Android.</p>
+      </div>
+      <div class="cell">
+        <h4>Tiles fall, sheets unfold</h4>
+        <p>Two motions only. Tiles <strong>settle with weight</strong> (fast in, slight overshoot, stop). Sheets <strong>unfold</strong> (translate + scale, 260&nbsp;ms, no bounce). Consistency of motion is half of what "expensive" means.</p>
+      </div>
+    </div>
+
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Direction</th><th>Best for</th><th>Cost</th><th>Verdict</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><strong>A · The Rack</strong></td>
+            <td>Everything. Scales from a 6-row menu to a dense Bazaar grid.</td>
+            <td>Low — reuses the tile art and CSS-equivalent styling you already have.</td>
+            <td><strong>Build this.</strong> It is the only one that is <em>about</em> mahjong rather than about China.</td>
+          </tr>
+          <tr>
+            <td>B · Hanging Scroll</td>
+            <td>Calm Journey, credits, story moments.</td>
+            <td>Medium — new framing art, awkward for grids.</td>
+            <td>Use as a <em>treatment</em> for one or two screens, not the system.</td>
+          </tr>
+          <tr>
+            <td>C · Pond Surface</td>
+            <td>Koi Sanctuary only.</td>
+            <td>Low — the pond already exists.</td>
+            <td>Use where the content genuinely is a pond. Not for menus with numbers.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer>
+    <p>
+      Mockups use the game's own fonts — Ma Shan Zheng, Noto Serif SC and Outfit —
+      and colours lifted from <code>tile_view.gd</code>, so what is shown here is
+      buildable with what the project already ships. Nothing is implemented yet;
+      this is for choosing a direction before any of it is written.
+    </p>
+  </footer>
+</div>
+
+<script>
+const LEAVES = {
+  journey: {t:"Continue Journey", s:"河 · Stage 26 of 50", rows:[
+    ["Board","Nine Rivers · 144 tiles"],["Best flow","×7"],["Stars","68 of 150"],
+    ["Modifier","None"],["Reward","+150 River Jade"]], act:"Enter stage 26"},
+  map: {t:"Stages Map", s:"図 · Chapters I – V", rows:[
+    ["Chapter I","春溪 · 30/30 ★"],["Chapter II","竹谷 · 26/30 ★"],["Chapter III","金滩 · 12/30 ★"],
+    ["Chapter IV","玉峡 · Locked"],["Chapter V","龙海 · Locked"]], act:"Open chapter III"},
+  run: {t:"Timed Rapids", s:"急 · Roguelite run", rows:[
+    ["Clock","100 s"],["Acts","Courtyard → Garden → Citadel"],["Relics","Draft 1 of 3"],
+    ["Best stage","7"],["Best score","32,460"]], act:"Begin the run"},
+  tide: {t:"The Daily Tide", s:"潮 · Global challenge", rows:[
+    ["Today","#42 · same board worldwide"],["Streak","0 days"],["Shields","1"],
+    ["Resets","Midnight UTC"],["Share","Spoiler-free scorecard"]], act:"Play today's tide"},
+  koi: {t:"Koi Sanctuary", s:"鯉 · Zen garden", rows:[
+    ["Kohaku","Owned · peace"],["Taisho Sanke","200 ◈ · +5% jade"],["Showa","400 ◈ · gentler flow"],
+    ["Platinum Ogon","750 ◈ · +10% score"],["Golden Dragon","1,500 ◈ · overdrive ×6"]], act:"Release a koi"},
+  bazaar: {t:"Spirit Bazaar", s:"市 · Tiles & ponds", rows:[
+    ["Classic Jade","Owned · milk ivory"],["Imperial Gold","₹99 · 24k on lacquer"],
+    ["Obsidian Ink","₹99 · deep basalt"],["Cherry Blossom","₹99 · rose porcelain"],
+    ["Spirit Pearls","250 ◈"]], act:"Equip this set"},
+};
+
+const leaf = document.getElementById("leafA");
+const body = document.getElementById("leafBody");
+const title = document.getElementById("leafTitle");
+const sub = document.getElementById("leafSub");
+
+document.querySelectorAll(".mtile").forEach(btn => {
+  btn.addEventListener("click", () => {
+    const d = LEAVES[btn.dataset.leaf];
+    if (!d) return;
+    title.textContent = d.t;
+    sub.innerHTML = d.s;
+    body.innerHTML = d.rows.map(([k,v]) =>
+      `<div class="row"><span class="k">${k}</span><span class="v">${v}</span></div>`).join("");
+    leaf.querySelector(".act.primary").textContent = d.act;
+    leaf.classList.add("open");
+  });
+});
+leaf.querySelectorAll("[data-close]").forEach(b =>
+  b.addEventListener("click", () => leaf.classList.remove("open")));
+leaf.addEventListener("click", e => { if (e.target === leaf) leaf.classList.remove("open"); });
+document.addEventListener("keydown", e => { if (e.key === "Escape") leaf.classList.remove("open"); });
+</script>

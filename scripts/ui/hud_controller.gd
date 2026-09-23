@@ -12,9 +12,7 @@ signal pearls_clicked()
 
 const UITheme = preload("res://scripts/ui/ui_theme.gd")
 
-const BoonPool = preload("res://scripts/core/boon_pool.gd")
 
-var relics_container: HBoxContainer
 var calm_goals_label: Label
 var btn_pearls: Button
 
@@ -55,7 +53,6 @@ func _ready() -> void:
 	GameManager.flow_updated.connect(_on_flow_updated)
 	GameManager.time_updated.connect(_on_time_updated)
 	GameManager.props_updated.connect(_on_props_updated)
-	GameManager.relic_acquired.connect(func(_r): refresh_relics_bar())
 	
 	flow_banner.modulate.a = 0.0
 	toast_panel.modulate.a = 0.0
@@ -71,18 +68,6 @@ func _ready() -> void:
 
 func _init_dynamic_hud_elements() -> void:
 	# 1. Relics Bar for Timed Run Mode
-	relics_container = HBoxContainer.new()
-	relics_container.name = "RelicsBar"
-	# Decoration over the top of the board. MOUSE_FILTER_PASS still consumes
-	# the tap for anything underneath it in the scene, so PASS was no better
-	# than STOP here.
-	relics_container.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	relics_container.anchors_preset = Control.PRESET_TOP_WIDE
-	relics_container.alignment = BoxContainer.ALIGNMENT_CENTER
-	relics_container.add_theme_constant_override("separation", 10)
-	relics_container.position = Vector2(28, 168)
-	relics_container.size = Vector2(get_viewport().get_visible_rect().size.x - 56, 44)
-	add_child(relics_container)
 	
 	# 2. Calm Mode 3-Star Live Objectives Header
 	calm_goals_label = Label.new()
@@ -209,7 +194,6 @@ func setup_hud(mode: GameManager.GameMode, level_no: int) -> void:
 		GameManager.GameMode.CALM:
 			lbl_level.text = "L" + str(level_no)
 			timer_container.visible = false
-			if is_instance_valid(relics_container): relics_container.visible = false
 			if is_instance_valid(calm_goals_label):
 				calm_goals_label.visible = true
 				update_calm_goals()
@@ -217,14 +201,10 @@ func setup_hud(mode: GameManager.GameMode, level_no: int) -> void:
 			lbl_level.text = "R" + str(level_no)
 			timer_container.visible = true
 			if is_instance_valid(calm_goals_label): calm_goals_label.visible = false
-			if is_instance_valid(relics_container):
-				relics_container.visible = true
-				refresh_relics_bar()
 		GameManager.GameMode.DAILY:
 			lbl_level.text = "DAILY"
 			timer_container.visible = true
 			if is_instance_valid(calm_goals_label): calm_goals_label.visible = false
-			if is_instance_valid(relics_container): relics_container.visible = false
 
 func update_calm_goals() -> void:
 	if not is_instance_valid(calm_goals_label) or not calm_goals_label.visible:
@@ -233,39 +213,6 @@ func update_calm_goals() -> void:
 	var s2 := "★ ≤2 Misplays" if GameManager.misplays <= 2 else "☆ >2 Misplays"
 	var s3 := "★ No Props" if GameManager.props_used == 0 else "☆ Props Used"
 	calm_goals_label.text = "%s   ·   %s   ·   %s" % [s1, s2, s3]
-
-func refresh_relics_bar() -> void:
-	if not is_instance_valid(relics_container):
-		return
-	for c in relics_container.get_children():
-		c.queue_free()
-		
-	for rid in GameManager.active_relics:
-		var relic_info: Dictionary = {}
-		for b in BoonPool.ALL_BOONS:
-			if b["id"] == rid:
-				relic_info = b
-				break
-		if relic_info.is_empty():
-			continue
-			
-		var b_token := Button.new()
-		# Was 34px - 11.3dp, roughly 2mm, the smallest tap target in the build.
-		b_token.custom_minimum_size = Vector2(112, 112)
-		b_token.text = relic_info.get("icon", "宝")
-		b_token.tooltip_text = "%s: %s" % [relic_info.get("name", ""), relic_info.get("desc", "")]
-		UITheme.style_circular_button(b_token, UITheme.GOLD_CORE)
-		# Relic tokens are carved characters now, so they need the serif that
-		# was cut for them rather than the Latin UI face.
-		var cjk_font := UITheme.get_cjk_font()
-		if cjk_font != null:
-			b_token.add_theme_font_override("font", cjk_font)
-		var b_name: String = relic_info.get("name", "")
-		var b_desc: String = relic_info.get("desc", "")
-		b_token.pressed.connect(func():
-			show_toast("%s: %s" % [b_name, b_desc])
-		)
-		relics_container.add_child(b_token)
 
 func update_board_stats(remaining_tiles: int, legal_moves: int) -> void:
 	lbl_tiles.text = str(remaining_tiles)

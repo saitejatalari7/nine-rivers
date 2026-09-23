@@ -1,0 +1,380 @@
+<title>Nine Rivers Build Plan</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:wght@400;600;700&family=Archivo:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+
+<style>
+:root{
+  --paper:#eceee9; --surface:#f8f9f6; --surface-2:#e2e6e0;
+  --ink:#141a17; --ink-2:#3d4844; --muted:#697570; --line:#cdd4ce;
+  --jade:#1c6b4f; --cinnabar:#b0342a; --gold:#9a7418; --steel:#3f6f85;
+  --ok:#1c6b4f; --warn:#9a5f10; --block:#b0342a;
+  --f-display:"Spectral",Georgia,serif;
+  --f-body:"Archivo","Helvetica Neue",Arial,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+  --s0:1rem; --s1:1.15rem; --s2:1.45rem; --s3:1.95rem; --s4:2.7rem;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --paper:#0c1210; --surface:#141b18; --surface-2:#1d2622;
+  --ink:#e7ece9; --ink-2:#c0cac5; --muted:#8a9791; --line:#2a3531;
+  --jade:#57bd92; --cinnabar:#e57366; --gold:#d9ae4a; --steel:#79b2cb;
+  --ok:#57bd92; --warn:#d9ae4a; --block:#e57366;
+}}
+:root[data-theme="dark"]{
+  --paper:#0c1210; --surface:#141b18; --surface-2:#1d2622;
+  --ink:#e7ece9; --ink-2:#c0cac5; --muted:#8a9791; --line:#2a3531;
+  --jade:#57bd92; --cinnabar:#e57366; --gold:#d9ae4a; --steel:#79b2cb;
+  --ok:#57bd92; --warn:#d9ae4a; --block:#e57366;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--f-body);font-size:var(--s0);line-height:1.62;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1000px;margin:0 auto;padding-inline:20px;padding-block:0 72px}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;margin:0;font-weight:600}
+p{margin:0}
+.eyebrow{font-family:var(--f-mono);font-size:.72rem;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+
+.masthead{display:grid;gap:18px;padding-block:52px 34px;border-bottom:2px solid var(--ink)}
+.seal-row{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.seal{width:40px;height:40px;flex:none;background:var(--cinnabar);color:var(--paper);display:grid;place-items:center;font-family:var(--f-display);font-size:1.35rem;line-height:1;border-radius:3px}
+.masthead h1{font-size:var(--s4);line-height:1.08;letter-spacing:-.015em}
+.standfirst{font-size:var(--s1);color:var(--ink-2);max-width:64ch}
+
+.blocker{margin-top:32px;border-left:4px solid var(--block);background:var(--surface);padding:20px 24px;display:grid;gap:10px}
+.blocker .eyebrow{color:var(--block)}
+.blocker p{color:var(--ink-2)}
+.blocker strong{color:var(--ink)}
+
+section{margin-top:56px}
+.sec-head{display:grid;gap:6px;margin-bottom:22px;padding-bottom:12px;border-bottom:1px solid var(--line)}
+.sec-head h2{font-size:var(--s2);letter-spacing:-.01em}
+.prose{max-width:66ch;display:grid;gap:14px;color:var(--ink-2)}
+.prose strong{color:var(--ink);font-weight:600}
+
+.tracks{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:2px;background:var(--line);border:1px solid var(--line)}
+.track{background:var(--surface);padding:18px 20px;display:grid;gap:7px;align-content:start}
+.track .n{font-family:var(--f-mono);font-size:.72rem;color:var(--muted);letter-spacing:.1em}
+.track h3{font-size:1.05rem}
+.track p{font-size:.88rem;color:var(--ink-2)}
+.pill{font-family:var(--f-mono);font-size:.65rem;letter-spacing:.1em;text-transform:uppercase;padding:2px 8px;border:1px solid currentColor;border-radius:2px;justify-self:start}
+.pill.now{color:var(--ok)} .pill.next{color:var(--steel)} .pill.blocked{color:var(--block)}
+
+.step{background:var(--surface);border:1px solid var(--line);padding:22px 24px;display:grid;gap:14px;margin-bottom:2px}
+.step h3{font-size:var(--s1)}
+.stamp{font-family:var(--f-mono);font-size:.68rem;letter-spacing:.14em;text-transform:uppercase}
+.stamp.v1{color:var(--muted)} .stamp.crit{color:var(--cinnabar)} .stamp.v2{color:var(--ok)}
+ul{margin:0;padding-left:1.15em;display:grid;gap:7px;color:var(--ink-2)}
+li strong{color:var(--ink)}
+code{font-family:var(--f-mono);font-size:.86em;background:var(--surface-2);padding:1px 5px;border-radius:2px;color:var(--ink)}
+.kill{color:var(--cinnabar);font-weight:600}
+.keep{color:var(--jade);font-weight:600}
+
+.tablewrap{overflow-x:auto;border:1px solid var(--line)}
+table{border-collapse:collapse;width:100%;min-width:520px;background:var(--surface)}
+th,td{text-align:left;padding:9px 14px;font-size:.88rem;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-family:var(--f-mono);font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:500;background:var(--surface-2)}
+td.num{font-variant-numeric:tabular-nums;font-family:var(--f-mono);font-size:.82rem}
+tbody tr:last-child td{border-bottom:none}
+
+.ask{border-left:3px solid var(--gold);background:var(--surface);padding:16px 20px;display:grid;gap:8px;max-width:72ch;margin-top:18px}
+.ask .eyebrow{color:var(--gold)}
+footer{margin-top:64px;padding-top:20px;border-top:1px solid var(--line);color:var(--muted);font-size:.85rem;max-width:70ch}
+@media (max-width:560px){:root{--s4:2.05rem;--s3:1.6rem;--s2:1.3rem}}
+</style>
+
+<div class="wrap">
+
+  <header class="masthead">
+    <div class="seal-row">
+      <div class="seal" aria-hidden="true">築</div>
+      <span class="eyebrow">Nine Rivers 九河 · Build Plan toward 1,000 levels</span>
+    </div>
+    <h1>Four workstreams, thought through twice</h1>
+    <p class="standfirst">
+      Each proposal below is written once, argued against, and then rewritten. The
+      second version is the one to build — the first is kept so the reasoning is
+      visible rather than assumed.
+    </p>
+  </header>
+
+  <div class="blocker">
+    <span class="eyebrow">Blocked — needs you</span>
+    <p><strong>Blender MCP is not reaching this session.</strong> I checked the connector list rather than assuming: only <code>visualize</code> and <code>scheduled-tasks</code> are connected. Until Blender appears there I cannot model, render, or export anything.</p>
+    <p>Two parts have to both be true: the Blender add-on running with its server started <em>inside</em> Blender, and the MCP server enabled for this session under <strong>Settings → Connectors</strong>. Enabling it in Blender alone is not enough.</p>
+    <p>Everything else in this plan proceeds without it.</p>
+  </div>
+
+  <div class="tracks" style="margin-top:36px">
+    <div class="track">
+      <span class="n">TRACK 2</span>
+      <h3>Premium tiles &amp; VFX</h3>
+      <span class="pill blocked">Blocked on Blender</span>
+      <p>Your pick for first. Diagnosis is done and specific; the pipeline is designed and waiting.</p>
+    </div>
+    <div class="track">
+      <span class="n">TRACK 1</span>
+      <h3>1,000 levels</h3>
+      <span class="pill next">Ready to start</span>
+      <p>Biggest and most release-blocking. Can begin today without Blender.</p>
+    </div>
+    <div class="track">
+      <span class="n">TRACK 3</span>
+      <h3>Screen space</h3>
+      <span class="pill now">Ready — small</span>
+      <p>Smallest job here. Roughly a day, and it pairs naturally with Track 1.</p>
+    </div>
+    <div class="track">
+      <span class="n">TRACK 4</span>
+      <h3>UI &amp; Sub-UI</h3>
+      <span class="pill next">Ready to start</span>
+      <p>Frosted panels, scrollable hierarchy, rendered icons.</p>
+    </div>
+  </div>
+
+  <!-- ============ TRACK 2 ============ -->
+  <section>
+    <div class="sec-head">
+      <span class="eyebrow">Track 2 · your priority</span>
+      <h2>Why the premium tiles don't look premium</h2>
+    </div>
+
+    <div class="prose" style="margin-bottom:22px">
+      <p>
+        I read <code>tile_view.gd</code> rather than guessing. The problem isn't taste —
+        it's four specific technical facts, and each one has a fix.
+      </p>
+    </div>
+
+    <div class="tablewrap" style="margin-bottom:26px">
+      <table>
+        <thead><tr><th>What the code does</th><th>Why it reads as cheap</th></tr></thead>
+        <tbody>
+          <tr><td>Tiles are drawn at a fixed <strong>64 × 84 logical pixels</strong>, then camera-scaled</td><td>Your fine detail — a 1.2px highlight, a 1px rim, a 6px gold band — lands on roughly one physical pixel on a 1080p phone. It turns to mush.</td></tr>
+          <tr><td>Every surface is a <strong>flat <code>StyleBoxFlat</code> fill</strong></td><td>No gradient, no texture, no variation across the face. Gold without a gradient is just yellow. This is the single biggest cause.</td></tr>
+          <tr><td>3D is <strong>one offset slab</strong> plus a drop shadow</td><td>A real tile has a curved bevel that catches light along its top edge. A flat rectangle sitting on another flat rectangle never will.</td></tr>
+          <tr><td>Themes differ by <strong>colour and vector ornament only</strong></td><td>Jade, gold, obsidian and porcelain are physically different materials. Recolouring the same flat shape can't express that.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="step">
+      <span class="stamp v1">Proposal · first pass</span>
+      <h3>Render everything in Blender</h3>
+      <ul>
+        <li>Model the tile, apply real materials per theme, render each of the <strong>42 tile faces × 4 themes</strong> as finished sprites.</li>
+        <li>Swap <code>_draw()</code> for a <code>Sprite2D</code> per tile.</li>
+        <li>Cell-fracture the tile in Blender and render a <strong>break animation flipbook</strong> per theme.</li>
+      </ul>
+    </div>
+
+    <div class="step">
+      <span class="stamp crit">Arguing against it</span>
+      <h3>Four reasons that version fails</h3>
+      <ul>
+        <li><span class="kill">168 sprites.</span> 42 faces × 4 themes, and every new theme costs another 42. A fifth theme becomes a day of rendering instead of a colour change.</li>
+        <li><span class="kill">State explosion.</span> Tiles are also free / blocked / selected / wild / frozen / glass. Baking those in multiplies 168 by six.</li>
+        <li><span class="kill">Symbols get worse, not better.</span> Your vector 梅 and 東 are crisp at any zoom for zero bytes. Baking them into a sprite fixes them at one resolution — a downgrade.</li>
+        <li><span class="kill">Flipbooks are huge and stiff.</span> A per-theme break animation is megabytes, and every tile shatters identically. Players notice by level 20.</li>
+      </ul>
+    </div>
+
+    <div class="step">
+      <span class="stamp v2">Proposal · second pass · build this</span>
+      <h3>Blender renders the material, not the picture</h3>
+      <ul>
+        <li><span class="keep">Four body sprites, not 168.</span> Blender renders the blank tile body per theme — no symbol, no state — at <strong>256 × 336</strong> (4× the logical size, so it stays sharp on any phone). One albedo plus one normal map each. Eight textures total.</li>
+        <li><span class="keep">A shader does the lighting.</span> A canvas shader reads the normal map against a <strong>fixed art-directed light direction</strong>. That gives a real curved bevel and per-material response — anisotropic sheen on the gold, soft subsurface on the porcelain, hard specular on the obsidian — with no <code>Light2D</code> in the scene, which matters on the <code>gl_compatibility</code> renderer you ship.</li>
+        <li><span class="keep">Symbols stay vector.</span> Drawn on top exactly as now. Crisp at every zoom, free, and already written.</li>
+        <li><span class="keep">States stay code.</span> Free / blocked / wild / frozen / glass remain shader parameters and overlays. A new state costs a uniform, not a render.</li>
+        <li><span class="keep">Breaking uses real shards.</span> Cell-fracture <em>one</em> tile in Blender, export the <strong>16–20 shard shapes as a single atlas</strong>. Godot spawns them with their own velocity, spin and gravity, tinted and normal-lit per theme. Every shatter is different, it costs one small texture, and it layers over the dust particles in <code>tile_shatter_dust.gd</code> you already have.</li>
+      </ul>
+    </div>
+
+    <div class="prose" style="margin-top:20px">
+      <p>
+        <strong>Why this is the right shape:</strong> Blender does the thing code is bad at
+        — real material and real bevel light — and code keeps doing what it's already
+        good at: sharp symbols, cheap states, varied motion. Adding a fifth theme later
+        costs <em>two textures</em>, not forty-two.
+      </p>
+      <p>
+        <strong>Cost:</strong> roughly 2–4 MB compressed. You currently ship <em>zero</em>
+        texture assets, and ETC2/ASTC compression is already enabled, so there's room.
+      </p>
+      <p>
+        <strong>The real risk is art direction, not technology.</strong> "Premium" is a
+        judgement call, so the plan is to render one tile, put it in front of you, and
+        iterate — not to render four themes and hope.
+      </p>
+    </div>
+  </section>
+
+  <!-- ============ TRACK 1 ============ -->
+  <section>
+    <div class="sec-head">
+      <span class="eyebrow">Track 1 · biggest, and release-blocking</span>
+      <h2>Getting to 1,000 levels that stay interesting</h2>
+    </div>
+
+    <div class="prose" style="margin-bottom:22px">
+      <p>
+        You chose <strong>~100 shapes × goals and modifiers</strong>. That's the right
+        call, and it's how large Mahjong titles actually ship. But there's a wall in the
+        way first.
+      </p>
+      <p>
+        <strong>Layouts are hardcoded GDScript.</strong> Each of your 11 shapes is a
+        <code>match</code> branch calling <code>_grid()</code> with rectangle bounds.
+        Nobody authors 100 shapes that way, let alone tunes them. Everything else in this
+        track depends on fixing that first.
+      </p>
+      <p>
+        One good piece of news: <code>_add_pos()</code> already accepts arbitrary
+        coordinates, so real silhouettes — a dragon, a lotus, a character — are possible
+        in the engine today. They're simply never used.
+      </p>
+    </div>
+
+    <div class="step">
+      <span class="stamp v1">Proposal · first pass</span>
+      <h3>A JSON file per layout, and 1,000 stage entries</h3>
+      <ul>
+        <li>Convert each layout to JSON coordinates, author ~100 more.</li>
+        <li>Write a table of 1,000 stages pairing a layout with a goal and a modifier.</li>
+      </ul>
+    </div>
+
+    <div class="step">
+      <span class="stamp crit">Arguing against it</span>
+      <h3>Where that comes apart</h3>
+      <ul>
+        <li><span class="kill">JSON coordinates are unauthorable.</span> Nobody can look at 400 <code>{x,y,z}</code> triples and see a lotus. You can't eyeball it, can't review it, can't fix it.</li>
+        <li><span class="kill">100 shapes is still 100 shapes.</span> Changing the file format doesn't make the authoring work disappear.</li>
+        <li><span class="kill">1,000 hand-written stage rows is a spreadsheet, not a difficulty curve.</span> It'd be tuned by guesswork.</li>
+        <li><span class="kill">Nothing proves they're playable.</span> Every board must be solvable <em>and</em> appropriately hard. Hand-checking 1,000 is impossible; shipping them unchecked is worse.</li>
+      </ul>
+    </div>
+
+    <div class="step">
+      <span class="stamp v2">Proposal · second pass · build this</span>
+      <h3>Draw the shapes, generate the stages, let the bot prove them</h3>
+      <ul>
+        <li><span class="keep">Layouts as ASCII layer maps.</span> One text file per shape, one block per Z-layer, <code>X</code> for a tile. You can <em>see</em> the silhouette while editing it, diff it in git, and fix it in a text editor. Authoring a shape drops from an hour to minutes.</li>
+        <li><span class="keep">Mirror tooling.</span> Most Mahjong layouts are symmetric. Author a quarter or half, let the tool mirror it — cutting the real work to roughly 30 hand-drawn shapes plus variants.</li>
+        <li><span class="keep">Stages are generated, not typed.</span> A stage is layout × tile count × objective × modifier × tile mix. Generate the 1,000 from curve rules, so difficulty is a tuned function rather than a thousand guesses.</li>
+        <li><span class="keep">The bot becomes the validator.</span> <strong>You already own this.</strong> <code>bot_runner.gd</code> plays real boards through real click handling. Pointed at all 1,000 stages it reports solvability, dead-end rate, taps and achievable flow — then auto-rejects the broken and auto-ranks the rest by measured difficulty. Nobody hand-checks anything.</li>
+        <li><span class="keep">Worlds every ~50 levels.</span> New pond theme, new mechanic, new layout family. Novelty spikes are what carry players past level 100.</li>
+      </ul>
+    </div>
+
+    <div class="prose" style="margin-top:20px">
+      <p>
+        <strong>The bot is the unlock.</strong> The work we did on save integrity
+        accidentally built the tool this track needs. Content at this scale is a
+        validation problem, and you already have the validator.
+      </p>
+      <p>
+        <strong>One honest caution.</strong> 1,000 levels before launch is a large
+        content commitment — realistically months, mostly authoring and tuning rather
+        than code. That's your call and I'll plan for it, but it should be a decision
+        you make on purpose, not a number that quietly sets your release date.
+      </p>
+    </div>
+  </section>
+
+  <!-- ============ TRACK 3 ============ -->
+  <section>
+    <div class="sec-head">
+      <span class="eyebrow">Track 3 · roughly a day</span>
+      <h2>Reclaiming the wasted screen space</h2>
+    </div>
+    <div class="prose">
+      <p>
+        You were right, and the cause is three lines in <code>camera_controller.gd</code>.
+        Framing assumes a <strong>hardcoded 190px top HUD and 230px bottom deck</strong>,
+        adds fixed padding, then fits with a single <code>0.95</code> factor on whichever
+        axis is tighter.
+      </p>
+      <p>
+        So a wide, short board like <em>Stone Keep</em> (12 columns, 5 rows) fits to width
+        and leaves a band of dead space above and below. A tall, narrow board wastes it at
+        the sides. Every layout gets the same compromise.
+      </p>
+      <p><strong>The fix, in order:</strong></p>
+      <ul>
+        <li><strong>Measure the HUD instead of assuming it.</strong> Read the actual control rects at runtime, so the numbers can't drift out of sync with the UI — and so notches and gesture bars are handled properly.</li>
+        <li><strong>Fit per axis, not per board.</strong> Choose the limiting axis, then spend the slack on the other one instead of scaling both down.</li>
+        <li><strong>Framing hints in the layout data.</strong> A wide shape can declare it prefers to sit high; a tall one can ask for tighter side margins. One line per layout, authored alongside the shape.</li>
+        <li><strong>Keep the camera locked.</strong> Pan and zoom are deliberately disabled for touch accuracy — correct decision, and it means the first framing has to be right.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ============ TRACK 4 ============ -->
+  <section>
+    <div class="sec-head">
+      <span class="eyebrow">Track 4</span>
+      <h2>UI, Sub-UI and the frosted look</h2>
+    </div>
+    <div class="prose">
+      <p>
+        The structure you want mostly exists — <code>modal_controller.gd</code> already
+        does sub-screens with a back stack, and level select already scrolls. The gap is
+        finish, not architecture.
+      </p>
+      <ul>
+        <li><strong>Frosted glass, the cheap way.</strong> Real backdrop blur means a
+        <code>BackBufferCopy</code> plus a multi-tap blur every frame — genuinely
+        expensive on budget Android, which is your market. A pre-blurred translucent panel
+        with fine noise and a bright 1px top edge reads as frosted glass at a fraction of
+        the cost. Use real blur only behind full-screen modals, where nothing animates
+        underneath.</li>
+        <li><strong>Icons from the same Blender pipeline.</strong> Rendering the koi, lotus
+        and lantern icons as small 3D objects under the <em>same</em> light direction as
+        the tiles is what will make the game feel art-directed rather than assembled.
+        Consistency of lighting is what sells "premium".</li>
+        <li><strong>Scroll containers that feel native.</strong> Momentum, overscroll and
+        snap — the difference between "a menu" and "a product".</li>
+        <li><strong>One spacing scale.</strong> Current modals use ad-hoc pixel values.
+        A single scale applied everywhere is invisible individually and obvious in
+        aggregate.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ============ SEQUENCING ============ -->
+  <section>
+    <div class="sec-head">
+      <span class="eyebrow">Sequencing</span>
+      <h2>What I'd do, and in what order</h2>
+    </div>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Order</th><th>Work</th><th>Why here</th></tr></thead>
+        <tbody>
+          <tr><td class="num">1</td><td><strong>One Blender tile, iterated with you</strong></td><td>Settles the art direction before anything is mass-produced. Needs the connector.</td></tr>
+          <tr><td class="num">2</td><td><strong>ASCII layout format + converter</strong></td><td>Unblocks all level work. Converts your 11 existing shapes so nothing is lost.</td></tr>
+          <tr><td class="num">3</td><td><strong>Camera framing</strong></td><td>Small, self-contained, and every screenshot after it looks better.</td></tr>
+          <tr><td class="num">4</td><td><strong>Remaining themes + shard atlas</strong></td><td>Mass production, once direction is approved.</td></tr>
+          <tr><td class="num">5</td><td><strong>Stage generator + bot validation</strong></td><td>The 1,000 levels themselves, proven automatically.</td></tr>
+          <tr><td class="num">6</td><td><strong>UI polish and icons</strong></td><td>Last, so it's applied to finished content rather than reworked.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="ask">
+      <span class="eyebrow">What I need from you</span>
+      <p><strong>1. Connect Blender MCP</strong> — Settings → Connectors, and confirm the add-on's server is running inside Blender. Track 2 can't start without it.</p>
+      <p><strong>2. Pick where I start meanwhile.</strong> The ASCII layout format (step 2) is the highest-value thing I can build today with no dependencies, and it's on the critical path to 1,000 levels.</p>
+    </div>
+  </section>
+
+  <footer>
+    <p>
+      Grounded in the current code: <code>tile_view.gd</code>, <code>board_generator.gd</code>,
+      <code>camera_controller.gd</code> and <code>modal_controller.gd</code> as of the
+      cloud-save branch. Nothing here has been built yet — this is the plan to argue with
+      before any of it is.
+    </p>
+  </footer>
+
+</div>

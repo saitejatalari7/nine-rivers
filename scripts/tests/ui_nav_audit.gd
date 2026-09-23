@@ -176,6 +176,10 @@ func _apply_pre(mode: String) -> void:
 		"daily":
 			main._start_daily_mode()
 	if not mode.is_empty():
+		# The buttons that start a mode also close the menu; calling the start
+		# function directly does not, and a stale modal left up here reads as the
+		# screen state for the whole flow.
+		modal.hide_modal()
 		await _settle()
 
 ## The seed screens. Anything else reachable from them is discovered and
@@ -187,7 +191,6 @@ func _seed_paths() -> Array:
 		{"builder": "show_pause_menu", "args": [], "pre": "calm"},
 		{"builder": "show_level_clear", "args": [12, 4820, 3], "pre": "calm", "after_clear": true},
 		{"builder": "show_daily_clear", "args": [3100, 7, 4], "pre": "daily", "after_clear": true},
-		{"builder": "show_boon_draft", "args": [], "pre": "run", "after_clear": true},
 		{"builder": "show_game_over", "args": ["No moves remain"], "pre": "run", "after_clear": true},
 		{"builder": "show_sanctuary_menu", "args": []},
 		{"builder": "show_bazaar_modal", "args": []},
@@ -488,8 +491,11 @@ func _audit_live_flows() -> void:
 	for flow in [
 		{"name": "Continue Journey (Calm)", "pre": "calm", "expect": "modal:level_clear",
 			"go_on": "next stage"},
-		{"name": "Timed Rapids (Run)", "pre": "run", "expect": "modal:boon_draft",
-			"go_on": ""},
+		# Rapids no longer stops for a relic draft: a cleared stage leads straight
+		# to the next board, so there is no reward screen to carry on from and the
+		# check is that the next stage actually arrives with its HUD.
+		{"name": "Timed Rapids (Run)", "pre": "run", "expect": "board+hud",
+			"go_on": "", "auto_carries": true},
 		# The daily has no continue row by design - it is one board a day - so
 		# the check is that it lands home, not that it carries on.
 		{"name": "The Daily Tide", "pre": "daily", "expect": "modal:daily_clear",
@@ -503,6 +509,11 @@ func _audit_live_flows() -> void:
 			_fail("%s: greedy play could not clear the board, so the reward screen and the carry-on path were never exercised." % flow["name"])
 			continue
 		await _settle()
+		if bool(flow.get("auto_carries", false)):
+			# No reward screen to sample: this mode deals the next stage after a
+			# short beat, so sampling immediately catches the gap in between.
+			await get_tree().create_timer(1.8).timeout
+			await _settle()
 		var reward: String = _state_key()
 		print("  %-26s %3d tiles -> %s" % [flow["name"], tiles, reward])
 		if reward != flow["expect"]:
@@ -524,16 +535,11 @@ func _audit_live_flows() -> void:
 			continue
 
 		var carried: bool = false
-		if not String(flow["go_on"]).is_empty():
+		if bool(flow.get("auto_carries", false)):
+			# Already carried: the wait above let the next stage deal itself.
+			carried = true
+		elif not String(flow["go_on"]).is_empty():
 			carried = await _press_labelled(String(flow["go_on"]))
-		else:
-			var btns: Array = _collect_buttons()
-			# The boon draft's relics carry no button text; take the first one.
-			if reward == "modal:boon_draft" and not btns.is_empty():
-				btns[0].pressed.emit()
-				presses += 1
-				await _settle()
-				carried = true
 		if not carried:
 			_fail("%s: nothing on the reward screen carried the player onward, so the state after continuing was never checked." % flow["name"])
 			continue

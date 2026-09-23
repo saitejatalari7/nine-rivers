@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Time Rapids — Audit</title>
+<style>
+  :root{
+    --bg:#0d1411; --panel:#141d19; --line:#25332c; --ink:#dfe7e1;
+    --dim:#94a49b; --gold:#d9a441; --red:#e2705f; --green:#7fc39a;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;padding:34px 30px 60px;background:var(--bg);color:var(--ink);
+       font:15px/1.5 "Segoe UI",system-ui,sans-serif;max-width:1040px}
+  h1{font-size:23px;margin:0 0 2px;color:var(--gold);letter-spacing:.4px}
+  .sub{color:var(--dim);font-size:13px;margin-bottom:26px}
+  h2{font-size:15px;text-transform:uppercase;letter-spacing:1.2px;color:var(--gold);
+     margin:30px 0 10px;border-bottom:1px solid var(--line);padding-bottom:5px}
+  table{border-collapse:collapse;width:100%;font-size:13.5px;background:var(--panel)}
+  th{text-align:left;background:#182320;color:var(--dim);font-weight:600;
+     text-transform:uppercase;font-size:11px;letter-spacing:.7px;padding:7px 9px}
+  td{padding:7px 9px;border-top:1px solid var(--line);vertical-align:top}
+  code{font:12.5px ui-monospace,Consolas,monospace;color:#b9d8c6}
+  .bug{color:var(--red);font-weight:600}
+  .des{color:var(--gold);font-weight:600}
+  .ok{color:var(--green)}
+  ol{margin:6px 0 0;padding-left:20px}
+  ol li{margin-bottom:3px}
+  .note{color:var(--dim);font-size:12.5px;margin-top:8px}
+  .m{color:var(--green);font-weight:600}
+  .i{color:var(--dim);font-style:italic}
+</style>
+</head>
+<body>
+
+<h1>Time Rapids — how it actually works, and what is broken</h1>
+<div class="sub">Nine Rivers · <code>GameMode.RUN</code>, menu label "Timed Rapids · Roguelite Run" · investigation only, no code changed</div>
+
+<h2>1. The mode in five lines</h2>
+<ol>
+  <li>Start: <code>time_left = 100s</code>, <code>max_time = 180s</code>, timer running, 1 undo / 2 hints / 2 shuffles (<code>game_manager.gd:82-106</code>).</li>
+  <li>The clock drains 1.0s/s (1.5s/s on a Torrent Rush stage); each pair returns +1.5s, each triple +2.4s; a misplay costs 3s (<code>game_manager.gd:50, 236, 262</code>).</li>
+  <li>Clear the board → the run advances one rung of an 11-layout ladder, with a Fog / Rush / Frost modifier cycling every stage (<code>main.gd:282-306</code>, <code>stage_modifiers.gd:30-39</code>).</li>
+  <li>Between stages a mandatory popup makes you draft 1 of 3 relics from a pool of 17; they last the whole run and the only alternative is "Abandon Run" (<code>modal_controller.gd:548-619</code>, <code>boon_pool.gd</code>).</li>
+  <li>Hitting 0s ends the run. Nothing persistent is saved from a run — no best score, no best stage, no jade except 5 per wild tile.</li>
+</ol>
+
+<h2>2. Each complaint → bug or design</h2>
+<table>
+<tr><th style="width:24%">Owner's observation</th><th style="width:10%">Verdict</th><th>Root cause</th></tr>
+
+<tr>
+  <td>"the timer starts from the middle in that bar"</td>
+  <td><span class="des">Design</span><br><span class="bug">+ bug</span></td>
+  <td><b>Design part:</b> <code>time_left=100</code> but <code>max_time=180</code> (<code>game_manager.gd:33-34, 95</code>), and the HUD binds the bar straight to both (<code>hud_controller.gd:329-330</code>). The 80s of headroom exists so time gains have somewhere to grow — <code>register_match</code> clamps to <code>max_time</code> (<code>game_manager.gd:239</code>). Measured fill at t=0: <b>55.5%</b>. Intentional, but it reads as "I already lost half my time".<br>
+  <b>Bug part:</b> <code>start_timed_run()</code> never resets <code>max_time</code>. A Daily played first sets it to 320 (<code>game_manager.gd:113</code>), and <em>Deep Breath</em> raises it too (<code>:272</code>). Measured: after one Daily, a fresh Rapids bar starts at <b>31.2%</b> full.</td>
+</tr>
+
+<tr>
+  <td>"the timer was stuck… I did not understand it was reducing or increasing"</td>
+  <td><span class="bug">Bug</span></td>
+  <td>Clearing a board sets <code>is_timer_active = false</code> (<code>main.gd:351</code>). <code>_next_stage()</code> (<code>main.gd:282-306</code>) rebuilds the HUD, the board and the modifier but <b>never sets it back to true</b>. From stage 2 onward the countdown is frozen for the rest of the run. The only thing that re-arms it is opening the pause menu and resuming (<code>main.gd:308-310</code>) — which is why it looks intermittent. Measured: 180 idle frames on stage 2, delta <b>0.000s</b>.</td>
+</tr>
+
+<tr>
+  <td>"at one point the time jumped" (1:43 → 1:57)</td>
+  <td><span class="bug">Bug</span></td>
+  <td>Same root, second half: the time <em>reward</em> in <code>register_match</code> is gated only on <code>current_mode != CALM</code>, not on <code>is_timer_active</code> (<code>game_manager.gd:235-240</code>). So with the countdown frozen, every match still adds seconds and the clock can only go up. Measured on stage 2: 6 sets, <b>2:04 → 2:15</b>, never once falling.</td>
+</tr>
+
+<tr>
+  <td>"nobody knows about that pop up and its purpose"</td>
+  <td><span class="des">Design</span></td>
+  <td>There is <b>no explanation of relics anywhere in the game.</b> The 3-step tutorial covers free tiles, matching and Flow only (<code>tutorial_controller.gd:17-33</code>) and runs in Calm. The only text is the card's own one-line description and a <code>tooltip_text</code> on the HUD relic token (<code>hud_controller.gd:256</code>) — tooltips do not appear on touch. The draft is also <b>unskippable</b>: the screen offers three relics and "Abandon Run · Main Menu", nothing else (<code>modal_controller.gd:608-619</code>).</td>
+</tr>
+
+<tr>
+  <td>"why so complex… a simple mind relaxing game"</td>
+  <td><span class="des">Design</span></td>
+  <td>One mode stacks: a draining clock, a time-gain economy, 3 stage modifiers, a 9-step Flow chain, 17 relics with 12 distinct rule-changing effects, and a mid-run draft — and returns no progression at all. <code>best_stage</code> exists in the save schema (<code>save_manager.gd:12</code>) but is <b>never written</b>; only <code>record_level_clear</code> (Calm) writes <code>best_score</code> (<code>save_manager.gd:431-439</code>).</td>
+</tr>
+</table>
+
+<h2>3. Measured numbers</h2>
+<p class="note">Captured by driving the real <code>main.tscn</code> through the genuine tile-click path (probe modelled on <code>bot_runner.gd</code>, run with <code>--rendering-driver opengl3</code>, since removed). <span class="m">Green = measured.</span> <span class="i">Italic = derived from the constants, not observed.</span> Screenshots: <code>audit/rapids_start.png</code>, <code>audit/rapids_boon_draft.png</code>.</p>
+<table>
+<tr><th style="width:42%">Quantity</th><th style="width:22%">Value</th><th>Note</th></tr>
+<tr><td>Stage 1 <code>time_left</code> / <code>max_time</code> at t=0</td><td class="m">99.9s / 180.0s</td><td>Bar fill <b>55.5%</b>, clock reads 1:39</td></tr>
+<tr><td>Same, after one Daily Tide in the session</td><td class="m">99.8s / 320.0s</td><td>Bar fill <b>31.2%</b> — state leak</td></tr>
+<tr><td>Time returned per pair / per triple</td><td class="m">+1.50s / +2.40s</td><td>6 sets measured at exactly +10.80s</td></tr>
+<tr><td>Drain rate, normal / Torrent Rush stage</td><td class="m">1.0 / 1.5 s per s</td><td>Rush also doubles score</td></tr>
+<tr><td>Misplay penalty</td><td class="i">−3.0s</td><td>0s with Steady Hand</td></tr>
+<tr><td>Break-even pace (normal / Rush)</td><td class="i">1 pair per 1.5s / 1.0s</td><td>A human at ~3-4s per set net-<b>loses</b> ~2s per set; the bot at 0.16s per set net-gains</td></tr>
+<tr><td>Stage 1 played to a clear (36 tiles, 17 sets)</td><td class="m">99.9s → 124.6s</td><td>+24.7s, but at bot speed; 17 rises vs 176 falling frame samples</td></tr>
+<tr><td>Stage 2 idle for 180 frames</td><td class="m">delta 0.000s</td><td>Countdown frozen; <code>is_timer_active=false</code></td></tr>
+<tr><td>Stage 2, 6 sets played while frozen</td><td class="m">124.6s → 135.4s</td><td>Clock rises only. Ceiling is <code>max_time</code> (180s)</td></tr>
+<tr><td>Relic pool size / draft size / cost to skip</td><td class="m">17 / 3 / no skip</td><td>Once-only relics drop out of later drafts</td></tr>
+<tr><td>Persistent reward for a whole run</td><td class="m">none</td><td>Only 5 jade per wild-tile match (<code>board_controller.gd:446-448</code>)</td></tr>
+</table>
+
+<h2>4. Time Rapids vs the Calm campaign</h2>
+<table>
+<tr><th style="width:20%"></th><th style="width:40%">Calm Journey</th><th>Time Rapids</th></tr>
+<tr><td>Clock</td><td>None — <code>_process</code> skips CALM entirely (<code>game_manager.gd:49</code>)</td><td>100s countdown, refilled by matches</td></tr>
+<tr><td>Props</td><td>3 undo / 3 hint / 3 shuffle, reset each level</td><td>1 / 2 / 2, for the whole run</td></tr>
+<tr><td>Stage source</td><td>350 authored levels via <code>StagePlan.describe()</code>, seeded so a level is the same puzzle every time</td><td>11-layout ladder, unseeded, repeats the last layout forever</td></tr>
+<tr><td>Modifiers</td><td>From level 5, cycle on <code>level % 4</code></td><td>From stage 2, cycle on <code>(stage-1) % 4</code></td></tr>
+<tr><td>Relics</td><td>Never — <code>active_relics</code> cleared on start</td><td>One drafted per stage, permanent for the run</td></tr>
+<tr><td>Scoring</td><td>100/250 base × Flow (cap 6) × Ogon koi bonus</td><td>Same, but ×2 on Rush stages and ×1.3 per Sharper Eye</td></tr>
+<tr><td>Progression</td><td>Stars, jade, level pointer, mastery, all saved</td><td>Nothing saved</td></tr>
+</table>
+
+<h2>5. Options (owner picks — not ranked)</h2>
+<table>
+<tr><th style="width:5%">#</th><th style="width:28%">Option</th><th style="width:37%">What it means</th><th>Cost / benefit</th></tr>
+<tr><td>1</td><td>Fix the three bugs, change no design</td><td>Re-arm the timer in <code>_next_stage()</code>, gate the time reward on <code>is_timer_active</code>, reset <code>max_time=180</code> in <code>start_timed_run()</code></td><td>~5 lines, restores the mode as intended — but the mode then gets <em>harder</em>, and the relic popup the owner dislikes stays.</td></tr>
+<tr><td>2</td><td>Drop the boon draft</td><td>Replace <code>show_boon_draft()</code> with a 2-second "Stage N cleared" card that auto-advances; leave the relic code dormant</td><td>Removes the single most-confusing screen and all 17 rule-changing effects; the mode becomes a plain endless timed ladder. Relic code stays compiled but unreachable.</td></tr>
+<tr><td>3</td><td>Make the bar honest</td><td>Set <code>max_time = time_left</code> at run start (bar full at t=0), with gains capped at 100%</td><td>One line; kills the "half-empty at start" read. Costs the visible headroom, so a time gain past full shows as nothing but a clock tick.</td></tr>
+<tr><td>4</td><td>Retire the mode</td><td>Remove "Timed Rapids" from the main menu; keep Calm + Daily Tide</td><td>The largest simplification and the honest fit for "a simple relaxing game" — but drops the "Roguelite" half of the store positioning, and the Daily Tide still uses the same timer, so bug 2 above must still be fixed for it.</td></tr>
+</table>
+<p class="note"><b>Save / campaign impact:</b> none of these four touch the 350-level Calm campaign — Calm ignores the timer and clears <code>active_relics</code> on start (<code>game_manager.gd:49, 75</code>) — and none change the save schema, so existing saves stay valid. Option 4 leaves <code>best_stage</code> as a dead key, which it already is. Options 1 and 3 do alter the Daily Tide, which shares <code>max_time</code> and the same <code>_process</code> drain.</p>
+
+<h2>Not verified</h2>
+<p class="note">I did not play a run to its natural death (the frozen clock makes that impossible without patching), so the real-world fail rate and the net time balance at human tapping speed are derived from the constants, not measured. I also did not test relic effects individually; I read their implementations in <code>acquire_relic</code> and <code>register_match</code>.</p>
+
+</body>
+</html>

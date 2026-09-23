@@ -10,7 +10,6 @@ signal time_updated(time_left: float, max_time: float)
 signal props_updated(undos: int, hints: int, shuffles: int)
 signal stage_cleared(stats: Dictionary)
 signal game_over(reason: String)
-signal relic_acquired(relic_data: Dictionary)
 
 var current_mode: GameMode = GameMode.CALM
 var current_level: int = 1
@@ -41,14 +40,12 @@ var score_mult: float = 1.0
 var time_gain_rate: float = 1.5
 var penalty_seconds: float = 3.0
 var is_timer_active: bool = false
-var active_relics: Array[String] = []
 
 # Daily Tide metadata
 var daily_seed: int = 0
 
 # Relic stage state
 var is_first_match_of_stage: bool = true
-var porcelain_guard_active: bool = true
 
 func _process(delta: float) -> void:
 	if is_timer_active and current_mode != GameMode.CALM:
@@ -77,7 +74,6 @@ func start_calm(level: int) -> void:
 	hints = 3
 	shuffles = 3
 	is_timer_active = false
-	active_relics.clear()
 	
 	props_updated.emit(undos, hints, shuffles)
 	score_updated.emit(score, 0)
@@ -103,7 +99,6 @@ func start_timed_run() -> void:
 	time_gain_rate = 1.5
 	penalty_seconds = 3.0
 	is_timer_active = true
-	active_relics.clear()
 	
 	props_updated.emit(undos, hints, shuffles)
 	score_updated.emit(score, 0)
@@ -140,7 +135,6 @@ func start_daily_tide() -> void:
 	time_left = 120.0
 	max_time = DEFAULT_MAX_TIME
 	is_timer_active = true
-	active_relics.clear()
 	
 	props_updated.emit(undos, hints, shuffles)
 	score_updated.emit(score, 0)
@@ -154,14 +148,9 @@ func start_daily_tide() -> void:
 ## frozen for the rest of the run.
 func on_stage_started() -> void:
 	is_first_match_of_stage = true
-	porcelain_guard_active = true
 	if current_mode != GameMode.CALM:
 		is_timer_active = true
 		time_updated.emit(time_left, max_time)
-	if has_relic("golden_net"):
-		hints += 1
-		shuffles += 1
-		props_updated.emit(undos, hints, shuffles)
 
 const SanctuaryManager = preload("res://scripts/core/sanctuary_manager.gd")
 
@@ -177,7 +166,6 @@ func snapshot_state() -> Dictionary:
 		"best_flow": best_flow,
 		"time_left": time_left,
 		"misplays": misplays,
-		"porcelain_guard_active": porcelain_guard_active,
 		"is_first_match_of_stage": is_first_match_of_stage
 	}
 
@@ -188,7 +176,6 @@ func restore_state(snap: Dictionary) -> void:
 	best_flow = snap.get("best_flow", best_flow)
 	time_left = snap.get("time_left", time_left)
 	misplays = snap.get("misplays", misplays)
-	porcelain_guard_active = snap.get("porcelain_guard_active", porcelain_guard_active)
 	is_first_match_of_stage = snap.get("is_first_match_of_stage", is_first_match_of_stage)
 	
 	var is_overdrive: bool = is_overdrive_active()
@@ -203,28 +190,21 @@ func register_match(suit: String, is_triple: bool, mastery_level: int = 0,
 	var is_wild_suit: bool = (suit == "flower" or suit == "season")
 	if is_first_match_of_stage:
 		is_first_match_of_stage = false
-		if has_relic("lotus_blessing"):
-			flow_level = 3
-			flow_suit = "" if is_wild_suit else suit
-		else:
-			flow_level = 2 if (is_wild_suit and has_relic("spring_breeze")) else 1
-			flow_suit = "" if is_wild_suit else suit
+		flow_level = 1
+		flow_suit = "" if is_wild_suit else suit
 	else:
 		var can_chain: bool = false
 		if flow_suit.is_empty() or is_wild_suit:
 			can_chain = true
 		elif suit == flow_suit:
 			can_chain = true
-		elif has_relic("river_dragon") and ((flow_suit == "bam" and suit == "char") or (flow_suit == "char" and suit == "bam")):
-			can_chain = true
 		
 		if can_chain:
-			var step: int = 2 if (is_wild_suit and has_relic("spring_breeze")) else 1
-			flow_level = mini(9, flow_level + step)
+			flow_level = mini(9, flow_level + 1)
 			if not is_wild_suit and flow_suit.is_empty():
 				flow_suit = suit
 		else:
-			flow_level = 2 if (is_wild_suit and has_relic("spring_breeze")) else 1
+			flow_level = 1
 			flow_suit = "" if is_wild_suit else suit
 	
 	best_flow = maxi(best_flow, flow_level)
@@ -233,12 +213,12 @@ func register_match(suit: String, is_triple: bool, mastery_level: int = 0,
 	
 	# 2. Score calculation
 	var base: int = 250 if is_triple else 100
-	if is_triple and has_relic("jade_kiln"):
-		base *= 3
 	var flow_mult: int = mini(6, maxi(1, flow_level))
 	var rush_mult: float = 2.0 if StageModifiers.is_rush_active() else 1.0
 	var ogon_mult: float = 1.10 if (current_mode == GameMode.CALM and SanctuaryManager.is_koi_unlocked("ogon")) else 1.0
 	var mastery_mult: float = 1.0 + (float(mastery_level) * 0.05)
+	# score_mult stayed at 1.0 once the Sharper Eye relic went; kept as a field so
+	# a future permanent bonus has somewhere to live.
 	var pts: int = int(round(base * flow_mult * score_mult * rush_mult * ogon_mult * mastery_mult))
 	if is_glass:
 		pts += 500
@@ -249,8 +229,6 @@ func register_match(suit: String, is_triple: bool, mastery_level: int = 0,
 	# time to a countdown that is not counting down.
 	if is_timer_active:
 		var bonus: float = time_gain_rate * (1.6 if is_triple else 1.0)
-		if is_triple and has_relic("jade_kiln"):
-			bonus += 5.0
 		time_left = minf(max_time, time_left + bonus)
 		time_updated.emit(time_left, max_time)
 	
@@ -261,11 +239,6 @@ func register_match(suit: String, is_triple: bool, mastery_level: int = 0,
 
 func register_misplay() -> void:
 	misplays += 1
-	if has_relic("porcelain_guard") and porcelain_guard_active:
-		porcelain_guard_active = false
-		AudioManager.play_misplay()
-		return
-		
 	var misplay_drop: int = 1 if SanctuaryManager.is_koi_unlocked("showa") else 2
 	flow_level = maxi(0, flow_level - misplay_drop)
 	if flow_level == 0:
@@ -273,31 +246,9 @@ func register_misplay() -> void:
 	var is_overdrive: bool = is_overdrive_active()
 	flow_updated.emit(flow_level, flow_suit, is_overdrive)
 	
-	if current_mode != GameMode.CALM and not has_relic("steady_hand"):
+	if current_mode != GameMode.CALM:
 		time_left = maxf(0.0, time_left - penalty_seconds)
 		time_updated.emit(time_left, max_time)
 	
 	AudioManager.play_misplay()
 
-func acquire_relic(relic: Dictionary) -> void:
-	var rid: String = relic.get("id", "")
-	active_relics.append(rid)
-	match rid:
-		"deep_breath":
-			max_time = maxf(max_time, time_left + 60.0)
-			time_left += 60.0
-			time_updated.emit(time_left, max_time)
-		"two_shuffles": shuffles += 2
-		"three_hints": hints += 3
-		"sharper_eye": score_mult += 0.30
-		"long_draw": time_gain_rate += 1.0
-		"steady_hand": penalty_seconds = 0.0
-		"golden_net":
-			hints += 1
-			shuffles += 1
-	
-	props_updated.emit(undos, hints, shuffles)
-	relic_acquired.emit(relic)
-
-func has_relic(relic_id: String) -> bool:
-	return active_relics.has(relic_id)
