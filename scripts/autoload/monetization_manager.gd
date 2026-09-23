@@ -96,8 +96,7 @@ const PRODUCTS: Dictionary = {
 		"desc": "Teal mist water, delicate sakura petals, and rare Asagi koi.",
 		"price_usd": "$0.99",
 		"price_inr": "₹49",
-		"price_str": "₹49 / $0.99 (or 1,500 玉 / 500 ◈)",
-		"jade_cost": 1500,
+		"price_str": "₹49 / $0.99 (or 500 ◈)",
 		"pearl_cost": 500,
 		"is_consumable": false
 	},
@@ -109,8 +108,7 @@ const PRODUCTS: Dictionary = {
 		"desc": "Twilight purple water, glowing crimson caustics, and royal Tancho koi.",
 		"price_usd": "$0.99",
 		"price_inr": "₹49",
-		"price_str": "₹49 / $0.99 (or 1,500 玉 / 500 ◈)",
-		"jade_cost": 1500,
+		"price_str": "₹49 / $0.99 (or 500 ◈)",
 		"pearl_cost": 500,
 		"is_consumable": false
 	}
@@ -285,7 +283,7 @@ func _grant_from_play(purchase_list: Array) -> void:
 		_fulfill_purchase(pid, prod, "iap", true)
 
 ## Withdraws any non-consumable that the save file claims was paid for with money
-## but Google Play does not list. Items bought with in-game pearls or jade are
+## but Google Play does not list. Items bought with in-game pearls are
 ## left alone, since Play has no record of those and never will.
 func _revoke_unconfirmed(owned: Array[String]) -> void:
 	var sources: Dictionary = SaveManager.economy.get("entitlement_source", {})
@@ -300,11 +298,11 @@ func _revoke_unconfirmed(owned: Array[String]) -> void:
 			continue
 
 		var source: String = str(sources.get(pid, "unknown"))
-		var buyable_with_currency: bool = int(prod.get("pearl_cost", 0)) > 0 or int(prod.get("jade_cost", 0)) > 0
+		var buyable_with_currency: bool = int(prod.get("pearl_cost", 0)) > 0
 		# "unknown" means the entitlement predates source tracking or was injected
 		# into the file directly. Trust it only where an in-game purchase is even
 		# possible; products sold for money alone must come from Play.
-		if source == "pearls" or source == "jade":
+		if source == "pearls":
 			continue
 		if source == "unknown" and buyable_with_currency:
 			continue
@@ -468,22 +466,6 @@ func equip_background_theme(theme_id: String) -> void:
 
 func get_active_background_theme() -> String:
 	return String(SaveManager.economy.get("active_background_theme", "auto"))
-
-func buy_background_with_jade(theme_id: String) -> bool:
-	var prod_key := "bg_" + theme_id
-	var cost: int = 1500
-	if PRODUCTS.has(prod_key):
-		cost = int(PRODUCTS[prod_key].get("jade_cost", 1500))
-	if SaveManager.get_jade() >= cost:
-		SaveManager.spend_jade(cost)
-		unlock_background_theme(theme_id)
-		equip_background_theme(theme_id)
-		_mark_entitlement_source(prod_key, "jade")
-		# Currency spent and goods granted: commit both together.
-		SaveManager.save_game()
-		AudioManager.play_win()
-		return true
-	return false
 
 func buy_background_with_pearls(theme_id: String) -> bool:
 	var prod_key := "bg_" + theme_id

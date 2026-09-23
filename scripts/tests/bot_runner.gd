@@ -3,7 +3,7 @@ extends Node
 ## Nine Rivers — Autoplay Test Bot
 ## Boots the real main.tscn, plays Calm Journey levels 1..TARGET_LEVEL through the
 ## genuine tile-click path, and verifies that SaveManager records progression
-## correctly (level pointer, stars, jade, mastery) and that it survives a reload.
+## correctly (level pointer, stars, pearls, mastery) and that it survives a reload.
 ##
 ## Run: godot --headless --audio-driver Dummy --path . scenes/bot_runner.tscn
 
@@ -62,7 +62,7 @@ func _wipe_save() -> void:
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(p))
 	SaveManager.prog = {
 		"level": 1, "best_score": 0, "best_stage": 0, "stars": {},
-		"river_jade": 100, "daily_streak": 0, "last_daily_date": "",
+		"river_jade": 0, "daily_streak": 0, "last_daily_date": "",
 		"streak_shields": 1, "tutorial_completed": true
 	}
 	SaveManager.tile_mastery = {}
@@ -78,7 +78,7 @@ func _run() -> void:
 	print("")
 
 	for lvl in range(1, TARGET_LEVEL + 1):
-		var jade_before: int = SaveManager.get_jade()
+		var jade_before: int = SaveManager.get_pearls()
 		var report: Dictionary = await _play_level(lvl, jade_before)
 		_level_reports.append(report)
 		_verify_level_save(lvl, report)
@@ -203,9 +203,9 @@ func _verify_level_save(lvl: int, r: Dictionary) -> void:
 	if int(SaveManager.prog.get("best_score", 0)) < int(r["score"]):
 		_fail("L%d: best_score %d is below this run's score %d" % [lvl, int(SaveManager.prog.get("best_score", 0)), int(r["score"])])
 
-	var jade_gain: int = SaveManager.get_jade() - int(r["jade_before"])
-	if jade_gain < 50 * expected_stars:
-		_fail("L%d: jade gained %d is below the %d-star reward" % [lvl, jade_gain, expected_stars])
+	var pearl_gain: int = SaveManager.get_pearls() - int(r["jade_before"])
+	if pearl_gain < SaveManager.PEARLS_PER_STAR * expected_stars:
+		_fail("L%d: pearls gained %d is below the %d-star reward" % [lvl, pearl_gain, expected_stars])
 
 	var stars_label: String = "*".repeat(expected_stars) + "-".repeat(3 - expected_stars)
 	print("L%-3d %-14s tiles=%-4d taps=%-4d restarts=%d shuf=%d  [%s]  score=%-8d flow=x%-2d misplays=%-2d  save.level=%d" % [
@@ -248,8 +248,8 @@ func _verify_persistence() -> void:
 	if int(SaveManager.economy.get("pearls", -1)) != int(expect_econ.get("pearls", -2)):
 		_fail("persistence: pearls reloaded as %s, expected %s" % [str(SaveManager.economy.get("pearls")), str(expect_econ.get("pearls"))])
 
-	print("reloaded level=%s  jade=%s  best_score=%s  stars=%d entries  mastery=%d keys  pearls=%s" % [
-		str(SaveManager.prog.get("level")), str(SaveManager.prog.get("river_jade")),
+	print("reloaded level=%s  best_score=%s  stars=%d entries  mastery=%d keys  pearls=%s" % [
+		str(SaveManager.prog.get("level")),
 		str(SaveManager.prog.get("best_score")), reloaded_stars.size(),
 		SaveManager.tile_mastery.size(), str(SaveManager.economy.get("pearls"))
 	])
@@ -275,7 +275,7 @@ func _report() -> void:
 	print("Dead-end restarts   : %d" % total_restarts)
 	print("Dead-end shuffles   : %d" % total_shuffles)
 	print("Final saved level   : %s" % str(SaveManager.prog.get("level")))
-	print("Final River Jade    : %s" % str(SaveManager.prog.get("river_jade")))
+	print("Final Spirit Pearls : %s" % str(SaveManager.get_pearls()))
 	print("Assertion failures  : %d" % _failures.size())
 	if not _failures.is_empty():
 		print("Reproduce with     : --fixed-fps 60 ... -- --seed=%d" % BASE_SEED)

@@ -275,14 +275,13 @@ func show_main_menu() -> void:
 	
 	var cur_lvl: int = int(SaveManager.prog.get("level", 1))
 	var streak: int = int(SaveManager.prog.get("daily_streak", 0))
-	var jade: int = SaveManager.get_jade()
 	var pearls: int = MonetizationManager.get_pearls()
 	
 	# One compact purse line instead of four stacked tallies. The old version
 	# gave the eye four identical rows to read before reaching anything
 	# actionable.
 	var purse := Label.new()
-	purse.text = "%d ◈   ·   %d 玉   ·   %d 日" % [pearls, jade, streak]
+	purse.text = "%d ◈   ·   %d 日" % [pearls, streak]
 	purse.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	UITheme.style_label(purse, "ui", UITheme.FS_CAPTION, UITheme.GOLD_MUTED,
 		UITheme.W_MEDIUM, 2)
@@ -496,7 +495,7 @@ func show_level_clear(level: int, score: int, stars: int) -> void:
 	
 	_add_hairline()
 	_add_sheet_row("Final Score", str(score), UITheme.GOLD_CORE)
-	_add_sheet_row("River Jade Earned", "+%d 玉" % (50 * stars))
+	_add_sheet_row("Spirit Pearls Earned", "+%d ◈" % (SaveManager.PEARLS_PER_STAR * stars))
 	_add_sheet_row("Peak Flow", "×%d" % GameManager.best_flow)
 	_add_separator()
 
@@ -528,7 +527,7 @@ func show_daily_clear(score: int, best_flow: int, streak: int, blessing: int = 0
 	_add_sheet_row("Peak Flow Multiplier", "×%d" % best_flow)
 	_add_sheet_row("River Streak", "%d days" % streak)
 	_add_sheet_row("Daily Tide Blessing",
-		"+%d 玉" % blessing if blessing > 0 else "claimed today")
+		"+%d ◈" % blessing if blessing > 0 else "claimed today")
 
 	_add_separator()
 
@@ -591,7 +590,7 @@ func show_bazaar_modal() -> void:
 	_add_seal_header("Spirit Bazaar", "灵气集市 · Tiles, ponds & offerings", "市")
 
 	var pearls: int = MonetizationManager.get_pearls()
-	_add_purse_line("%d ◈ Spirit Pearls   ·   %d 玉 River Jade" % [pearls, SaveManager.get_jade()])
+	_add_purse_line("%d ◈ Spirit Pearls" % pearls)
 	_add_hairline()
 
 	_add_tile_row("牌", GLYPH_JADE, "Artisan Tile Sets",
@@ -738,8 +737,7 @@ func show_background_catalog_modal() -> void:
 		elif is_unlocked:
 			tag = "Owned"
 		else:
-			# Jade only: the detail screen offers both, and both overflowed here.
-			tag = "1,500 玉"
+			tag = "500 ◈"
 
 		var captured_id: String = bg_id
 		var parts := _split_name(detail["name"])
@@ -789,18 +787,13 @@ func show_background_detail_modal(theme_id: String) -> void:
 				show_background_detail_modal(theme_id)
 		, true)
 	else:
-		# Jade is the currency the player earns by playing, so it leads.
-		_add_tile_row("玉", GLYPH_JADE, "Unlock with River Jade",
-			"Earned at the board", "1,500 玉", func():
-				if MonetizationManager.buy_background_with_jade(theme_id):
+		_add_tile_row("珠", GLYPH_GOLD, "Unlock with Spirit Pearls",
+			"Earned at the board or bought", "500 ◈", func():
+				if MonetizationManager.buy_background_with_pearls(theme_id):
 					show_background_detail_modal(theme_id)
+				else:
+					show_treasury_modal()
 		, true)
-		_add_toggle_row("珠", "Unlock with Spirit Pearls", "500 ◈", func():
-			if MonetizationManager.buy_background_with_pearls(theme_id):
-				show_background_detail_modal(theme_id)
-			else:
-				show_treasury_modal()
-		)
 		_add_toggle_row("購", "Unlock outright · Play Store",
 			MonetizationManager.get_formatted_price("bg_" + theme_id), func():
 				MonetizationManager.buy_product("bg_" + theme_id, func(): show_background_detail_modal(theme_id))

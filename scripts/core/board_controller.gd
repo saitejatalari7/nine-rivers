@@ -18,6 +18,10 @@ const FloatingChipScene = preload("res://scenes/effects/floating_chip.tscn")
 const StageModifiers = preload("res://scripts/core/stage_modifiers.gd")
 const TileLighting = preload("res://scripts/ui/tile_lighting.gd")
 
+## A wild tile pays a small bonus. Was 5 River Jade before the currencies
+## merged; three jade were worth one pearl.
+const WILD_TILE_PEARLS: int = 2
+
 const TW: float = 64.0
 const TH: float = 84.0
 const LAYER_OFF_X: float = 8.0
@@ -429,9 +433,8 @@ func _resolve_matched_set(group: Array[RiverTile]) -> void:
 			has_wild = true
 			break
 	if has_wild:
-		var jade_gain: int = 5
-		SaveManager.add_jade(jade_gain)
-		toast_requested.emit("+%d 玉 River Jade" % jade_gain)
+		SaveManager.add_pearls(WILD_TILE_PEARLS)
+		toast_requested.emit("+%d ◈ Spirit Pearls" % WILD_TILE_PEARLS)
 
 	stage_match_count += 1
 		

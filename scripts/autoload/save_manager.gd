@@ -466,10 +466,20 @@ func _apply_save_data(data: Dictionary) -> bool:
 		settings.merge(loaded_settings, true)
 	if not loaded_econ.is_empty():
 		economy.merge(loaded_econ, true)
+	# After both purses are loaded, not before: the jade balance has to be the
+	# one from the file, and the pearls it converts into have to land on top of
+	# the pearls from the same file.
+	_migrate_jade_to_pearls()
 	return true
+
+## Emitted whenever the purse moves, so the HUD readout does not have to be
+## refreshed by hand at every call site. It was set once when the HUD was built
+## and never again, so pearls earned mid-board did not appear until a restart.
+signal pearls_changed(total: int)
 
 func add_pearls(amount: int) -> void:
 	economy["pearls"] = maxi(0, int(economy.get("pearls", 0)) + amount)
+	pearls_changed.emit(get_pearls())
 	request_save()
 
 func get_pearls() -> int:
@@ -479,30 +489,28 @@ func spend_pearls(amount: int) -> bool:
 	var cur: int = get_pearls()
 	if cur >= amount:
 		economy["pearls"] = cur - amount
+		pearls_changed.emit(get_pearls())
 		request_save()
 		return true
 	return false
 
-func add_jade(amount: int) -> void:
-	# A koi used to add 5% here. Nobody could tell, which is why it went.
-	prog["river_jade"] = int(prog.get("river_jade", 0)) + amount
-	# Batched: jade trickles in several times per board, and record_level_clear()
-	# flushes at the end of every stage anyway.
-	request_save()
+## Spirit Pearls are the only currency now. River Jade earned before this
+## change converts at the rate the shop already implied - a background cost
+## 1,500 jade or 500 pearls - so three jade become one pearl. Runs once; the
+## jade balance is zeroed so it cannot convert twice.
+const JADE_PER_PEARL: int = 3
 
-func get_jade() -> int:
-	return int(prog.get("river_jade", 0))
+func _migrate_jade_to_pearls() -> void:
+	var jade: int = int(prog.get("river_jade", 0))
+	if jade <= 0:
+		return
+	prog["river_jade"] = 0
+	add_pearls(int(floor(float(jade) / float(JADE_PER_PEARL))))
 
-func spend_jade(amount: int) -> bool:
-	var cur: int = get_jade()
-	if cur >= amount:
-		prog["river_jade"] = cur - amount
-		# Batched like spend_pearls(): the caller flushes once the item it paid
-		# for has also been granted, so a crash cannot take the currency without
-		# the goods.
-		request_save()
-		return true
-	return false
+
+## What a cleared level pays, per star. 20 against a 1,500-pearl tile set is
+## about 25 three-starred levels for a theme - earned, not instant.
+const PEARLS_PER_STAR: int = 20
 
 func record_level_clear(lvl: int, score: int, stars_earned: int) -> void:
 	prog["level"] = max(int(prog.get("level", 1)), lvl + 1)
@@ -511,7 +519,7 @@ func record_level_clear(lvl: int, score: int, stars_earned: int) -> void:
 		prog["stars"] = {}
 	var prev_stars: int = int(prog["stars"].get(str(lvl), 0))
 	prog["stars"][str(lvl)] = max(prev_stars, stars_earned)
-	add_jade(50 * stars_earned)
+	add_pearls(PEARLS_PER_STAR * stars_earned)
 	save_game()
 
 ## Returns true only when today has not been counted yet, so the caller can

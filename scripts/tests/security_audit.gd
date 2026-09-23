@@ -127,7 +127,10 @@ func _t01_plaintext_bypass() -> void:
 ## The salt is a compile-time constant in the shipped binary, so the checksum
 ## can be recomputed by anyone who unpacks the APK.
 func _t02_forged_signature_full_unlock() -> void:
-	var prog := {"level": 99, "river_jade": 9999999, "best_score": 99999999, "stars": {}}
+	# No river_jade: that field is retired and now converts INTO pearls on load,
+	# which moved the balance off the exact number this used to compare against
+	# and made a working forge look like a clean pass.
+	var prog := {"level": 99, "best_score": 99999999, "stars": {}}
 	var econ := {"pearls": 9999999, "no_ads_purchased": true,
 		"unlocked_themes": ["classic_jade", "theme_imperial_gold", "theme_obsidian_ink", "theme_cherry_blossom"],
 		"active_tile_theme": "theme_imperial_gold"}
@@ -137,12 +140,11 @@ func _t02_forged_signature_full_unlock() -> void:
 	_load()
 
 	var pearls: int = SaveManager.get_pearls()
-	var jade: int = SaveManager.get_jade()
 	var no_ads: bool = bool(SaveManager.economy.get("no_ads_purchased", false))
-	var vuln: bool = pearls == 9999999 and jade == 9999999 and no_ads
+	var vuln: bool = pearls >= 9999999 and no_ads
 	_finding("T02", "Checksum can be forged with the hardcoded salt", "CRITICAL", vuln,
-		"Signed a forged save using the salt lifted from save_manager.gd:%s. Result: pearls=%d, jade=%d, no_ads=%s, themes=%s. Every paid product was granted and the integrity check passed cleanly." % [
-			"_SALT", pearls, jade, str(no_ads), str(SaveManager.economy.get("unlocked_themes"))])
+		"Signed a forged save using the salt lifted from save_manager.gd:%s. Result: pearls=%d, no_ads=%s, themes=%s. Every paid product was granted and the integrity check passed cleanly." % [
+			"_SALT", pearls, str(no_ads), str(SaveManager.economy.get("unlocked_themes"))])
 
 ## The checksum covers only three fields. Everything else is unsigned.
 func _t03_checksum_scope_gap() -> void:
@@ -178,7 +180,7 @@ func _t03_checksum_scope_gap() -> void:
 	# forged cosmetics, so ask the code that actually gates them.
 	var honoured: bool = MonetizationManager.is_theme_unlocked("theme_imperial_gold")
 	var vuln: bool = honoured
-	_finding("T03", "Checksum covers only jade / pearls / no_ads", "CRITICAL", vuln,
+	_finding("T03", "Checksum covers only the purse and no_ads", "CRITICAL", vuln,
 		"With the signature left valid, tampered: level=%s (clamped from 99), streak=%s, shields=%s, stars=%d entries, paid themes honoured by is_theme_unlocked()=%s, tile mastery level %d, koi=%s. The file layer still grants unsigned cosmetics; they are withdrawn at runtime by the Google Play reconcile, not by the loader." % [
 			str(SaveManager.prog.get("level")), str(SaveManager.prog.get("daily_streak")),
 			str(SaveManager.prog.get("streak_shields")), SaveManager.prog.get("stars", {}).size(),
@@ -199,8 +201,8 @@ func _t04_tamper_response_leaves_paid_goods() -> void:
 	var level_kept: int = int(SaveManager.prog.get("level", 1))
 	var vuln: bool = MonetizationManager.is_theme_unlocked("theme_imperial_gold") or level_kept == 77
 	_finding("T04", "Failed integrity check still applies the payload", "HIGH", vuln,
-		"Deliberately broken checksum. Clamped correctly: pearls=%d, jade=%d, no_ads=%s. Still applied: level=%d, paid tile themes=%s, background themes=%s. The mismatch branch is a soft clamp on three fields, not a rejection of the file." % [
-			SaveManager.get_pearls(), SaveManager.get_jade(),
+		"Deliberately broken checksum. Clamped correctly: pearls=%d, no_ads=%s. Still applied: level=%d, paid tile themes=%s, background themes=%s. The mismatch branch is a soft clamp on three fields, not a rejection of the file." % [
+			SaveManager.get_pearls(),
 			str(SaveManager.economy.get("no_ads_purchased")), level_kept,
 			str(themes), str(bg_themes)])
 
@@ -232,13 +234,12 @@ func _t06_negative_and_overflow_values() -> void:
 	_load()
 
 	var neg_pearls: int = SaveManager.get_pearls()
-	var neg_jade: int = SaveManager.get_jade()
 	var lvl: int = int(SaveManager.prog.get("level", 1))
 	var stars: int = int(SaveManager.prog.get("stars", {}).get("1", 0))
-	var vuln: bool = neg_pearls < 0 or neg_jade < 0 or lvl < 1 or stars > 3
+	var vuln: bool = neg_pearls < 0 or lvl < 1 or stars > 3
 	_finding("T06", "No range clamping on loaded numbers", "MEDIUM", vuln,
-		"Loaded pearls=%d, jade=%d, level=%d, stars[1]=%d. Negative balances make spend_pearls()/spend_jade() permanently refuse purchases. level<1 is passed straight into _start_calm_mode(), where `int((level-1)/2)` goes negative; GDScript wraps negative array indices, so level=-5 silently deals the `dragon_gate` layout instead of `quick` (verified). Stars above 3 inflate the level-select total." % [
-			neg_pearls, neg_jade, lvl, stars])
+		"Loaded pearls=%d, level=%d, stars[1]=%d. A negative balance makes spend_pearls() permanently refuse purchases. level<1 is passed straight into _start_calm_mode(), where `int((level-1)/2)` goes negative; GDScript wraps negative array indices, so level=-5 silently deals the `dragon_gate` layout instead of `quick` (verified). Stars above 3 inflate the level-select total." % [
+			neg_pearls, lvl, stars])
 
 ## A half-written or corrupted file should not silently erase a player's profile.
 func _t07_corrupt_file_recovery() -> void:
@@ -252,7 +253,7 @@ func _t07_corrupt_file_recovery() -> void:
 	# generation exists alongside the live file.
 	_reset_manager()
 	SaveManager.prog["level"] = 25
-	SaveManager.prog["river_jade"] = 5000
+	SaveManager.economy["pearls"] = 5000
 	SaveManager.save_game()
 	SaveManager.save_game()
 
@@ -291,7 +292,7 @@ func _t09_write_amplification() -> void:
 	var t0: int = Time.get_ticks_usec()
 	for i in range(144):
 		SaveManager.record_tile_mastery("dot", (i % 9) + 1)
-		SaveManager.add_jade(5)
+		SaveManager.add_pearls(5)
 	var elapsed_ms: float = float(Time.get_ticks_usec() - t0) / 1000.0
 
 	# If the file on disk is byte-identical, none of those 288 calls triggered a
@@ -299,7 +300,7 @@ func _t09_write_amplification() -> void:
 	var after: String = _file_digest(SAVE_PATH)
 	var batched: bool = before == after
 	_finding("T09", "One full encrypted write per tile cleared", "MEDIUM", not batched,
-		"Simulated clearing a 144-tile Nine Rivers board: 144 record_tile_mastery() calls plus 144 add_jade() calls took %.1f ms and produced %s. Both now use the 4s batching in request_save(); record_level_clear() still flushes at the end of every stage, and purchases still commit immediately." % [
+		"Simulated clearing a 144-tile Nine Rivers board: 144 record_tile_mastery() calls plus 144 add_pearls() calls took %.1f ms and produced %s. Both now use the 4s batching in request_save(); record_level_clear() still flushes at the end of every stage, and purchases still commit immediately." % [
 			elapsed_ms, ("zero file writes" if batched else "at least one file write")])
 
 func _file_digest(path: String) -> String:

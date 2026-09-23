@@ -62,14 +62,14 @@ func _wipe_all() -> void:
 		if FileAccess.file_exists(p):
 			DirAccess.remove_absolute(ProjectSettings.globalize_path(p))
 
-func _fresh_profile(level: int, jade: int) -> void:
+func _fresh_profile(level: int, pearls_seed: int) -> void:
 	SaveManager.prog = {
 		"level": level, "best_score": 1000, "best_stage": 0, "stars": {"1": 3},
-		"river_jade": jade, "daily_streak": 0, "last_daily_date": "",
+		"river_jade": 0, "daily_streak": 0, "last_daily_date": "",
 		"streak_shields": 1, "tutorial_completed": true
 	}
 	SaveManager.economy = {
-		"pearls": 250, "no_ads_purchased": false,
+		"pearls": pearls_seed, "no_ads_purchased": false,
 		"unlocked_themes": ["classic_jade"], "active_tile_theme": "classic_jade",
 		"unlocked_background_themes": ["emerald_pond", "moonlit_river", "autumn_stream"],
 		"active_background_theme": "auto", "active_mat_theme": "river_felt",
@@ -274,13 +274,13 @@ func _v2_level_clear_survives_hostile_save() -> void:
 		"economy": {"pearls": 250}, "version": 2
 	})
 	SaveManager.load_game()
-	var jade_before: int = SaveManager.get_jade()
+	var jade_before: int = SaveManager.get_pearls()
 	SaveManager.record_level_clear(1, 500, 3)
 
 	var stars_written: int = int(SaveManager.prog.get("stars", {}).get("1", -1))
-	var jade_paid: bool = SaveManager.get_jade() > jade_before
+	var jade_paid: bool = SaveManager.get_pearls() > jade_before
 	_check("level clear works after a hostile save", stars_written == 3 and jade_paid,
-		"stars[1]=%d recorded, jade %d -> %d" % [stars_written, jade_before, SaveManager.get_jade()])
+		"stars[1]=%d recorded, pearls %d -> %d" % [stars_written, jade_before, SaveManager.get_pearls()])
 
 func _v3_out_of_range_numbers_clamped() -> void:
 	_write_hostile({
@@ -292,11 +292,11 @@ func _v3_out_of_range_numbers_clamped() -> void:
 
 	var lvl: int = int(SaveManager.prog.get("level", 0))
 	var stars: Dictionary = SaveManager.prog.get("stars", {})
-	var ok: bool = SaveManager.get_pearls() >= 0 and SaveManager.get_jade() >= 0 \
+	var ok: bool = SaveManager.get_pearls() >= 0 \
 		and lvl >= 1 and int(stars.get("1", 0)) <= 3 and not stars.has("9999")
 	_check("impossible numbers are clamped", ok,
-		"level=%d pearls=%d jade=%d stars[1]=%d out-of-range level key dropped=%s" % [
-			lvl, SaveManager.get_pearls(), SaveManager.get_jade(),
+		"level=%d pearls=%d stars[1]=%d out-of-range level key dropped=%s" % [
+			lvl, SaveManager.get_pearls(),
 			int(stars.get("1", 0)), str(not stars.has("9999"))])
 
 func _v4_unknown_ids_rejected() -> void:
@@ -335,11 +335,11 @@ func _v5_int_types_stable_across_reload() -> void:
 		SaveManager.load_game()
 
 	var lvl: Variant = SaveManager.prog.get("level")
-	var jade: Variant = SaveManager.prog.get("river_jade")
-	var ok: bool = lvl is int and jade is int and int(lvl) == 26 and int(jade) == 5655
+	var purse: Variant = SaveManager.economy.get("pearls")
+	var ok: bool = lvl is int and purse is int and int(lvl) == 26 and int(purse) == 5655
 	_check("whole numbers stay whole across reloads", ok,
-		"after 3 save/load cycles level=%s (%s) jade=%s (%s)" % [
-			str(lvl), type_string(typeof(lvl)), str(jade), type_string(typeof(jade))])
+		"after 3 save/load cycles level=%s (%s) pearls=%s (%s)" % [
+			str(lvl), type_string(typeof(lvl)), str(purse), type_string(typeof(purse))])
 
 ## Every profile on the owner's and the testers' devices was written by a build
 ## that stamped version 2 and signed only jade / pearls / no_ads. The loader now
@@ -347,8 +347,11 @@ func _v5_int_types_stable_across_reload() -> void:
 ## its own terms, shipping this would wipe all of them.
 func _v6_version_2_profile_still_loads() -> void:
 	_wipe_all()
-	_fresh_profile(33, 777)
-	SaveManager.economy["pearls"] = 400
+	_fresh_profile(33, 400)
+	# A real v2 profile held River Jade. That currency no longer exists, so this
+	# is the fixture that proves an existing player's balance arrives as pearls
+	# instead of being dropped by the upgrade.
+	SaveManager.prog["river_jade"] = 777
 	SaveManager.economy["unlocked_themes"] = ["classic_jade", "theme_obsidian_ink"]
 	SaveManager.economy["entitlement_source"] = {"theme_obsidian_ink": "pearls"}
 	SaveManager.sanctuary = {"clarity_level": 4, "koi_unlocked": ["kohaku", "sanke"], "decorations": ["bamboo_fountain"]}
@@ -371,14 +374,14 @@ func _v6_version_2_profile_still_loads() -> void:
 	SaveManager.load_game()
 
 	var ok: bool = int(SaveManager.prog.get("level", 0)) == 33 \
-		and SaveManager.get_jade() == 777 \
-		and SaveManager.get_pearls() == 400 \
+		and int(SaveManager.prog.get("river_jade", -1)) == 0 \
+		and SaveManager.get_pearls() == 400 + 777 / SaveManager.JADE_PER_PEARL \
 		and SaveManager.economy.get("unlocked_themes", []).has("theme_obsidian_ink") \
 		and SaveManager.sanctuary.get("koi_unlocked", []).has("sanke") \
 		and int(SaveManager.tile_mastery.get("dot_1", 0)) == 42
 	_check("a version 2 profile survives the upgrade", ok,
-		"level=%s jade=%d pearls=%d themes=%s koi=%s mastery=%s" % [
-			str(SaveManager.prog.get("level")), SaveManager.get_jade(), SaveManager.get_pearls(),
+		"level=%s pearls=%d themes=%s koi=%s mastery=%s" % [
+			str(SaveManager.prog.get("level")), SaveManager.get_pearls(),
 			str(SaveManager.economy.get("unlocked_themes")), str(SaveManager.sanctuary.get("koi_unlocked")),
 			str(SaveManager.tile_mastery.get("dot_1"))])
 

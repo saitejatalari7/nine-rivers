@@ -58,13 +58,14 @@ func _ready() -> void:
 	assert(GameManager.misplays == 1, "Misplays must be 1")
 	print("[PASS] Misplay Flow reset verified.")
 	
-	# 7. Test Save & Jade Persistence
-	var initial_jade := SaveManager.get_jade()
+	# 7. Test Save & Pearl Persistence
+	var initial_pearls: int = SaveManager.get_pearls()
 	SaveManager.record_level_clear(1, 2500, 3)
-	assert(SaveManager.get_jade() == initial_jade + 150, "3 stars should grant +150 River Jade")
+	assert(SaveManager.get_pearls() == initial_pearls + SaveManager.PEARLS_PER_STAR * 3,
+		"3 stars should grant %d Spirit Pearls" % (SaveManager.PEARLS_PER_STAR * 3))
 	assert(int(SaveManager.prog["level"]) >= 2, "Next level unlocked")
-	print("[PASS] Persistence verified: Level %d unlocked, %d Jade in bank." % [
-		SaveManager.prog["level"], SaveManager.get_jade()
+	print("[PASS] Persistence verified: Level %d unlocked, %d Pearls in bank." % [
+		SaveManager.prog["level"], SaveManager.get_pearls()
 	])
 	
 	# 8. Test Audio Clacks & Shatter Sounds
@@ -240,9 +241,9 @@ func _ready() -> void:
 	# Sanke (+5% jade), Ogon (+10% Calm score), Dragon Koi (Overdrive at 6) and
 	# Showa (gentler misplay) were all permanent, invisible percentages. They
 	# are gone, so the assertions are that the plain numbers hold.
-	var before_jade := SaveManager.get_jade()
-	SaveManager.add_jade(100)
-	assert(SaveManager.get_jade() == before_jade + 100, "Jade must be awarded exactly, with no hidden bonus (got %d)" % (SaveManager.get_jade() - before_jade))
+	var before_pearls: int = SaveManager.get_pearls()
+	SaveManager.add_pearls(100)
+	assert(SaveManager.get_pearls() == before_pearls + 100, "Pearls must be awarded exactly, with no hidden bonus (got %d)" % (SaveManager.get_pearls() - before_pearls))
 
 	GameManager.start_calm(1)
 	var plain_pts := GameManager.register_match("bam", false)
@@ -500,7 +501,7 @@ func _ready() -> void:
 	# at all was the T04 finding. So the test is that nothing moves.
 	SaveManager.economy["no_ads_purchased"] = false
 	var pearls_before: int = SaveManager.get_pearls()
-	var jade_before: int = SaveManager.get_jade()
+	var pearls_snapshot: int = SaveManager.get_pearls()
 	var fake_tampered_data := {
 		"version": SaveManager.CURRENT_VERSION,
 		"prog": {"river_jade": 999999},
@@ -511,7 +512,7 @@ func _ready() -> void:
 	assert(accepted == false, "A save with a bad checksum must be refused")
 	assert(SaveManager.economy["no_ads_purchased"] == false, "A refused save must not grant no_ads")
 	assert(SaveManager.get_pearls() == pearls_before, "A refused save must not change pearls")
-	assert(SaveManager.get_jade() == jade_before, "A refused save must not change jade")
+	assert(SaveManager.get_pearls() == pearls_snapshot, "A refused save must not change the purse")
 	print("[PASS] Security Anti-Tamper & Checksum Integrity verified (forged save refused, state untouched).")
 	
 	# 30. Test Tile Preview Generation & Theme Override Rendering
@@ -529,9 +530,9 @@ func _ready() -> void:
 	assert(MonetizationManager.is_background_theme_unlocked("autumn_stream") == true, "Autumn stream must be free & unlocked")
 	MonetizationManager.equip_background_theme("moonlit_river")
 	assert(MonetizationManager.get_active_background_theme() == "moonlit_river", "Moonlit river must be equipped")
-	SaveManager.add_jade(2000)
-	var bought_spring := MonetizationManager.buy_background_with_jade("misty_spring")
-	assert(bought_spring == true, "Should unlock misty_spring with jade")
+	SaveManager.add_pearls(2000)
+	var bought_spring: bool = MonetizationManager.buy_background_with_pearls("misty_spring")
+	assert(bought_spring == true, "Should unlock misty_spring with pearls")
 	assert(MonetizationManager.is_background_theme_unlocked("misty_spring") == true, "Misty spring must now be unlocked")
 	assert(MonetizationManager.get_active_background_theme() == "misty_spring", "Misty spring must be active after buy")
 	MonetizationManager.equip_background_theme("auto")

@@ -90,6 +90,7 @@ func _init_dynamic_hud_elements() -> void:
 	UITheme.style_button(btn_pearls, true, 16)
 	btn_pearls.add_theme_font_size_override("font_size", UITheme.FS_BODY)
 	btn_pearls.pressed.connect(func(): pearls_clicked.emit())
+	SaveManager.pearls_changed.connect(_on_pearls_changed)
 	$TopBar.add_child(btn_pearls)
 	$TopBar.move_child(btn_pearls, 1) # Positioned between Menu and Readout
 	
@@ -306,3 +307,8 @@ func show_toast(msg: String) -> void:
 	t.tween_property(toast_panel, "modulate:a", 1.0, 0.12)
 	t.tween_interval(1.8)
 	t.tween_property(toast_panel, "modulate:a", 0.0, 0.25)
+
+
+func _on_pearls_changed(total: int) -> void:
+	if is_instance_valid(btn_pearls):
+		btn_pearls.text = "◈ %d" % total
