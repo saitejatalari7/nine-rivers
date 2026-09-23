@@ -39,3 +39,36 @@ Calm rather than dead-end.
 
 Files: `scripts/autoload/save_manager.gd`, `scripts/main.gd`,
 `scripts/ui/modal_controller.gd`
+
+---
+
+## Resolution — 2026-09-23
+
+    Calm          uncapped, 350 levels
+    Daily Tide    one board a day
+    Time Rapids   three runs a day
+
+Both counters key off the UTC date the daily already used, so there is one
+scheme rather than two. Only a LATER date resets them: winding the device clock
+backwards and forwards cannot refill the runs, which is the trap the rewarded-ad
+counter had and which is now tested for.
+
+The menu rows carry their own state - "3 left" or "Spent", "Ready" or "Done" -
+and go quiet when there is nothing to start, rather than letting a player begin
+a run that is refused a moment later. The cap is also enforced where the run
+actually starts, because the signal can arrive from a stale screen.
+
+Calm is deliberately untouched. It is the release valve: when both timed modes
+are spent there is still 350 levels of somewhere to go, and without that a cap
+is just a locked door.
+
+`play_caps_test` covers the count, exhaustion, the backwards clock, a genuine
+new day, and that Calm has no counter of its own.
+
+`ui_nav_audit` starts several timed runs in one pass and began failing the
+Daily flow, because the second start was refused. It clears the counters
+between flows now - it is an audit of navigation, and the caps have their own
+test.
+
+Not done: nothing yet tells the player *when* the runs come back. "Back
+tomorrow" is true but vague, and a countdown or a reset time would be kinder.

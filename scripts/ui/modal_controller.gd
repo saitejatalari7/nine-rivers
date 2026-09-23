@@ -313,17 +313,28 @@ func show_main_menu() -> void:
 		"%d chapters" % StagePlan.CHAPTERS,
 		"%d/%d" % [cur_lvl, StagePlan.TOTAL_LEVELS], func(): show_level_select())
 
-	_add_tile_row("急", UITheme.RED_CINNABAR, "Timed Rapids", "Roguelite run",
-		"", func():
+	# Both timed modes run out for the day. The row says how many are left and
+	# goes quiet when there are none, rather than letting a player start a run
+	# that is refused a moment later.
+	var runs_left: int = SaveManager.rapids_runs_left()
+	_add_tile_row("急", UITheme.RED_CINNABAR, "Timed Rapids",
+		"Three runs a day" if runs_left > 0 else "Back tomorrow",
+		"%d left" % runs_left if runs_left > 0 else "Spent", func():
+			if SaveManager.rapids_runs_left() <= 0:
+				return
 			hide_modal()
 			start_run_requested.emit()
-	)
+	, runs_left > 0)
 
-	_add_tile_row("潮", Color("#28527a"), "The Daily Tide", "Global challenge",
-		"", func():
+	var daily_done: bool = SaveManager.daily_done_today()
+	_add_tile_row("潮", Color("#28527a"), "The Daily Tide",
+		"One board a day" if not daily_done else "Back tomorrow",
+		"Ready" if not daily_done else "Done", func():
+			if SaveManager.daily_done_today():
+				return
 			hide_modal()
 			start_daily_requested.emit()
-	)
+	, not daily_done)
 
 	_add_tile_row("市", Color("#9e6d19"), "Spirit Bazaar", "Tiles & ponds",
 		"%d ◈" % pearls, func(): show_bazaar_modal())

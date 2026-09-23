@@ -128,6 +128,12 @@ func _restore_profile() -> void:
 
 func _reset() -> void:
 	_restore_profile()
+	# The timed modes are capped per day, and this file starts several of them.
+	# Clearing the counters keeps the audit about navigation; the caps have their
+	# own test.
+	SaveManager.prog["last_daily_date"] = ""
+	SaveManager.prog["rapids_runs_today"] = 0
+	SaveManager.prog["last_rapids_date"] = ""
 	main._return_home()
 	await _settle()
 

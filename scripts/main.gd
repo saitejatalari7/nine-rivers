@@ -275,6 +275,13 @@ func _start_calm_mode(level: int) -> void:
 		tutorial.start_tutorial()
 
 func _start_run_mode() -> void:
+	# The menu hides the row when the runs are spent, but the signal can also
+	# arrive from a stale screen, so the cap is enforced where the run actually
+	# starts rather than only where it is offered.
+	if not SaveManager.record_rapids_start():
+		hud.show_toast("No Rapids runs left today. Back tomorrow.")
+		_return_home()
+		return
 	board.visible = true
 	hud.visible = true
 	GameManager.start_timed_run()
@@ -317,6 +324,10 @@ static func daily_layout_for_seed(seed_value: int) -> String:
 	return pool[h % pool.size()]
 
 func _start_daily_mode() -> void:
+	if SaveManager.daily_done_today():
+		hud.show_toast("Today's Tide is cleared. Back tomorrow.")
+		_return_home()
+		return
 	board.visible = true
 	hud.visible = true
 	GameManager.start_daily_tide()

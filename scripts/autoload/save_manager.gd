@@ -13,6 +13,8 @@ var prog: Dictionary = {
 	"stars": {},
 	"river_jade": 100,
 	"daily_streak": 0,
+	"rapids_runs_today": 0,
+	"last_rapids_date": "",
 	"last_daily_date": "",
 	"streak_shields": 1,
 	"tutorial_completed": false
@@ -293,6 +295,8 @@ func _sanitize_prog(raw: Variant) -> Dictionary:
 	if d.has("best_stage"): out["best_stage"] = _vint(d["best_stage"], 0, 0)
 	if d.has("river_jade"): out["river_jade"] = _vint(d["river_jade"], 0, 0)
 	if d.has("daily_streak"): out["daily_streak"] = _vint(d["daily_streak"], 0, 0)
+	if d.has("rapids_runs_today"): out["rapids_runs_today"] = _vint(d["rapids_runs_today"], 0, 0, RAPIDS_RUNS_PER_DAY)
+	if d.has("last_rapids_date"): out["last_rapids_date"] = _vstr(d["last_rapids_date"], "")
 	if d.has("streak_shields"): out["streak_shields"] = _vint(d["streak_shields"], 0, 0, 99)
 	if d.has("last_daily_date"): out["last_daily_date"] = _vstr(d["last_daily_date"], "")
 	if d.has("tutorial_completed"): out["tutorial_completed"] = _vbool(d["tutorial_completed"], false)
@@ -533,6 +537,48 @@ func record_level_clear(lvl: int, score: int, stars_earned: int) -> void:
 ## pay the daily blessing exactly once. The streak always had this guard; the
 ## jade grant did not, because it lived inside the clear screen and was paid
 ## out every time that screen was drawn.
+## Both timed modes run out. Calm is the uncapped one, so there is always
+## somewhere to go when these are spent; without that the cap would just be a
+## locked door.
+const RAPIDS_RUNS_PER_DAY: int = 3
+
+func _today_utc() -> String:
+	var dt := Time.get_date_dict_from_system(true)
+	return "%04d-%02d-%02d" % [dt["year"], dt["month"], dt["day"]]
+
+
+## Rolls the counter over on a new day. Only a LATER date resets it, so winding
+## the device clock backwards and forwards cannot refill the runs - the same
+## trap the rewarded-ad counter had.
+func _roll_rapids_day() -> void:
+	var today := _today_utc()
+	var last := str(prog.get("last_rapids_date", ""))
+	if last == today:
+		return
+	if last.is_empty() or today > last:
+		prog["last_rapids_date"] = today
+		prog["rapids_runs_today"] = 0
+
+
+func rapids_runs_left() -> int:
+	_roll_rapids_day()
+	return maxi(0, RAPIDS_RUNS_PER_DAY - int(prog.get("rapids_runs_today", 0)))
+
+
+func record_rapids_start() -> bool:
+	if rapids_runs_left() <= 0:
+		return false
+	prog["rapids_runs_today"] = int(prog.get("rapids_runs_today", 0)) + 1
+	request_save()
+	return true
+
+
+## The daily is one board a day. record_daily_play() already refuses to count a
+## second clear, but nothing stopped the board being dealt again.
+func daily_done_today() -> bool:
+	return str(prog.get("last_daily_date", "")) == _today_utc()
+
+
 func record_daily_play() -> bool:
 	var dt := Time.get_date_dict_from_system(true)
 	var today_str := "%04d-%02d-%02d" % [dt["year"], dt["month"], dt["day"]]
