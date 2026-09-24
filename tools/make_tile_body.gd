@@ -72,8 +72,11 @@ const STYLES := {
 	# rather than being dropped, and the face goes near-white to carry dark ink.
 	"blossom": {
 		"out": "tile_cherry_blossom.png",
-		"top": Color(0.996, 0.976, 0.980),
-		"bot": Color(0.937, 0.890, 0.906),
+		# A real blush face, not white. Dark ink only needs the face to stay light,
+		# not colourless - at 11.96:1 there was room to put the pink back and still
+		# sit far above the 3.0 floor.
+		"top": Color(0.976, 0.878, 0.898),
+		"bot": Color(0.925, 0.792, 0.824),
 		"grain": 0.012, "cloud": 0.026,
 		# The rim tints rather than shifts value: a darker blush is still blush,
 		# where the rose frame has to be a different colour to read as one.
