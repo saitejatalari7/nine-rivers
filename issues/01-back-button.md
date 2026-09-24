@@ -1,9 +1,9 @@
 # 01 — Android back button does nothing on device
 
-**Status:** PENDING — blocks release
+**Status:** RESOLVED — 2026-09-24
 **Raised:** 2026-09-21
 **Last reviewed:** 2026-09-23
-**Resolved:** —
+**Resolved:** 2026-09-24, confirmed on device
 
 **Blocks release: yes.** Owner-reported, reproduced on hardware only.
 
@@ -50,3 +50,26 @@ Also worth capturing: whether the device uses gesture navigation or 3-button,
 the phone model, and the Android version.
 
 Files: `scripts/main.gd`, `android/build/src/main/AndroidManifest.xml`
+
+---
+
+## Resolution — 2026-09-24
+
+Owner confirmed from device testing: back works.
+
+Nothing was changed to make it work. The handling that ships today is the
+third attempt - moved from `_unhandled_input` to `_input` so a focused Button
+cannot eat the key first, with a 250ms debounce because the notification can
+arrive twice for one press. That was already in the diagnostic build; it had
+simply never been confirmed on hardware, so the issue stayed open on the
+assumption it was still broken.
+
+Behaviour on device: back opens the pause menu from a board, walks one screen
+back through modals, and is deliberately inert on the main menu. Back never
+quits the game - losing a session to a stray gesture is worse than having no
+gesture to quit with.
+
+The `BACK_DIAGNOSTIC` banner is off ([02](02-back-diagnostic-still-on.md)), so
+a future regression here will be silent. `ui_nav_audit` drives the same
+`_handle_back_action()` the device does and asserts every screen has a way
+home, which is the only guard left.
