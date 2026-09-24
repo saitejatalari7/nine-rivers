@@ -68,6 +68,7 @@ func _ready() -> void:
 		if zen_background and zen_background.has_method("set_quiet"):
 			zen_background.set_quiet(quiet))
 	modal.replay_tutorial_requested.connect(_on_replay_tutorial)
+	modal.quit_requested.connect(_quit_game)
 	modal.resume_session_requested.connect(func():
 		if not _resume_session():
 			_start_calm_mode(int(SaveManager.prog.get("level", 1))))
@@ -182,7 +183,11 @@ func _handle_back_action(route: String = "unknown") -> void:
 			outcome = "modal:%s" % modal._current_screen
 			modal.handle_back_pressed()
 		else:
-			outcome = "modal:main (ignored)"
+			# The root screen. Back quits from here, which is the Android
+			# convention, and there is nothing to lose: no board is in play on the
+			# main menu. Anywhere else it navigates rather than exits.
+			outcome = "modal:main -> quit"
+			_quit_game()
 	elif board.visible:
 		outcome = "board->pause"
 		_on_menu_clicked()
@@ -250,6 +255,21 @@ func _on_tile_matched_ripple(world_pos: Vector2) -> void:
 func _on_theme_changed(theme_data: Dictionary, new_level: int) -> void:
 	if new_level > 1 and hud:
 		hud.show_toast("Realm: %s" % theme_data.get("name", ""))
+
+## Leaves the game. Flushes first: the profile batches its writes, so quitting
+## on an unflushed one would lose whatever changed in the last few seconds.
+func _quit_game() -> void:
+	quit_attempts += 1
+	if quit_suppressed:
+		return
+	SaveManager.save_game()
+	get_tree().quit()
+
+## Test-only: lets an audit drive the back gesture at the main menu without
+## taking the harness down with it. The counter is what an audit asserts on,
+## since a suppressed quit is otherwise indistinguishable from nothing at all.
+var quit_suppressed: bool = false
+var quit_attempts: int = 0
 
 func _return_home() -> void:
 	# Leaving for the menu ends the board. Keeping the session here would offer

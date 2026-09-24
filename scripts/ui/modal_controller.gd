@@ -14,6 +14,8 @@ signal deadlock_retry()
 signal resume_game_requested()
 ## The board the player was on when the app closed, not the pause menu's Resume.
 signal resume_session_requested()
+## Leaving the game entirely, from the main menu only.
+signal quit_requested()
 signal return_home_requested()
 signal replay_tutorial_requested()
 signal background_quiet_changed(quiet: bool)
@@ -358,6 +360,13 @@ func show_main_menu() -> void:
 		"", func():
 			_settings_from_pause = false
 			show_settings_menu())
+
+	# Quiet, and last. There was no way out of the game at all: back is inert
+	# everywhere else by design, and the main menu offered nothing.
+	_add_separator()
+	_add_toggle_row("Quit", "›", func():
+			quit_requested.emit()
+	, UITheme.IVORY_MUTED)
 
 	show_modal()
 

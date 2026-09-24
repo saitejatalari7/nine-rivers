@@ -69,6 +69,9 @@ func _boot() -> void:
 	_snapshot_profile()
 
 	main = load("res://scenes/main.tscn").instantiate()
+	# Every back this audit drives would otherwise quit the moment it reaches the
+	# main menu, taking the audit down with it. Attempts are still counted.
+	main.quit_suppressed = true
 	add_child(main)
 	await get_tree().process_frame
 	await get_tree().process_frame
@@ -362,17 +365,22 @@ func _check_reachability() -> void:
 	if ProjectSettings.get_setting("application/config/quit_on_go_back", true):
 		_fail("quit_on_go_back is on: the Android back gesture closes the game "
 			+ "instead of opening the pause menu.")
-	# Back no longer leaves the game from the main menu. It used to arm a
-	# two-press exit; losing a session to a stray gesture was worse than having
-	# no gesture to quit with. So the check is that back is inert here, and
-	# above all that it does not navigate somewhere unexpected.
+	# Back leaves the game from the main menu and only from there. It is the
+	# Android convention and nothing is lost: no board is in play here. What must
+	# not happen is back navigating somewhere unexpected instead.
+	#
+	# The quit itself is suppressed - an audit that really quit would take itself
+	# down at this line and report nothing.
 	await _goto({"builder": "show_main_menu", "args": []})
+	var before: int = main.quit_attempts
 	main._handle_back_action()
 	await _settle()
 	if _state_key() != HOME:
-		_fail("main menu: back moved off the main menu; it should do nothing there.")
+		_fail("main menu: back moved off the main menu; it should quit, not navigate.")
+	elif main.quit_attempts == before:
+		_fail("main menu: back did nothing; it should quit the game.")
 	else:
-		print("  main menu: back is inert, as intended (verified)")
+		print("  main menu: back quits rather than navigating (verified)")
 
 # ---------------------------------------------------------------- daily tide
 
