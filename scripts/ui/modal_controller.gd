@@ -327,7 +327,7 @@ func show_main_menu() -> void:
 	# that is refused a moment later.
 	var runs_left: int = SaveManager.rapids_runs_left()
 	_add_tile_row(UITheme.RED_CINNABAR, "Timed Mode",
-		"Three runs a day" if runs_left > 0 else "Back tomorrow",
+		"Three runs a day" if runs_left > 0 else SaveManager.time_until_reset(),
 		"%d left" % runs_left if runs_left > 0 else "Spent", func():
 			if SaveManager.rapids_runs_left() <= 0:
 				return
@@ -337,7 +337,7 @@ func show_main_menu() -> void:
 
 	var daily_done: bool = SaveManager.daily_done_today()
 	_add_tile_row(Color("#28527a"), "Daily Puzzle",
-		"One board a day" if not daily_done else "Back tomorrow",
+		"One board a day" if not daily_done else SaveManager.time_until_reset(),
 		"Ready" if not daily_done else "Done", func():
 			if SaveManager.daily_done_today():
 				return
@@ -629,7 +629,7 @@ func show_game_over(reason: String) -> void:
 
 	_add_separator()
 	_add_toggle_row("Share Scorecard", "›", func():
-		var share_text := "Nine Rivers (九河)\nFlow: ×%d\nScore: %s\nStages: %d" % [
+		var share_text := "Nine Rivers\nFlow: ×%d\nScore: %s\nStages: %d" % [
 			GameManager.best_flow, GameManager.score, GameManager.current_stage_no - 1
 		]
 		DisplayServer.clipboard_set(share_text)
@@ -639,9 +639,9 @@ func show_game_over(reason: String) -> void:
 	, UITheme.IVORY_MUTED)
 	show_modal()
 
-## Koi are permanent buffs bought with River Jade, so the row leads with what
-## the blessing DOES. They used to sit in a separate pond scene alongside
-## cosmetic decorations that never read as anything.
+## Four rows, one currency. It was five rows across two currencies, which is
+## why nobody could tell the Treasury from the Blessings - the split was by what
+## each screen took, not by what the player wanted.
 func show_bazaar_modal() -> void:
 	_current_screen = "bazaar"
 	_clear_content()
@@ -650,15 +650,21 @@ func show_bazaar_modal() -> void:
 
 	var pearls: int = MonetizationManager.get_pearls()
 	_add_purse_line("%d ◈ pearls" % pearls)
+	# One currency is still one currency nobody has had explained to them. A
+	# first-time player sees a diamond and a number and is told nothing about
+	# where either came from.
+	_add_description("Pearls are earned by playing - %d for every star you clear, %d for the first daily puzzle each day. You can also buy them." % [
+		SaveManager.PEARLS_PER_STAR, 50])
 	_add_hairline()
 
 	_add_tile_row(GLYPH_JADE, "Tile Sets",
-		"Four collections", "4", func():
+		"%d collections" % TILE_THEME_DETAILS.size(),
+		str(TILE_THEME_DETAILS.size()), func():
 			show_tile_catalog_modal()
 	, true)
 
 	_add_tile_row(GLYPH_JADE, "Backgrounds",
-		"Ponds, koi and weather", "6", func():
+		"Ponds, koi and weather", str(BG_THEME_DETAILS.size()), func():
 			show_background_catalog_modal()
 	)
 

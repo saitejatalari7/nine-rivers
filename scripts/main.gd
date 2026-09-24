@@ -297,7 +297,7 @@ func _start_run_mode() -> void:
 	# arrive from a stale screen, so the cap is enforced where the run actually
 	# starts rather than only where it is offered.
 	if not SaveManager.record_rapids_start():
-		hud.show_toast("No Rapids runs left today. Back tomorrow.")
+		hud.show_toast("No timed runs left today - %s." % SaveManager.time_until_reset())
 		_return_home()
 		return
 	board.visible = true
@@ -343,7 +343,7 @@ static func daily_layout_for_seed(seed_value: int) -> String:
 
 func _start_daily_mode() -> void:
 	if SaveManager.daily_done_today():
-		hud.show_toast("Today's Tide is cleared. Back tomorrow.")
+		hud.show_toast("Today's puzzle is done - %s." % SaveManager.time_until_reset())
 		_return_home()
 		return
 	board.visible = true

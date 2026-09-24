@@ -662,6 +662,19 @@ func _roll_rapids_day() -> void:
 		prog["rapids_runs_today"] = 0
 
 
+## Both caps roll over at UTC midnight, so the wait is the same for either one.
+## "Back tomorrow" is true but tells the player nothing they can act on - in
+## India that midnight lands at half past five in the morning, so "tomorrow"
+## can mean anything from twenty minutes to a full day.
+func time_until_reset() -> String:
+	var secs: int = 86400 - (int(Time.get_unix_time_from_system()) % 86400)
+	var h: int = secs / 3600
+	var m: int = (secs % 3600) / 60
+	if h >= 1:
+		return "back in %dh %dm" % [h, m]
+	return "back in %dm" % maxi(1, m)
+
+
 func rapids_runs_left() -> int:
 	_roll_rapids_day()
 	return maxi(0, RAPIDS_RUNS_PER_DAY - int(prog.get("rapids_runs_today", 0)))

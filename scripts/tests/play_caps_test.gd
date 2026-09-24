@@ -48,9 +48,29 @@ func _ready() -> void:
 	_check(SaveManager.prog.has("level"), "Calm has no daily counter of its own",
 		"level=%s" % str(SaveManager.prog.get("level")))
 
+	# "Back tomorrow" told the player nothing they could act on: both caps roll
+	# at UTC midnight, which in India is half past five in the morning, so
+	# "tomorrow" could mean twenty minutes or a whole day.
+	var msg: String = SaveManager.time_until_reset()
+	_check(msg.begins_with("back in "), "the wait is quoted, not called tomorrow", msg)
+	var mins: int = _minutes_in(msg)
+	_check(mins > 0 and mins <= 1440, "and it is inside one day", "%d minutes" % mins)
+
 	print("")
 	print("Failures: %d" % _fails)
 	get_tree().quit(1 if _fails > 0 else 0)
+
+
+## Parses "back in 7h 20m" or "back in 20m" back into minutes, so the string the
+## player reads is the thing being checked rather than the maths behind it.
+func _minutes_in(msg: String) -> int:
+	var total: int = 0
+	for part in msg.replace("back in ", "").split(" ", false):
+		if part.ends_with("h"):
+			total += int(part.trim_suffix("h")) * 60
+		elif part.ends_with("m"):
+			total += int(part.trim_suffix("m"))
+	return total
 
 
 func _check(ok: bool, what: String, detail: String) -> void:

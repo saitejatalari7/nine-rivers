@@ -12,7 +12,10 @@ func _ready() -> void:
 	await get_tree().create_timer(2.2).timeout
 	var modal = main.get_node("Modal")
 	for entry in [
-		["ui_main_rack", func(): modal.show_main_menu()],
+		["ui_main_rack", func():
+			SaveManager.prog["rapids_runs_today"] = SaveManager.RAPIDS_RUNS_PER_DAY
+			SaveManager.prog["last_rapids_date"] = SaveManager._today_utc()
+			modal.show_main_menu()],
 		["ui_sub_settings", func(): modal.show_settings_menu()],
 		["ui_sub_levels", func(): modal.show_level_select()],
 		["ui_sub_bazaar", func(): modal.show_bazaar_modal()],
