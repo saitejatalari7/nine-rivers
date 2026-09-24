@@ -9,6 +9,7 @@ const TileLighting = preload("res://scripts/ui/tile_lighting.gd")
 
 const THEMES: Array[String] = [
 	"classic_jade", "theme_imperial_gold", "theme_obsidian_ink", "theme_cherry_blossom",
+	"theme_indigo",
 ]
 const SCALE: int = 3
 const PAD: int = 6
