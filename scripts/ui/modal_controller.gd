@@ -510,7 +510,13 @@ func show_pause_menu() -> void:
 	, UITheme.IVORY_MUTED)
 	show_modal()
 
-func show_level_clear(level: int, score: int, stars: int) -> void:
+## The display name of a tile set, for callers outside this file.
+func theme_display_name(theme_id: String) -> String:
+	var d: Dictionary = TILE_THEME_DETAILS.get(theme_id, {})
+	return String(d.get("name", "a premium set"))
+
+
+func show_level_clear(level: int, score: int, stars: int, sampled: String = "") -> void:
 	_current_screen = "level_clear"
 	_clear_content()
 	_add_header("Board Cleared", "Stage %d" % level)
@@ -534,6 +540,16 @@ func show_level_clear(level: int, score: int, stars: int) -> void:
 		hide_modal()
 		next_stage_requested.emit()
 	, true)
+
+	# The set a few tiles on this board were wearing. The offer follows the
+	# board it belongs to, and leads to the page where it can be bought rather
+	# than to a shop the player then has to navigate.
+	if not sampled.is_empty() and not MonetizationManager.is_theme_unlocked(sampled):
+		var captured_sample: String = sampled
+		_add_toggle_row("Keep the %s tiles" % theme_display_name(sampled),
+			"%s ◈" % _thousands(MonetizationManager.get_pearl_cost(sampled)), func():
+				show_tile_detail_modal(captured_sample)
+		)
 
 	_add_separator()
 	_add_toggle_row("Replay Board", "›", func():

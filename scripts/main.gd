@@ -287,6 +287,8 @@ func _start_calm_mode(level: int) -> void:
 	board.load_stage(layout_name, rng)
 	camera.frame_board(board.board_bounds, get_viewport_rect().size)
 	
+	_offer_theme_sample(level)
+
 	if level == 1 and not SaveManager.prog.get("tutorial_completed", false):
 		# The board is handed over so the lesson can point at real tiles rather
 		# than describe them.
@@ -384,7 +386,7 @@ func _next_stage() -> void:
 	if not _pending_clear.is_empty():
 		var p: Dictionary = _pending_clear
 		_pending_clear = {}
-		modal.show_level_clear(int(p["level"]), int(p["score"]), int(p["stars"]))
+		modal.show_level_clear(int(p["level"]), int(p["score"]), int(p["stars"]), String(p.get("sampled", "")))
 		MonetizationManager.show_interstitial_if_ready(int(p["level"]), "level_clear")
 		return
 
@@ -480,10 +482,11 @@ func _on_board_cleared() -> void:
 		# leaving it both carry on to the next stage.
 		var granted: Array[String] = MonetizationManager.grant_milestone_themes(GameManager.current_level)
 		if not granted.is_empty():
-			_pending_clear = {"level": GameManager.current_level, "score": GameManager.score, "stars": stars}
+			_pending_clear = {"level": GameManager.current_level, "score": GameManager.score,
+				"stars": stars, "sampled": sampled_theme}
 			modal.show_theme_unlocked(granted[0])
 			return
-		modal.show_level_clear(GameManager.current_level, GameManager.score, stars)
+		modal.show_level_clear(GameManager.current_level, GameManager.score, stars, sampled_theme)
 		MonetizationManager.show_interstitial_if_ready(GameManager.current_level, "level_clear")
 	elif GameManager.current_mode == GameManager.GameMode.DAILY:
 		var first_today: bool = SaveManager.record_daily_play()
@@ -579,6 +582,33 @@ func _resume_session() -> bool:
 	camera.frame_board(board.board_bounds, get_viewport_rect().size)
 	modal.hide_modal()
 	return true
+
+## A set the player cannot see is a set they will not buy. Rather than a trial
+## with an expiry - new save state, a clock to defend, and a decision about what
+## happens when it lapses mid-board - a few tiles simply arrive wearing it.
+##
+## Nothing is persisted. The stage number decides when it happens, so there is
+## no counter to sign and nothing to corrupt.
+const SAMPLE_EVERY: int = 5
+const SAMPLE_FROM_STAGE: int = 4
+const SAMPLE_TILES: int = 7
+
+## The set being shown off on this board, or "". Read by the clear screen so the
+## offer follows the board it belongs to.
+var sampled_theme: String = ""
+
+func _offer_theme_sample(level: int) -> void:
+	sampled_theme = ""
+	if level < SAMPLE_FROM_STAGE or level % SAMPLE_EVERY != 0:
+		return
+	var theme: String = MonetizationManager.cheapest_locked_theme()
+	if theme.is_empty():
+		return
+	if board.sample_theme(theme, SAMPLE_TILES) <= 0:
+		return
+	sampled_theme = theme
+	hud.show_toast("A few tiles are wearing %s" % modal.theme_display_name(theme))
+
 
 ## The lesson points at whatever tiles are live, so it only needs to deal a board
 ## when there is none - and then it deals the stage the player is up to.

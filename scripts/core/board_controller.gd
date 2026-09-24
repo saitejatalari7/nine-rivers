@@ -150,6 +150,31 @@ func _seat_tiles(animate: bool) -> void:
 ## The board as plain data, for a session written to disk. Only what cannot be
 ## re-derived: the layout name replays the geometry, but which tiles were dealt
 ## where, and which of them are gone, cannot be worked out from anything else.
+## Dresses a handful of tiles in a set the player does not own, so a premium
+## theme can be seen on a real board instead of only on a shop page. Returns
+## how many were dressed.
+##
+## Top layers first: a sample buried under three tiles is not a sample. Nothing
+## about this is persisted - the override lives on the view and dies with the
+## board.
+func sample_theme(theme_id: String, count: int) -> int:
+	if theme_id.is_empty() or count <= 0:
+		return 0
+	var live: Array[RiverTile] = get_active_tiles()
+	live.sort_custom(func(a: RiverTile, b: RiverTile): return a.z > b.z)
+	var dressed: int = 0
+	var step: int = maxi(1, live.size() / maxi(1, count * 2))
+	var i: int = 0
+	while i < live.size() and dressed < count:
+		var v = tile_views.get(live[i])
+		if v != null and is_instance_valid(v):
+			v.theme_override = theme_id
+			v.update_theme_style()
+			dressed += 1
+		i += step
+	return dressed
+
+
 func snapshot_tiles() -> Array:
 	var out: Array = []
 	for t in live_tiles:

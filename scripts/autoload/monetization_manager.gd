@@ -663,6 +663,28 @@ func is_earn_only(product_id: String) -> bool:
 	return bool(PRODUCTS[product_id].get("earn_only", false))
 
 
+## The cheapest tile set the player does not own and could actually buy, or ""
+## when there is nothing left to show them. Milestone sets are skipped: they are
+## earned, and dangling one in front of a player who cannot buy it is a tease
+## with no answer.
+func cheapest_locked_theme() -> String:
+	var best: String = ""
+	var best_cost: int = 0
+	for pid in PRODUCTS.keys():
+		var id: String = String(pid)
+		if not id.begins_with("theme_"):
+			continue
+		if is_earn_only(id) or is_theme_unlocked(id):
+			continue
+		var cost: int = get_pearl_cost(id)
+		if cost <= 0:
+			continue
+		if best.is_empty() or cost < best_cost:
+			best = id
+			best_cost = cost
+	return best
+
+
 func buy_with_pearls(product_id: String, on_success: Callable = Callable()) -> bool:
 	if not PRODUCTS.has(product_id):
 		return false
