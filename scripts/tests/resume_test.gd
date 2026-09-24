@@ -103,8 +103,12 @@ func _t3_resuming_rapids_does_not_buy_a_run() -> void:
 	SaveManager.prog["last_rapids_date"] = ""
 	main._start_run_mode()
 	await get_tree().create_timer(0.9).timeout
+	# A run is charged by its first match, not by being opened. Looking at the
+	# mode and backing out costs nothing.
+	_match_once()
+	await get_tree().create_timer(0.6).timeout
 	var spent_after_start: int = SaveManager.RAPIDS_RUNS_PER_DAY - SaveManager.rapids_runs_left()
-	_check("starting a run spends one", spent_after_start == 1,
+	_check("playing a run spends one", spent_after_start == 1,
 		"%d of %d spent" % [spent_after_start, SaveManager.RAPIDS_RUNS_PER_DAY])
 
 	main._capture_session()
@@ -112,6 +116,8 @@ func _t3_resuming_rapids_does_not_buy_a_run() -> void:
 	main._resume_session()
 	await get_tree().create_timer(0.5).timeout
 
+	_match_once()
+	await get_tree().create_timer(0.6).timeout
 	var spent_after_resume: int = SaveManager.RAPIDS_RUNS_PER_DAY - SaveManager.rapids_runs_left()
 	_check("resuming it spends nothing more", spent_after_resume == 1,
 		"%d of %d spent" % [spent_after_resume, SaveManager.RAPIDS_RUNS_PER_DAY])
@@ -133,6 +139,17 @@ func _cold_restart() -> void:
 	main.get_node("HUD").visible = false
 	GameManager.is_timer_active = false
 	await get_tree().create_timer(0.3).timeout
+
+## Clears one legal set, the way a tap would.
+func _match_once() -> void:
+	var sets: Array = board.get_legal_sets()
+	if sets.is_empty():
+		return
+	var typed: Array[RiverTile] = []
+	for t in sets[0]:
+		typed.append(t)
+	board._resolve_matched_set(typed)
+
 
 func _fingerprint() -> String:
 	var parts: PackedStringArray = PackedStringArray()

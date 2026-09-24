@@ -4,6 +4,9 @@ extends Node
 ## is uncapped so there is always somewhere to go when the other two are spent.
 ## Without that last part a cap is just a locked door.
 
+const RiverTile = preload("res://scripts/core/river_tile.gd")
+const RAPIDS_RUNS_PER_DAY: int = 3
+
 var _fails: int = 0
 
 
@@ -56,9 +59,57 @@ func _ready() -> void:
 	var mins: int = _minutes_in(msg)
 	_check(mins > 0 and mins <= 1440, "and it is inside one day", "%d minutes" % mins)
 
+	await _looking_is_free()
+
 	print("")
 	print("Failures: %d" % _fails)
 	get_tree().quit(1 if _fails > 0 else 0)
+
+
+## Opening the timed mode and backing out without playing used to spend a run.
+## Three looks cost a whole day of them, which is what a tester hit.
+func _looking_is_free() -> void:
+	print("--- opening the mode is not playing it ---")
+	var main := (load("res://scenes/main.tscn") as PackedScene).instantiate()
+	add_child(main)
+	await get_tree().process_frame
+	main.get_node("SplashScreen").visible = false
+	SaveManager.prog["tutorial_completed"] = true
+	await get_tree().create_timer(1.2).timeout
+	SaveManager.prog["rapids_runs_today"] = 0
+	SaveManager.prog["last_rapids_date"] = ""
+	SaveManager.clear_session()
+
+	for i in range(3):
+		main._start_run_mode()
+		await get_tree().create_timer(0.7).timeout
+		main._return_home()
+		await get_tree().create_timer(0.3).timeout
+	_check(SaveManager.rapids_runs_left() == RAPIDS_RUNS_PER_DAY,
+		"three looks cost nothing", "%d left" % SaveManager.rapids_runs_left())
+
+	main._start_run_mode()
+	await get_tree().create_timer(0.8).timeout
+	var board = main.get_node("Board")
+	var sets: Array = board.get_legal_sets()
+	if not sets.is_empty():
+		var typed: Array[RiverTile] = []
+		for t in sets[0]:
+			typed.append(t)
+		board._resolve_matched_set(typed)
+	await get_tree().create_timer(0.6).timeout
+	_check(SaveManager.rapids_runs_left() == RAPIDS_RUNS_PER_DAY - 1,
+		"the first match spends one", "%d left" % SaveManager.rapids_runs_left())
+
+	sets = board.get_legal_sets()
+	if not sets.is_empty():
+		var typed2: Array[RiverTile] = []
+		for t in sets[0]:
+			typed2.append(t)
+		board._resolve_matched_set(typed2)
+	await get_tree().create_timer(0.6).timeout
+	_check(SaveManager.rapids_runs_left() == RAPIDS_RUNS_PER_DAY - 1,
+		"and the second does not spend another", "%d left" % SaveManager.rapids_runs_left())
 
 
 ## Parses "back in 7h 20m" or "back in 20m" back into minutes, so the string the

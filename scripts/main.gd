@@ -43,6 +43,7 @@ func _ready() -> void:
 	# Wire Board signals
 	board.move_completed.connect(_on_board_move_completed)
 	board.tile_matched.connect(_on_tile_matched_ripple)
+	board.tile_matched.connect(func(_p): _charge_rapids_run())
 	board.board_cleared.connect(_on_board_cleared)
 	board.no_moves_left.connect(_on_no_moves_left)
 	board.toast_requested.connect(func(msg): hud.show_toast(msg))
@@ -294,14 +295,21 @@ func _start_calm_mode(level: int) -> void:
 		# than describe them.
 		tutorial.start_tutorial(board)
 
+## False until this run has cost the player one of their three. A run is
+## charged when the first match is made, not when the board is dealt: opening
+## the mode, looking at it and backing out used to spend a run, so three looks
+## cost a whole day of them.
+var _rapids_charged: bool = false
+
 func _start_run_mode() -> void:
 	# The menu hides the row when the runs are spent, but the signal can also
-	# arrive from a stale screen, so the cap is enforced where the run actually
+	# arrive from a stale screen, so the cap is checked where the run actually
 	# starts rather than only where it is offered.
-	if not SaveManager.record_rapids_start():
+	if SaveManager.rapids_runs_left() <= 0:
 		hud.show_toast("No timed runs left today - %s." % SaveManager.time_until_reset())
 		_return_home()
 		return
+	_rapids_charged = false
 	board.visible = true
 	hud.visible = true
 	GameManager.start_timed_run()
@@ -460,6 +468,18 @@ func _on_shuffle_clicked() -> void:
 func _on_board_move_completed(remaining: int, legal_moves: int) -> void:
 	hud.update_board_stats(remaining, legal_moves)
 
+
+## Spends one of the three daily runs, once, on the first match of the run.
+##
+## Hung off tile_matched rather than move_completed: move_completed is emitted
+## by load_stage as well, so charging there would have spent the run at the
+## moment the board was dealt - the very thing this exists to stop.
+func _charge_rapids_run() -> void:
+	if _rapids_charged or GameManager.current_mode != GameManager.GameMode.RUN:
+		return
+	_rapids_charged = true
+	SaveManager.record_rapids_start()
+
 ## Held while the unlock offer is up, so the clear screen can follow it rather
 ## than being skipped by it.
 var _pending_clear: Dictionary = {}
@@ -531,12 +551,13 @@ func _capture_session() -> void:
 		"shuffles": GameManager.shuffles,
 		"time_left": GameManager.time_left,
 		"max_time": GameManager.max_time,
+		"rapids_charged": _rapids_charged,
 	}
 	SaveManager.save_game()
 
 ## Puts the player back on the board they left. A Rapids run resumed this way is
-## the same run: record_rapids_start() ran when it began and is not called again,
-## so closing the app cannot buy a fourth run.
+## the same run: whether it has been charged travels with the session, so
+## closing the app can neither buy a fourth run nor give one back.
 func _resume_session() -> bool:
 	var s: Dictionary = SaveManager.session
 	if s.is_empty():
@@ -567,6 +588,9 @@ func _resume_session() -> bool:
 	GameManager.max_time = float(s.get("max_time", 180.0))
 	GameManager.time_left = float(s.get("time_left", GameManager.max_time))
 	GameManager.is_first_match_of_stage = GameManager.flow_level <= 0
+	# A run that was left before its first match has not been charged yet, and
+	# resuming must not charge it either - the first match still will.
+	_rapids_charged = bool(s.get("rapids_charged", true))
 
 	var hud_no: int = GameManager.current_level if mode == 0 else GameManager.current_stage_no
 	hud.setup_hud(GameManager.current_mode, hud_no)

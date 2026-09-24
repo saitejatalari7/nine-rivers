@@ -360,6 +360,10 @@ func _sanitize_session(raw: Variant) -> Dictionary:
 		"shuffles": _vint(d.get("shuffles"), 0, 0, 9),
 		"time_left": _vfloat(d.get("time_left"), 0.0, 0.0, 600.0),
 		"max_time": _vfloat(d.get("max_time"), 180.0, 1.0, 600.0),
+		# Defaults to charged. A forged session claiming otherwise would hand out
+		# a free run; one that has genuinely not been charged yet loses nothing,
+		# because it is charged at the first match either way.
+		"rapids_charged": bool(d.get("rapids_charged", true)),
 	}
 
 func store_session(data: Dictionary) -> void:
