@@ -1,9 +1,9 @@
 # 12 — Bamboo 1 and 2 are drawn as plain pills
 
-**Status:** DEFERRED — owner chose to leave
+**Status:** RESOLVED — 2026-09-24
 **Raised:** 2026-09-21
 **Last reviewed:** 2026-09-23
-**Resolved:** —
+**Resolved:** 2026-09-24, `a503828`
 
 **Blocks release: no — known art gap.**
 
