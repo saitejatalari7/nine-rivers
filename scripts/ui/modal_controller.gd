@@ -312,8 +312,14 @@ func show_main_menu() -> void:
 				resume_session_requested.emit()
 		, true)
 	else:
-		_add_tile_row(UITheme.RED_CINNABAR, "Continue",
-			"Stage %d of %d" % [cur_lvl, StagePlan.TOTAL_LEVELS], "", func():
+		# "Continue" only means something once there is something to continue. A
+		# player who has never cleared a stage was being invited to carry on with
+		# a game they had not started.
+		var started: bool = not SaveManager.prog.get("stars", {}).is_empty() or cur_lvl > 1
+		_add_tile_row(UITheme.RED_CINNABAR,
+			"Continue" if started else "Play",
+			("Stage %d of %d" % [cur_lvl, StagePlan.TOTAL_LEVELS]) if started
+				else "Start at stage 1", "", func():
 				hide_modal()
 				start_calm_requested.emit(cur_lvl)
 		, true)

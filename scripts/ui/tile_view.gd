@@ -660,7 +660,14 @@ func _redraw_all() -> void:
 		_body_layer.queue_redraw()
 
 
+## Test-only draw counters. Selection now repaints a tile on every frame it
+## moves, which it did not before, so how far that spreads is worth being able
+## to measure rather than reason about.
+static var debug_body_draws: int = 0
+static var debug_face_draws: int = 0
+
 func _draw_body(ci: CanvasItem) -> void:
+	debug_body_draws += 1
 	if not tile_data:
 		return
 	if tile_data.is_removed and not is_dissolving:
@@ -722,6 +729,7 @@ func _draw_body(ci: CanvasItem) -> void:
 
 
 func _draw() -> void:
+	debug_face_draws += 1
 	if not tile_data:
 		return
 	# CRITICAL FIX: If tile is marked removed by match logic, KEEP DRAWING if is_dissolving is true!

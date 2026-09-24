@@ -40,9 +40,46 @@ func _ready() -> void:
 		"the first purchase is a reasonable first goal",
 		"%s reachable around stage %d at %d/level" % [cheapest_id, levels, per_level])
 
+	await _the_first_button_says_play()
+
 	print("")
 	print("Failures: %d" % _fails)
 	get_tree().quit(1 if _fails > 0 else 0)
+
+
+## "Continue" only means something once there is something to continue.
+func _the_first_button_says_play() -> void:
+	var main := (load("res://scenes/main.tscn") as PackedScene).instantiate()
+	add_child(main)
+	await get_tree().process_frame
+	main.get_node("SplashScreen").visible = false
+	var modal = main.get_node("Modal")
+
+	SaveManager.clear_session()
+	SaveManager.prog["level"] = 1
+	SaveManager.prog["stars"] = {}
+	modal.show_main_menu()
+	await get_tree().create_timer(0.5).timeout
+	_check(_row_titled(modal, "Play") != "", "a new player is offered Play",
+		_row_titled(modal, "Play"))
+	_check(_row_titled(modal, "Continue") == "", "and not Continue", "")
+
+	SaveManager.prog["stars"] = {"1": 3}
+	SaveManager.prog["level"] = 2
+	modal.show_main_menu()
+	await get_tree().create_timer(0.5).timeout
+	_check(_row_titled(modal, "Continue") != "", "a returning player is offered Continue",
+		_row_titled(modal, "Continue"))
+
+
+func _row_titled(node: Node, title: String) -> String:
+	for c in node.get_children():
+		if c is Label and String((c as Label).text) == title:
+			return (c as Label).text
+		var deeper := _row_titled(c, title)
+		if deeper != "":
+			return deeper
+	return ""
 
 
 func _check(ok: bool, what: String, detail: String) -> void:
