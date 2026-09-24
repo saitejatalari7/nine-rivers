@@ -75,8 +75,8 @@ const STYLES := {
 		# A real blush face, not white. Dark ink only needs the face to stay light,
 		# not colourless - at 11.96:1 there was room to put the pink back and still
 		# sit far above the 3.0 floor.
-		"top": Color(0.976, 0.878, 0.898),
-		"bot": Color(0.925, 0.792, 0.824),
+		"top": Color(0.961, 0.835, 0.863),
+		"bot": Color(0.898, 0.725, 0.773),
 		"grain": 0.012, "cloud": 0.026,
 		# The rim tints rather than shifts value: a darker blush is still blush,
 		# where the rose frame has to be a different colour to read as one.
