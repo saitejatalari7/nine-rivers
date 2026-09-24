@@ -47,11 +47,20 @@ const INK_DIFF: float = 0.06
 var _fails: int = 0
 var _worst: float = 999.0
 var _worst_label: String = ""
+var _restore_mode: String = ""
+
+func _exit_tree() -> void:
+	if not _restore_mode.is_empty():
+		SettingsManager.color_blind_mode = _restore_mode
 
 
 func _ready() -> void:
 	await get_tree().process_frame
-	var restore: String = SettingsManager.color_blind_mode
+	# Kept on the node, not in a local: this setting is PERSISTED, and a run that
+	# is interrupted part-way used to leave the profile in whatever mode it had
+	# reached. That is how a set of theme screenshots came to be judged in
+	# tritanopia without anyone noticing the blues had gone purple.
+	_restore_mode = SettingsManager.color_blind_mode
 	for mode in ["none", "protanopia", "deuteranopia"]:
 		SettingsManager.color_blind_mode = mode
 		print("")
@@ -61,7 +70,8 @@ func _ready() -> void:
 			for free in [true, false]:
 				for probe in PROBES:
 					await _measure(theme, free, probe, mode)
-	SettingsManager.color_blind_mode = restore
+	SettingsManager.color_blind_mode = _restore_mode
+	_restore_mode = ""
 
 	print("")
 	print("worst anywhere: %.2f:1  (%s)" % [_worst, _worst_label])

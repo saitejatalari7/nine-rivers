@@ -342,24 +342,32 @@ static func _get_bamboo_stylebox(col: Color, radius: int) -> StyleBoxFlat:
 
 static var cjk_font: Font = null
 
+## The bundled subset, not the device's font.
+##
+## This asked Android for PingFang SC, YaHei, Heiti and friends, with the
+## bundled face attached only as a fallback - so the tile artwork was drawn by
+## whatever the phone happened to ship. The same tile looked different on a
+## Samsung, a Xiaomi and a Pixel, and on a device carrying no CJK font at all it
+## would have been boxes. The UI text never did this; only the tiles deferred.
+const TILE_FONT_PATH := "res://assets/fonts/NineRiversTileSC.ttf"
+
 static func get_cjk_font() -> Font:
 	if cjk_font == null:
-		var sf := SystemFont.new()
-		sf.font_names = PackedStringArray([
-			"PingFang SC", "Microsoft YaHei", "Hiragino Sans GB",
-			"Noto Sans CJK SC", "Noto Sans SC", "Heiti SC",
-			"SimHei", "Segoe UI", "sans-serif"
-		])
-		# 700 over 600: thin strokes on a 64px face were the other half of the
-		# legibility problem, alongside the glyphs being small.
-		sf.font_weight = 700
-		sf.subpixel_positioning = TextServer.SUBPIXEL_POSITIONING_AUTO
-		sf.oversampling = 2.0
-		if ResourceLoader.exists("res://assets/fonts/NotoSerifSC.ttf"):
-			var fb = load("res://assets/fonts/NotoSerifSC.ttf")
-			if fb is Font:
-				sf.fallbacks.append(fb)
-		cjk_font = sf
+		# Noto Sans SC Bold, subset to the 27 characters a tile face can carry:
+		# 8 KB against the 8.5 MB it was cut from. The bundled NotoSerifSC was
+		# tried first and measured badly - its hairline horizontals anti-alias
+		# away at 64px, taking the legibility check from 0 failures to 51, and
+		# emboldening it synthetically only got back to 6.
+		var base = load(TILE_FONT_PATH) if ResourceLoader.exists(TILE_FONT_PATH) else null
+		if base is Font:
+			cjk_font = base
+		else:
+			# Only if the bundled face is missing from the build, which would be a
+			# packaging fault rather than a device one.
+			var sf := SystemFont.new()
+			sf.font_names = PackedStringArray(["Noto Sans CJK SC", "sans-serif"])
+			sf.font_weight = 700
+			cjk_font = sf
 	return cjk_font
 
 func _init() -> void:
@@ -1060,8 +1068,65 @@ func draw_canonical_dots(face_r: Rect2, n: int) -> void:
 const BAM_BIG := Vector2(30.0, 66.0)
 const BAM_SMALL := Vector2(22.0, 34.0)
 const BAM_SMALL_SPARSE := Vector2(27.0, 38.0)
+const BAM_PAIR := Vector2(46.0, 52.0)
+
+## One bamboo is a sparrow, on every real set. It was a green capsule with a
+## line across it - the least convincing face in the game, and the narrowest:
+## 31%% of the tile width against a 63%% mean.
+##
+## Drawn from primitives rather than a glyph. No CJK character means a bird, and
+## an imported drawing would be the only raster face in a vector set.
+func draw_bamboo_bird(face_r: Rect2) -> void:
+	var th: String = get_effective_theme()
+	var g: Color = get_col_green(th)
+	var r: Color = get_col_red(th)
+	var sx: float = face_r.size.x / 100.0
+	var sy: float = face_r.size.y / 132.0
+	var o: Vector2 = face_r.position
+	# Everything below is in the same 100x132 viewBox the dot table uses.
+	var P := func(px: float, py: float) -> Vector2:
+		return o + Vector2(px * sx, py * sy)
+
+	# Tail: three feathers fanning back from the body. Drawn as quads rather than
+	# slivers - at 64px a triangle two units wide at its base disappears.
+	for f in [[8.0, 26.0], [0.0, 16.0], [-6.0, 4.0]]:
+		var tip := Vector2(14.0 + f[1] * 0.35, 60.0 + f[0])
+		draw_colored_polygon(PackedVector2Array([
+			P.call(44.0, 62.0), P.call(44.0, 74.0),
+			P.call(tip.x + 4.0, tip.y + 7.0), P.call(tip.x, tip.y)]), g)
+
+	# Body, leaning forward over the perch.
+	draw_colored_polygon(PackedVector2Array([
+		P.call(66.0, 40.0), P.call(78.0, 56.0), P.call(72.0, 78.0),
+		P.call(54.0, 88.0), P.call(42.0, 80.0), P.call(42.0, 60.0),
+		P.call(52.0, 46.0)]), g)
+
+	# Wing, laid over the body in the second ink so the bird reads at tile size.
+	draw_colored_polygon(PackedVector2Array([
+		P.call(60.0, 52.0), P.call(74.0, 62.0), P.call(64.0, 82.0),
+		P.call(50.0, 78.0), P.call(48.0, 60.0)]), r)
+
+	# Head and beak.
+	draw_circle(P.call(66.0, 34.0), 13.0 * sx, g)
+	draw_colored_polygon(PackedVector2Array([
+		P.call(76.0, 29.0), P.call(94.0, 35.0), P.call(76.0, 41.0)]), r)
+	# The eye is the face colour rather than white, so it stays an eye on a dark
+	# theme instead of becoming a bright dot.
+	draw_circle(P.call(68.0, 31.0), 3.0 * sx, get_theme_face_color(true, th))
+
+	# Perch, with the stalk node every other bamboo rank carries.
+	draw_line(P.call(12.0, 104.0), P.call(88.0, 104.0), g, 7.0 * sx, true)
+	draw_line(P.call(50.0, 100.0), P.call(50.0, 108.0),
+		get_theme_face_color(true, th), 3.0 * sx, true)
+	# Legs.
+	for lx in [56.0, 66.0]:
+		draw_line(P.call(lx, 84.0), P.call(lx - 2.0, 101.0), r, 3.2 * sx, true)
+
 
 func draw_canonical_bamboos(face_r: Rect2, n: int) -> void:
+	if n == 1:
+		draw_bamboo_bird(face_r)
+		return
 	var th: String = get_effective_theme()
 	var pts_list: Array = DOTS.get(n, [])
 	var scale_x: float = face_r.size.x / 100.0
@@ -1074,7 +1139,10 @@ func draw_canonical_bamboos(face_r: Rect2, n: int) -> void:
 	elif th == "theme_imperial_gold":
 		cream_line_col = Color("#fff8e1")
 
-	var small: Vector2 = BAM_SMALL_SPARSE if n <= 3 else BAM_SMALL
+	# Two stalks on a whole tile can afford to be much bigger than six can. At
+	# the shared sparse size 2-bam spanned 28%% of the tile, the narrowest face
+	# left once the bird replaced 1-bam.
+	var small: Vector2 = BAM_PAIR if n == 2 else (BAM_SMALL_SPARSE if n <= 3 else BAM_SMALL)
 	for i in range(pts_list.size()):
 		var p: Array = pts_list[i]
 		var is_big: bool = n == 1
