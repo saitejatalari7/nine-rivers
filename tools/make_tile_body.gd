@@ -65,6 +65,27 @@ const STYLES := {
 		"sheen": 0.26, "sheen_width": 0.20,
 		"sparkle": 0.55,
 	},
+	# Blush porcelain under a rose rim. The old body was a dusty pink face inside
+	# a dark red frame, with mid-tone ink on top: the same hue at the same value
+	# three times over, which is why this was the only theme failing legibility.
+	# The frame is what the theme is recognised by, so it moves INTO the rim
+	# rather than being dropped, and the face goes near-white to carry dark ink.
+	"blossom": {
+		"out": "tile_cherry_blossom.png",
+		"top": Color(0.996, 0.976, 0.980),
+		"bot": Color(0.937, 0.890, 0.906),
+		"grain": 0.012, "cloud": 0.026,
+		# The rim tints rather than shifts value: a darker blush is still blush,
+		# where the rose frame has to be a different colour to read as one.
+		# Wide and mostly solid: at 256px source drawn into 64px the rim is scaled
+		# down four times over, so a narrow band that looked like a frame in the
+		# texture was two pale pixels on the board and the theme read as Jade.
+		"rim": 0.0, "rim_px": 26.0,
+		"rim_col": Color(0.812, 0.376, 0.459), "rim_mix": 1.0, "rim_hard": 0.55,
+		"patina": Color(0.004, -0.002, 0.000),
+		"crystal": 0.0,
+		"sheen": 0.05, "sheen_width": 0.30,
+	},
 	"gold": {
 		"out": "tile_gold.png",
 		# Hue matters more than brightness here. At R/G 1.47 this read as dark
@@ -179,7 +200,13 @@ func _init() -> void:
 			var inset: float = -d
 			var rim_px: float = float(s["rim_px"])
 			if inset < rim_px:
-				c = _shift(c, float(s["rim"]) * (1.0 - inset / rim_px))
+				var edge_t: float = 1.0 - inset / rim_px
+				c = _shift(c, float(s["rim"]) * edge_t)
+				if s.has("rim_col"):
+					var rc: Color = s["rim_col"]
+					var hard: float = float(s.get("rim_hard", 0.0))
+					var m: float = edge_t if hard <= 0.0 else clampf(edge_t / (1.0 - hard), 0.0, 1.0)
+					c = c.lerp(rc, pow(m, 1.15) * float(s.get("rim_mix", 1.0)))
 
 			img.set_pixel(x, y, Color(c.r, c.g, c.b, clampf(inset, 0.0, 1.0)))
 

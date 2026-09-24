@@ -184,7 +184,7 @@ static func get_col_ink(theme_id: String = "") -> Color:
 	elif th == "theme_indigo":
 		return Color("#f4e6bd") # Pale gold on deep glaze
 	elif th == "theme_cherry_blossom":
-		return Color("#2e181f")
+		return Color("#1b1015")
 	return COL_INK
 
 static func create_preview_tile(suit: String, rank: int, theme_id: String = "", scale_factor: float = 1.0) -> TileView:
@@ -209,7 +209,7 @@ static func get_col_red(theme_id: String = "") -> Color:
 	elif th == "theme_indigo":
 		return Color("#ffab96") # Pale coral
 	elif th == "theme_cherry_blossom":
-		return Color("#8f2340") # Sakura rose cinnabar
+		return Color("#6d1029") # Sakura rose cinnabar, cut deeper for a pale face
 	var mode: String = SettingsManager.color_blind_mode
 	if mode in ["deuteranopia", "protanopia"]:
 		return Color("#b83a2e")
@@ -226,7 +226,7 @@ static func get_col_green(theme_id: String = "") -> Color:
 	elif th == "theme_indigo":
 		return Color("#a8e0bd") # Pale celadon
 	elif th == "theme_cherry_blossom":
-		return Color("#2f5626") # Tender spring tea bud green
+		return Color("#1d3a17") # Tender spring tea bud green
 	var mode: String = SettingsManager.color_blind_mode
 	if mode in ["deuteranopia", "protanopia"]:
 		return Color("#006e6e")
@@ -243,7 +243,7 @@ static func get_col_blue(theme_id: String = "") -> Color:
 	elif th == "theme_indigo":
 		return Color("#bcd4ff") # Pale porcelain sky
 	elif th == "theme_cherry_blossom":
-		return Color("#453a9c") # Soft wisteria iris
+		return Color("#2b2470") # Soft wisteria iris
 	var mode: String = SettingsManager.color_blind_mode
 	if mode == "tritanopia":
 		return Color("#593570")
