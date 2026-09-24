@@ -1,9 +1,9 @@
 # 11 — Cherry Blossom fails legibility
 
-**Status:** DEFERRED — owner chose to leave
+**Status:** RESOLVED — 2026-09-24
 **Raised:** 2026-09-21
 **Last reviewed:** 2026-09-23
-**Resolved:** —
+**Resolved:** 2026-09-24, `0fc562c`
 
 **Blocks release: no — owner chose to leave it.**
 

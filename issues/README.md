@@ -4,7 +4,7 @@
 
 Raised: 2026-09-21
 Last reviewed: 2026-09-23
-Against commit: 7eed0d9
+Against commit: 0fc562c
 
 Every issue file carries its own Status, Raised, Last reviewed and Resolved
 line. When one is closed, set Resolved to the date and the commit that did it,
@@ -21,8 +21,6 @@ change Status to RESOLVED, and move its row to the table at the bottom.
 
 | # | Item | Status |
 |---|------|--------|
-| [08](08-spirit-bazaar-complexity.md) | Spirit Bazaar too complex | PENDING — owner |
-| [09](09-daily-and-rapids-caps.md) | Daily and Rapids play caps | PENDING — owner |
 | [10](10-premium-tile-trial.md) | Premium tile trial after a streak | PENDING — owner |
 
 ## Known, not blocking
@@ -31,7 +29,6 @@ change Status to RESOLVED, and move its row to the table at the bottom.
 |---|------|--------|
 | [04](04-ads-never-show.md) | Ads never show at all | PENDING |
 | [05](05-t02-checksum-forgeable.md) | Save checksum forgeable | ACCEPTED — will not fix |
-| [11](11-cherry-blossom-legibility.md) | Cherry Blossom fails legibility | DEFERRED |
 | [12](12-bamboo-art.md) | Bamboo 1 and 2 drawn as plain pills | DEFERRED |
 | [13](13-tile-glyph-system-font.md) | Tile glyphs use the device font | PENDING |
 | [14](14-cloud-save-branch-unmerged.md) | feat/cloud-save-pgs unmerged | PENDING |
@@ -54,6 +51,7 @@ change Status to RESOLVED, and move its row to the table at the bottom.
 | [25](25-menu-wording-too-clever.md) | Menu names are too clever | 2026-09-23 | `10b11e4` |
 | [20](20-selection-feedback.md) | Selecting a tile is not visible enough | 2026-09-24 | `7eed0d9` |
 | [23](23-no-resume-after-close.md) | Closing the game loses the board in progress | 2026-09-24 | `7eed0d9` |
+| [11](11-cherry-blossom-legibility.md) | Cherry Blossom fails legibility | 2026-09-24 | `0fc562c` |
 
 ---
 
