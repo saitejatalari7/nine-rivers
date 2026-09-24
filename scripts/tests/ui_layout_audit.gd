@@ -46,7 +46,6 @@ func _ready() -> void:
 		["bg_catalog", func(): modal.show_background_catalog_modal()],
 		["bg_detail", func(): modal.show_background_detail_modal("moonlit_river")],
 		["treasury", func(): modal.show_treasury_modal()],
-		["daily_offerings", func(): modal.show_daily_offerings_modal()],
 		["theme_unlocked", func(): modal.show_theme_unlocked("theme_indigo")],
 		["deadlock", func(): modal.show_deadlock(12, 4)],
 		["settings", func(): modal.show_settings_menu()],

@@ -195,6 +195,11 @@ static func create_preview_tile(suit: String, rank: int, theme_id: String = "", 
 	view.update_theme_style()
 	view.custom_minimum_size = Vector2(TILE_W * scale_factor, TILE_H * scale_factor)
 	view.size = view.custom_minimum_size
+	# _draw works in fixed TILE_W x TILE_H units, so a bigger box on its own just
+	# left a small tile floating in it. The node has to be scaled, from its top
+	# left, so the drawing grows with the box a container lays out.
+	view.pivot_offset = Vector2.ZERO
+	view.scale = Vector2(scale_factor, scale_factor)
 	view.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return view
 
@@ -478,6 +483,9 @@ func get_accent_color() -> Color:
 ## A picked-up tile draws over its neighbours; without this the lift disappears
 ## behind whatever is stacked in front of it.
 const SELECT_Z_BOOST: int = 400
+## 3 -> 4.5: half again as thick, because a 3px line on a 64px tile is a hairline.
+const SELECT_BORDER_W: int = 5
+const SELECT_BORDER_DARK := Color("#0b0d0c")
 const SELECT_SCALE: float = 1.08
 
 func set_selected(sel: bool) -> void:
@@ -796,8 +804,11 @@ func _draw() -> void:
 	if is_selected:
 		var sel_sb := StyleBoxFlat.new()
 		sel_sb.draw_center = false
-		sel_sb.border_color = COL_GOLD
-		sel_sb.set_border_width_all(3)
+		# Gold on a pale face is gold on gold - it was the least visible choice on
+		# four of the five sets. Black reads against every face except the one
+		# that is already black, which keeps the gold.
+		sel_sb.border_color = COL_GOLD if get_effective_theme() == "theme_obsidian_ink" else SELECT_BORDER_DARK
+		sel_sb.set_border_width_all(SELECT_BORDER_W)
 		sel_sb.set_corner_radius_all(8)
 		sel_sb.anti_aliasing = true
 		draw_style_box(sel_sb, face_rect)

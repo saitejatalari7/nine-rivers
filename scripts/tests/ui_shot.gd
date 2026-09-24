@@ -19,6 +19,7 @@ func _ready() -> void:
 		["ui_sub_settings", func(): modal.show_settings_menu()],
 		["ui_sub_levels", func(): modal.show_level_select()],
 		["ui_sub_bazaar", func(): modal.show_bazaar_modal()],
+		["ui_sub_tile_detail", func(): modal.show_tile_detail_modal("theme_imperial_gold")],
 		["ui_sub_treasury", func(): modal.show_treasury_modal()],
 	]:
 		entry[1].call()

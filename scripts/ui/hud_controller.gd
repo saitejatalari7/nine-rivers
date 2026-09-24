@@ -22,6 +22,12 @@ var btn_pearls: Button
 @onready var lbl_tiles: Label = $TopBar/Readout/StatsBox/TilesBox/ValTiles
 @onready var lbl_sets: Label = $TopBar/Readout/StatsBox/SetsBox/ValSets
 
+## The readout and the props bar were both taken to three quarters of their old
+## size. They are reference, not action - the board is what the player is
+## looking at - and at full size they framed it rather than sat beside it.
+const HUD_SCALE: float = 0.75
+const HUD_FS: int = int(UITheme.FS_BODY * HUD_SCALE)
+
 @onready var timer_container: Control = $TimerWrap
 @onready var time_bar: ProgressBar = $TimerWrap/Bar
 @onready var lbl_clock: Label = $TimerWrap/ClockText
@@ -85,10 +91,10 @@ func _init_dynamic_hud_elements() -> void:
 	# 3. Spirit Pearls Counter Pill in TopBar
 	btn_pearls = Button.new()
 	btn_pearls.name = "BtnPearls"
-	btn_pearls.custom_minimum_size = Vector2(196, UITheme.TOUCH_MIN)
+	btn_pearls.custom_minimum_size = Vector2(147, UITheme.TOUCH_MIN * 0.75)
 	btn_pearls.text = "◈ %d" % MonetizationManager.get_pearls()
 	UITheme.style_button(btn_pearls, true, 16)
-	btn_pearls.add_theme_font_size_override("font_size", UITheme.FS_BODY)
+	btn_pearls.add_theme_font_size_override("font_size", HUD_FS)
 	btn_pearls.pressed.connect(func(): pearls_clicked.emit())
 	SaveManager.pearls_changed.connect(_on_pearls_changed)
 	$TopBar.add_child(btn_pearls)
@@ -115,9 +121,9 @@ func _apply_luxury_theme() -> void:
 	UITheme.style_button(btn_undo, false, 18)
 	UITheme.style_button(btn_hint, false, 18)
 	UITheme.style_button(btn_shuffle, false, 18)
-	btn_undo.add_theme_font_size_override("font_size", UITheme.FS_BODY)
-	btn_hint.add_theme_font_size_override("font_size", UITheme.FS_BODY)
-	btn_shuffle.add_theme_font_size_override("font_size", UITheme.FS_BODY)
+	btn_undo.add_theme_font_size_override("font_size", HUD_FS)
+	btn_hint.add_theme_font_size_override("font_size", HUD_FS)
+	btn_shuffle.add_theme_font_size_override("font_size", HUD_FS)
 	
 	# 4. Timer Bar Styling
 	var sb_timer_bg := StyleBoxFlat.new()

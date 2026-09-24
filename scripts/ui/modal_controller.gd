@@ -672,11 +672,6 @@ func show_bazaar_modal() -> void:
 
 	var pearls: int = MonetizationManager.get_pearls()
 	_add_purse_line("%d ◈ pearls" % pearls)
-	# One currency is still one currency nobody has had explained to them. A
-	# first-time player sees a diamond and a number and is told nothing about
-	# where either came from.
-	_add_description("Pearls are earned by playing - %d for every star you clear, %d for the first daily puzzle each day. You can also buy them." % [
-		SaveManager.PEARLS_PER_STAR, 50])
 	_add_hairline()
 
 	_add_tile_row(GLYPH_JADE, "Tile Sets",
@@ -693,11 +688,6 @@ func show_bazaar_modal() -> void:
 	_add_tile_row(GLYPH_GOLD, "Buy Pearls",
 		"Buy pearls, remove ads", "%d ◈" % pearls, func():
 			show_treasury_modal()
-	)
-
-	_add_tile_row(GLYPH_GOLD, "Free Rewards",
-		"Free pearls and props", "", func():
-			show_daily_offerings_modal()
 	)
 
 	_add_separator()
@@ -783,21 +773,21 @@ func show_theme_unlocked(theme_key: String) -> void:
 	show_modal()
 
 
+## Big enough to be the point of the screen rather than an illustration on it.
+const DETAIL_TILE_SCALE: float = 2.4
+
 func show_tile_detail_modal(theme_key: String) -> void:
 	_current_screen = "tile_detail"
 	_clear_content()
 	
 	var detail: Dictionary = TILE_THEME_DETAILS.get(theme_key, TILE_THEME_DETAILS["classic_jade"])
-	_add_header(String(detail["name"]), String(detail["subtitle"]))
+	_add_header(String(detail["name"]), "")
 
-	# Live visual preview row with real physical tiles
-	_add_tile_preview_row(detail["samples"], theme_key)
-
-	_add_description(detail["desc"])
-	_add_hairline()
-	_add_feature_row("Tactical Purpose", detail["purpose"])
-	_add_hairline()
-	_add_feature_row("Feel & Dissolution", detail["tactile"])
+	# The tiles, large, and nothing else. This screen used to carry the subtitle,
+	# a description, a "Tactical Purpose" paragraph and a "Feel & Dissolution"
+	# paragraph above the price - four blocks of prose about an object the player
+	# can simply be shown.
+	_add_tile_preview_row(detail["samples"], theme_key, DETAIL_TILE_SCALE)
 	_add_separator()
 
 	var cur_theme := MonetizationManager.get_active_theme()
@@ -977,42 +967,11 @@ func show_treasury_modal() -> void:
 	)
 	show_modal()
 
-func show_daily_offerings_modal() -> void:
-	_current_screen = "daily_offerings"
-	_clear_content()
-	
-	_add_header("Free Rewards", "Free pearls and today's deals")
-	_add_hairline()
-
-	# Offers only appear when an ad can actually be shown. With no ad network in
-	# the build these used to pay out anyway; hiding them is honest, and beats a
-	# button that silently does nothing.
-	var remaining_ads: int = MonetizationManager.get_remaining_rewarded_ads()
-	if MonetizationManager.can_offer_rewarded_ad():
-		_add_tile_row(GLYPH_GOLD, "Daily Reward",
-			"+60 ◈ pearls · free",
-			"%d left" % remaining_ads, func():
-				MonetizationManager.show_rewarded_ad("daily_pearls", func(_t, _a):
-					AudioManager.play_win()
-					show_daily_offerings_modal()
-				)
-		, true)
-		_add_toggle_row("Free Hint and Shuffle", "+1 hint & shuffle", func():
-			MonetizationManager.show_rewarded_ad("props_refill", func(_t, _a):
-				AudioManager.play_win()
-				show_daily_offerings_modal()
-			)
-		, UITheme.IVORY_MUTED)
-	elif remaining_ads > 0:
-		_add_sheet_row("Free Rewards", "Unavailable · try again later", UITheme.IVORY_MUTED)
-	else:
-		_add_sheet_row("Free Rewards", "Complete · resets at dawn", UITheme.GOLD_CORE)
-
-	_add_separator()
-	_add_button("Back", func():
-		show_bazaar_modal()
-	)
-	show_modal()
+## The Free Rewards screen lived here. It offered pearls and props for watching
+## a rewarded ad, and it was cut because the daily puzzle already gives pearls
+## for free - two free-pearl surfaces was one too many, and the shop is for
+## buying. The rewarded-ad plumbing is untouched in MonetizationManager; if ads
+## ship it needs a home, and this is not it.
 
 ## Remembers which screen opened Settings. Both back paths used to ask
 ## GameManager.is_timer_active, which is false while paused and false in Calm
@@ -1124,7 +1083,7 @@ func handle_back_pressed() -> void:
 	match _current_screen:
 		"level_select", "bazaar":
 			show_main_menu()
-		"tile_catalog", "bg_catalog", "treasury", "daily_offerings":
+		"tile_catalog", "bg_catalog", "treasury":
 			show_bazaar_modal()
 		"tile_detail":
 			show_tile_catalog_modal()
@@ -1552,9 +1511,12 @@ func _add_feature_row(key: String, val: String) -> void:
 	v_box.add_child(l_v)
 	card_container.add_child(v_box)
 
-func _add_tile_preview_row(samples: Array, theme_id: String) -> void:
+## scale is what the detail screen turns up. The set is the product; the player
+## is buying how it LOOKS, and three thumbnails under four paragraphs of prose
+## told them everything except that.
+func _add_tile_preview_row(samples: Array, theme_id: String, scale: float = 1.0) -> void:
 	var center_box := CenterContainer.new()
-	center_box.custom_minimum_size = Vector2(0, 110)
+	center_box.custom_minimum_size = Vector2(0, 110.0 * scale)
 	
 	var preview_panel := PanelContainer.new()
 	# No border: the tiles are the object here, and a gold box around them would
@@ -1569,14 +1531,21 @@ func _add_tile_preview_row(samples: Array, theme_id: String) -> void:
 	margin.add_theme_constant_override("margin_bottom", 12)
 	
 	var hbox := HBoxContainer.new()
-	hbox.add_theme_constant_override("separation", 24)
+	hbox.add_theme_constant_override("separation", int(24.0 * scale))
 	hbox.alignment = BoxContainer.ALIGNMENT_CENTER
 	
 	for s in samples:
 		var suit: String = s[0]
 		var rank: int = int(s[1])
-		var tile_ctrl := TileView.create_preview_tile(suit, rank, theme_id, 1.0)
-		hbox.add_child(tile_ctrl)
+		var tile_ctrl := TileView.create_preview_tile(suit, rank, theme_id, scale)
+		# In a holder, not straight into the box: a Container lays its children out
+		# and resets the scale doing it, so a scaled tile added directly came back
+		# at 1.0 however large its minimum size was.
+		var holder := Control.new()
+		holder.custom_minimum_size = tile_ctrl.custom_minimum_size
+		holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		holder.add_child(tile_ctrl)
+		hbox.add_child(holder)
 		
 	margin.add_child(hbox)
 	preview_panel.add_child(margin)

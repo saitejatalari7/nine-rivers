@@ -49,10 +49,11 @@ layout_mode = 2
 mouse_filter = 2
 layout_mode = 2
 size_flags_horizontal = 3
+size_flags_vertical = 4
 
 [node name="StatsBox" type="HBoxContainer" parent="TopBar/Readout"]
 layout_mode = 2
-theme_override_constants/separation = 16
+theme_override_constants/separation = 12
 alignment = 1
 
 [node name="LevelBox" type="VBoxContainer" parent="TopBar/Readout/StatsBox"]
@@ -62,13 +63,13 @@ alignment = 1
 [node name="Lbl" type="Label" parent="TopBar/Readout/StatsBox/LevelBox"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.6, 0.75, 0.68, 1)
-theme_override_font_sizes/font_size = 36
+theme_override_font_sizes/font_size = 27
 text = "STAGE"
 horizontal_alignment = 1
 
 [node name="ValLevel" type="Label" parent="TopBar/Readout/StatsBox/LevelBox"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 48
+theme_override_font_sizes/font_size = 36
 text = "1"
 horizontal_alignment = 1
 
@@ -80,13 +81,13 @@ alignment = 1
 [node name="Lbl" type="Label" parent="TopBar/Readout/StatsBox/ScoreBox"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.6, 0.75, 0.68, 1)
-theme_override_font_sizes/font_size = 36
+theme_override_font_sizes/font_size = 27
 text = "SCORE"
 horizontal_alignment = 1
 
 [node name="ValScore" type="Label" parent="TopBar/Readout/StatsBox/ScoreBox"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 48
+theme_override_font_sizes/font_size = 36
 text = "0"
 horizontal_alignment = 1
 
@@ -97,13 +98,13 @@ alignment = 1
 [node name="Lbl" type="Label" parent="TopBar/Readout/StatsBox/TilesBox"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.6, 0.75, 0.68, 1)
-theme_override_font_sizes/font_size = 36
+theme_override_font_sizes/font_size = 27
 text = "TILES"
 horizontal_alignment = 1
 
 [node name="ValTiles" type="Label" parent="TopBar/Readout/StatsBox/TilesBox"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 48
+theme_override_font_sizes/font_size = 36
 text = "36"
 horizontal_alignment = 1
 
@@ -114,13 +115,13 @@ alignment = 1
 [node name="Lbl" type="Label" parent="TopBar/Readout/StatsBox/SetsBox"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.6, 0.75, 0.68, 1)
-theme_override_font_sizes/font_size = 36
+theme_override_font_sizes/font_size = 27
 text = "SETS"
 horizontal_alignment = 1
 
 [node name="ValSets" type="Label" parent="TopBar/Readout/StatsBox/SetsBox"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 48
+theme_override_font_sizes/font_size = 36
 text = "0"
 horizontal_alignment = 1
 
@@ -174,30 +175,30 @@ anchor_top = 1.0
 anchor_right = 0.5
 anchor_bottom = 1.0
 offset_left = -450.0
-offset_top = -195.0
+offset_top = -165.0
 offset_right = 450.0
 offset_bottom = -75.0
 grow_horizontal = 2
 grow_vertical = 0
-theme_override_constants/separation = 28
+theme_override_constants/separation = 21
 alignment = 1
 
 [node name="BtnUndo" type="Button" parent="PropsBar"]
-custom_minimum_size = Vector2(240, 120)
+custom_minimum_size = Vector2(180, 90)
 layout_mode = 2
-theme_override_font_sizes/font_size = 38
+theme_override_font_sizes/font_size = 29
 text = "Undo\n(3)"
 
 [node name="BtnHint" type="Button" parent="PropsBar"]
-custom_minimum_size = Vector2(240, 120)
+custom_minimum_size = Vector2(180, 90)
 layout_mode = 2
-theme_override_font_sizes/font_size = 38
+theme_override_font_sizes/font_size = 29
 text = "Hint\n(3)"
 
 [node name="BtnShuffle" type="Button" parent="PropsBar"]
-custom_minimum_size = Vector2(240, 120)
+custom_minimum_size = Vector2(180, 90)
 layout_mode = 2
-theme_override_font_sizes/font_size = 38
+theme_override_font_sizes/font_size = 29
 text = "Shuffle\n(3)"
 
 [node name="Toast" type="PanelContainer" parent="."]

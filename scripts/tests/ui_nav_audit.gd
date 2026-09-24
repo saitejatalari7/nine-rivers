@@ -204,7 +204,6 @@ func _seed_paths() -> Array:
 		{"builder": "show_background_catalog_modal", "args": []},
 		{"builder": "show_background_detail_modal", "args": ["moonlit_river"]},
 		{"builder": "show_treasury_modal", "args": []},
-		{"builder": "show_daily_offerings_modal", "args": []},
 		{"builder": "show_settings_menu", "args": []},
 		{"builder": "show_privacy_modal", "args": []},
 		{"builder": "show_credits_modal", "args": []},
