@@ -425,6 +425,26 @@ func _on_billing_sku_details_completed(_details: Array) -> void:
 	pass
 
 # ================= ADS INITIALIZATION =================
+## The AdMob account's own identifiers. Kept here, named, rather than pasted
+## into whatever plugin call site needs them: they are account facts, and the
+## plugin underneath them may yet be swapped.
+const ADMOB_APP_ID := "ca-app-pub-2056760294521107~6852510420"
+const ADMOB_REWARDED_ID := "ca-app-pub-2056760294521107/4608567029"
+const ADMOB_INTERSTITIAL_ID := "<PENDING: create an Interstitial unit in AdMob>"
+
+## Google's published test units. Serving live ads to yourself is a policy
+## violation that gets AdMob accounts suspended, so a debug build never touches
+## the real units - the switch is the build type, not a flag anyone can forget.
+const TEST_REWARDED_ID := "ca-app-pub-3940256099942544/5224354917"
+const TEST_INTERSTITIAL_ID := "ca-app-pub-3940256099942544/1033173712"
+
+static func rewarded_unit_id() -> String:
+	return TEST_REWARDED_ID if OS.is_debug_build() else ADMOB_REWARDED_ID
+
+static func interstitial_unit_id() -> String:
+	return TEST_INTERSTITIAL_ID if OS.is_debug_build() else ADMOB_INTERSTITIAL_ID
+
+
 func _init_platform_ads() -> void:
 	if Engine.has_singleton("GodotAdMob"):
 		_admob = Engine.get_singleton("GodotAdMob")
