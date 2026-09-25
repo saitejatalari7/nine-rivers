@@ -1544,14 +1544,24 @@ func _add_tile_preview_row(samples: Array, theme_id: String, scale: float = 1.0)
 ## the preview cannot drift away from the thing being sold.
 const RiverFeltShader = preload("res://assets/shaders/river_felt.gdshader")
 
-func _add_palette_preview_card(theme_data: Dictionary, scale: float = 1.0) -> void:
+## Portrait, in the shape of the screen it will fill. A wide band across the
+## card showed the colours but not the pond: this game is played on a tall
+## screen, and a background is chosen by how it sits behind a board, not by how
+## it looks as a stripe.
+const BG_PREVIEW := Vector2(300, 533)
+
+func _add_palette_preview_card(theme_data: Dictionary, _scale: float = 1.0) -> void:
+	var center_box := CenterContainer.new()
+	center_box.custom_minimum_size = Vector2(0, BG_PREVIEW.y)
+
 	var frame := PanelContainer.new()
 	var sb := UITheme.create_panel_box(Color(0, 0, 0, 0), UITheme.GOLD_MUTED, 1, 14, 0.0)
 	frame.add_theme_stylebox_override("panel", sb)
+	frame.custom_minimum_size = BG_PREVIEW
+	frame.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 
 	var water := ColorRect.new()
-	water.custom_minimum_size = Vector2(0, 120.0 * maxf(1.0, scale))
-	water.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	water.custom_minimum_size = BG_PREVIEW
 	water.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 	var mat := ShaderMaterial.new()
@@ -1560,16 +1570,17 @@ func _add_palette_preview_card(theme_data: Dictionary, scale: float = 1.0) -> vo
 	mat.set_shader_parameter("secondary_color", theme_data.get("secondary_color", Color.BLACK))
 	mat.set_shader_parameter("caustic_color", theme_data.get("caustic_color", Color.WHITE))
 	mat.set_shader_parameter("gold_color", theme_data.get("gold_color", Color.GOLD))
-	# Not still. flow_level is what lights the caustics, and at zero the preview
-	# rendered as a near-black rectangle - technically the pond, and no use at
-	# all for choosing one. Mid-flow is what the water looks like in play.
+	# flow_level is what lights the caustics. At zero this rendered as a
+	# near-black rectangle: technically the pond, no use for choosing one.
 	mat.set_shader_parameter("flow_level", 4.0)
 	mat.set_shader_parameter("overdrive", 0.0)
 	mat.set_shader_parameter("speed", 0.6)
 	water.material = mat
 
+	# No clip_children on the frame: it blanks the shader entirely.
 	frame.add_child(water)
-	card_container.add_child(frame)
+	center_box.add_child(frame)
+	card_container.add_child(center_box)
 
 func _add_button(text: String, on_click: Callable, is_gold: bool = false) -> void:
 	var b := Button.new()
