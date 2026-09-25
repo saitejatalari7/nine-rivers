@@ -430,7 +430,7 @@ func _on_billing_sku_details_completed(_details: Array) -> void:
 ## plugin underneath them may yet be swapped.
 const ADMOB_APP_ID := "ca-app-pub-2056760294521107~6852510420"
 const ADMOB_REWARDED_ID := "ca-app-pub-2056760294521107/4608567029"
-const ADMOB_INTERSTITIAL_ID := "<PENDING: create an Interstitial unit in AdMob>"
+const ADMOB_INTERSTITIAL_ID := "ca-app-pub-2056760294521107/9151370704"
 
 ## Google's published test units. Serving live ads to yourself is a policy
 ## violation that gets AdMob accounts suspended, so a debug build never touches

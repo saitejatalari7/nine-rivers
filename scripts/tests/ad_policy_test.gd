@@ -70,6 +70,8 @@ func _ready() -> void:
 		"the last ad time survives a reload",
 		"got %s" % str(SaveManager.economy.get("last_interstitial_unix")))
 
+	_check_ad_ids()
+
 	print("")
 	print("Failures: %d" % _fails)
 	get_tree().quit(1 if _fails > 0 else 0)
@@ -85,6 +87,26 @@ func _reset() -> void:
 func _expect(level: int, reason: String, what: String) -> void:
 	var got: String = MonetizationManager.interstitial_block_reason(level)
 	_check(got == reason, what, "reason=\"%s\" expected \"%s\"" % [got, reason])
+
+
+## The identifiers themselves. A blank or placeholder unit id fails silently at
+## runtime - AdMob simply never fills - so it is worth one assertion here rather
+## than a live build that quietly shows nothing.
+func _check_ad_ids() -> void:
+	var M = MonetizationManager
+	_check(M.ADMOB_APP_ID.begins_with("ca-app-pub-") and M.ADMOB_APP_ID.contains("~"),
+		"the app id is a real AdMob app id", M.ADMOB_APP_ID)
+	for pair in [["rewarded", M.ADMOB_REWARDED_ID], ["interstitial", M.ADMOB_INTERSTITIAL_ID]]:
+		var id: String = String(pair[1])
+		_check(id.begins_with("ca-app-pub-") and id.contains("/") and not id.contains("PENDING"),
+			"the %s unit id is filled in" % pair[0], id)
+	# Test units must never be the live ones, and a release build must never
+	# serve test ads: both directions are policy violations.
+	_check(M.TEST_REWARDED_ID != M.ADMOB_REWARDED_ID
+		and M.TEST_INTERSTITIAL_ID != M.ADMOB_INTERSTITIAL_ID,
+		"test units are not the live units", "")
+	_check(M.rewarded_unit_id() == M.TEST_REWARDED_ID,
+		"a debug build serves test ads", M.rewarded_unit_id())
 
 
 func _check(ok: bool, what: String, detail: String) -> void:
