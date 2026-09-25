@@ -1,5 +1,9 @@
 extends Node
 
+## Emitted after the profile is successfully written to disk. CloudSaveManager
+## listens for this to know there is something new worth uploading.
+signal progress_committed
+
 const SAVE_PATH := "user://nine_rivers_save.json"
 ## Previous good generation, kept so an interrupted write can never lose a profile.
 const BACKUP_PATH := "user://nine_rivers_save.bak"
@@ -71,7 +75,10 @@ var settings: Dictionary = {
 	"motion": "full",
 	"magnetic_assist": true,
 	"color_blind_mode": "none",
-	"high_contrast_borders": false
+	"high_contrast_borders": false,
+	# Cloud save is opt-in. See CloudSaveManager.
+	"cloud_save": false,
+	"cloud_save_prompted": false
 }
 
 ## 2 -> 3 is a signature-scheme change only, not a data change: version 2 signed
@@ -167,19 +174,65 @@ func signature_for_payload(data: Dictionary) -> String:
 ## previous generation is rotated to BACKUP_PATH rather than discarded, so a write
 ## interrupted at any point still leaves at least one loadable profile on disk.
 ## Returns false if the profile could not be persisted; the old file is untouched.
-func save_game() -> bool:
-	_is_dirty = false
-	_batch_timer = 0.0
+## The complete profile, signed. One definition of what a save IS, used both by
+## the file on disk and by the copy CloudSaveManager uploads, so the two can
+## never drift into different shapes.
+##
+## The in-progress board is deliberately left out of the cloud copy. It is the
+## largest part of the file, it is only meaningful on the device that was
+## playing it, and a board is not progress worth carrying between phones.
+func build_payload(include_session: bool = false) -> Dictionary:
 	var data := {
 		"prog": prog,
 		"sanctuary": sanctuary,
 		"tile_mastery": tile_mastery,
 		"settings": settings,
 		"economy": economy,
-		"session": session,
 		"version": CURRENT_VERSION,
 	}
+	if include_session:
+		data["session"] = session
 	data["checksum"] = signature_for_payload(data)
+	return data
+
+
+## Applies a profile that came from somewhere other than this device disk.
+## Routed through exactly the same validation as a local load: a payload off the
+## network is no more trustworthy than a file on disk, and giving it its own
+## path would mean two sets of rules to keep in step.
+func import_payload(data: Dictionary) -> bool:
+	if data.is_empty() or not _apply_save_data(data):
+		return false
+	save_game()
+	return true
+
+
+## Ranks a profile by how far the player actually got, compared left to right.
+## Used when the phone and the cloud disagree, so the copy showing more progress
+## wins and nobody is silently sent backwards.
+func progress_rank(data: Dictionary) -> Array:
+	var p: Dictionary = data.get("prog", {}) if data.get("prog") is Dictionary else {}
+	var e: Dictionary = data.get("economy", {}) if data.get("economy") is Dictionary else {}
+	var stars_total: int = 0
+	if p.get("stars") is Dictionary:
+		for v in p["stars"].values():
+			stars_total += int(v) if (v is int or v is float) else 0
+	var owned: int = 0
+	if e.get("unlocked_themes") is Array:
+		owned = (e["unlocked_themes"] as Array).size()
+	return [
+		_vint(p.get("level"), 1, 1),
+		stars_total,
+		owned,
+		_vint(e.get("pearls"), 0, 0),
+		_vint(p.get("best_score"), 0, 0),
+	]
+
+
+func save_game() -> bool:
+	_is_dirty = false
+	_batch_timer = 0.0
+	var data := build_payload(true)
 
 	# 1. Write the full payload to the scratch file.
 	var file := FileAccess.open_encrypted_with_pass(TEMP_PATH, FileAccess.WRITE, _ENC_KEY)
@@ -208,6 +261,7 @@ func save_game() -> bool:
 	if DirAccess.rename_absolute(ProjectSettings.globalize_path(TEMP_PATH), ProjectSettings.globalize_path(SAVE_PATH)) != OK:
 		push_error("Nine Rivers: could not commit the save file. Recovery copy retained.")
 		return false
+	progress_committed.emit()
 	return true
 
 func _remove(path: String) -> void:
@@ -472,6 +526,10 @@ func _sanitize_settings(raw: Variant) -> Dictionary:
 	for key in ["music", "sfx", "haptics", "magnetic_assist"]:
 		if d.has(key): out[key] = _vbool(d[key], true)
 	if d.has("high_contrast_borders"): out["high_contrast_borders"] = _vbool(d["high_contrast_borders"], false)
+	# Both default false: a settings file that has lost these keys must not turn
+	# cloud save ON, and must not suppress the offer as though it were answered.
+	if d.has("cloud_save"): out["cloud_save"] = _vbool(d["cloud_save"], false)
+	if d.has("cloud_save_prompted"): out["cloud_save_prompted"] = _vbool(d["cloud_save_prompted"], false)
 	if d.has("motion"): out["motion"] = _vstr(d["motion"], "full", VALID_MOTION)
 	if d.has("color_blind_mode"): out["color_blind_mode"] = _vstr(d["color_blind_mode"], "none", VALID_COLOR_BLIND)
 	return out

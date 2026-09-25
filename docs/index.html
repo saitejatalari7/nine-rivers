@@ -1,9 +1,14 @@
 <!DOCTYPE html>
+<!--
+  Published rendering of release/privacy-policy.md, which is the canonical text.
+  Edit that file first, then bring this page into line with it. Do not add or
+  amend a policy statement here that does not appear there.
+-->
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Privacy Policy — Nine Rivers (九河)</title>
+  <title>Privacy Policy - Nine Rivers</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
@@ -60,9 +65,6 @@
       color: var(--gold-light);
       margin-top: 32px;
       margin-bottom: 12px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
     }
     p { margin-bottom: 16px; color: var(--text-main); }
     ul { margin: 12px 0 20px 24px; color: var(--text-muted); }
@@ -80,6 +82,14 @@
       font-size: 0.85rem;
       margin-bottom: 16px;
     }
+    .note {
+      border-left: 3px solid var(--accent);
+      background: rgba(26, 129, 99, 0.15);
+      padding: 14px 18px;
+      border-radius: 0 10px 10px 0;
+      margin: 20px 0;
+      color: var(--text-main);
+    }
     footer {
       margin-top: 40px;
       padding-top: 24px;
@@ -94,46 +104,89 @@
   <div class="container">
     <header>
       <span class="badge">Official Policy</span>
-      <h1>Privacy Policy for Nine Rivers (九河)</h1>
-      <div class="meta">Effective Date: September 13, 2026 &bull; Last Updated: September 13, 2026</div>
+      <h1>Privacy Policy for Nine Rivers</h1>
+      <div class="meta">Effective 25 September 2026 &bull; Last updated 25 September 2026<br>
+        Nine Rivers for Android, package com.ninerivers.mahjong</div>
     </header>
 
-    <p>Thank you for playing <strong>Nine Rivers (九河)</strong> ("the Game"). We value your peace of mind and respect your privacy. This Privacy Policy explains our practices regarding user data.</p>
+    <h2>1. Summary</h2>
+    <p>Nine Rivers is a single-player mahjong solitaire game. It has no user accounts, no login, no analytics or tracking SDK, and no server operated by the developer. The game plays fully offline.</p>
+    <p>The developer receives no personal information about you. The only data that leaves your phone does so through Google's own services, and only in the cases described in section 4.</p>
 
-    <h2>1. Zero Personal Data Collection</h2>
-    <p>Nine Rivers is designed as a tranquil, offline-first zen experience:</p>
+    <h2>2. What is stored on your device</h2>
+    <p>Your progress and preferences are written to a file in the app's own private storage area. The file is encrypted and carries an integrity check, so it cannot be read or edited outside the game. It holds:</p>
     <ul>
-      <li><strong>We do not collect, store, transmit, or sell any personally identifiable information (PII).</strong></li>
-      <li>We do not request your real name, email address, phone number, physical location, contacts, or photos.</li>
-      <li>No user accounts, social media logins, or external registrations are required to play the full game.</li>
+      <li>Stage progress, stars, best score and best stage.</li>
+      <li>Your Spirit Pearls balance, and which tile sets and backgrounds you own or have equipped.</li>
+      <li>Daily puzzle streak, the date of your last daily puzzle, and how many timed runs you have used today.</li>
+      <li>Koi sanctuary state, decorations and tile mastery.</li>
+      <li>Settings: sound, music, haptics, reduced motion, colour-blind mode, and whether cloud save is switched on.</li>
+      <li>The board you are part-way through, so a call or a low-memory kill does not cost you the game in progress.</li>
+      <li>Whether you have bought the ad-free upgrade, and the state used to pace advertising if and when advertising is enabled (see section 5).</li>
     </ul>
+    <p>This file is local. The game contains no code that uploads it anywhere, other than the optional cloud save described in section 4.2.</p>
 
-    <h2>2. Local Save Data & Cryptographic Protection</h2>
-    <p>All game progress &mdash; including levels unlocked, high scores, flow streaks, Koi Sanctuary customization, and player preferences &mdash; is stored <strong>strictly locally on your device</strong> using encrypted local storage.</p>
+    <h2>3. What is not collected</h2>
+    <p>The game does not collect, and contains no code to collect:</p>
     <ul>
-      <li>If you uninstall the app or clear app storage, your local game data will be reset.</li>
-      <li>Your progress is never uploaded to any external or third-party servers without your operating system's explicit cloud backup (such as Google Drive Device Backup or Apple iCloud).</li>
+      <li>Your name, email address, phone number or postal address.</li>
+      <li>Your location, whether precise or approximate.</li>
+      <li>Your contacts, calendar, photos, files, microphone or camera.</li>
+      <li>Your installed applications or browsing history.</li>
+      <li>Any analytics, crash-reporting or attribution telemetry.</li>
     </ul>
+    <p>The app requests one Android permission: vibration, used for the tile haptics. It requests no location, storage, contacts or camera permission.</p>
 
-    <h2>3. In-App Purchases & Advertising</h2>
+    <h2>4. Third parties</h2>
+    <p><strong>4.1 Google Play Billing.</strong> Purchases are handled entirely by Google Play Billing. You buy from Google, not from the developer. Google tells the game which products you own, so the game can unlock them; the developer never sees and never receives your card number, UPI PIN, bank details or billing address. Google's handling of a purchase is covered by the <a href="https://policies.google.com/privacy">Google Privacy Policy</a>.</p>
+    <p><strong>4.2 Google Play Games Services (cloud save) - optional, off by default.</strong> The game can back your progress up to Google Play Games Services saved games, so it survives a reinstall or a new phone.</p>
     <ul>
-      <li><strong>In-App Purchases (Google Play Billing):</strong> Any optional purchases (such as cosmetic tile themes or Spirit Pearls) are processed directly and securely through the official <strong>Google Play Store Billing</strong> service. We never receive, process, or store your credit card numbers, UPI PINs, or financial credentials.</li>
-      <li><strong>Ethical Offerings & Advertisements:</strong> If you choose to watch an optional rewarded offering to earn in-game pearls or props, advertisements are served through standard, compliant mobile ad networks (such as Google AdMob). These networks may process non-personal device identifiers strictly to deliver the ad, prevent fraud, and comply with applicable store privacy standards. Full-screen ads are strictly frequency-capped to protect the calm player experience.</li>
+      <li>This is <strong>off by default</strong>. It only runs after you turn it on in Settings.</li>
+      <li>With it on, the game signs in to Google Play Games with the Google account already on your phone, and uploads a copy of the progress data listed in section 2 to Google, where it is held against your Google account.</li>
+      <li>Your purchases, settings and progress remain playable with cloud save switched off. Nothing is withheld from you for declining.</li>
+      <li>The developer has no access to your Google account, and no way to read your saved game.</li>
     </ul>
+    <p><strong>4.3 Advertising (Google AdMob)</strong> - planned; see section 5.</p>
 
-    <h2>4. Children’s Privacy & Family Compliance</h2>
-    <p>Nine Rivers does not target children under 13, nor do we knowingly collect any personal information from children. Because our game collects zero personal data, it is safe, peaceful, and compliant for family and all-ages play.</p>
+    <h2>5. Advertising</h2>
+    <div class="note">
+      <strong>The build being published contains no ad network.</strong> No advertising SDK is bundled, the <code>com.google.android.gms.permission.AD_ID</code> permission is not in the app's manifest, and no advertising identifier is read or transmitted. If you install this version and never update, you will see no advertisements at all.
+    </div>
+    <p><strong>Advertising is intended, and is expected to arrive in an update.</strong> The developer has registered with Google AdMob and plans to serve advertising in Nine Rivers. This policy describes that use now so that it is disclosed before it begins rather than after.</p>
+    <p>When advertising is enabled:</p>
+    <ul>
+      <li>Advertisements will be served by <strong>Google AdMob</strong>, as a banner, as occasional full-screen interstitials between stages, and as optional rewarded videos that you choose to watch.</li>
+      <li>Interstitials are paced by the game: none during the first three stages, at least three stages and four minutes between any two, and never during a board you are playing.</li>
+      <li>AdMob and its partners may read and use the <strong>Android advertising ID</strong> and related device and ad-interaction signals to select advertisements, limit repetition, measure performance and detect fraud. This is Google's processing, under Google's policies, not the developer's. See <a href="https://policies.google.com/technologies/partner-sites">how Google uses data from partner sites and apps</a> and the <a href="https://support.google.com/admob/answer/6128543">AdMob and AdSense policies</a>.</li>
+      <li>The advertising ID is resettable, and can be deleted, in Android Settings under Privacy. Android also offers an opt-out of ad personalisation there, which the game honours because it passes the choice straight to Google.</li>
+      <li>The one-time <strong>Remove Ads</strong> purchase (Rs 199) permanently removes the banner and the interstitials.</li>
+    </ul>
+    <p>Once advertising ships, the app will declare the <code>AD_ID</code> permission and the Play Data Safety declaration will be updated to say that an advertising identifier is collected and shared. This section will be rewritten from "planned" to "in use", with the date, at that time.</p>
 
-    <h2>5. Contact Developer Support</h2>
-    <p>If you have any questions, feedback, or support inquiries regarding this Privacy Policy or Nine Rivers, please contact us directly:</p>
-    <p>
-      <strong>Developer:</strong> Nine Rivers Studio<br>
-      <strong>Email:</strong> <a href="mailto:saiteja.talari@gmail.com">saiteja.talari@gmail.com</a><br>
-      <strong>Location:</strong> India
-    </p>
+    <h2>6. Children</h2>
+    <p>Nine Rivers is intended for players aged 13 and over and is <strong>not directed to children</strong>. It is not enrolled in Google Play's Designed for Families programme. The developer does not knowingly collect any information from a child under 13. If you believe a child has provided information, write to the address in section 9 and it will be dealt with.</p>
+    <p>Note that the game contains in-app purchases. Google Play's parental controls and purchase authentication settings are the right way to prevent unintended spending.</p>
+
+    <h2>7. Keeping and deleting your data</h2>
+    <ul>
+      <li><strong>Local data:</strong> uninstalling Nine Rivers, or clearing its storage from Android Settings, deletes the save file and everything in it. There is no copy left behind, and nothing for the developer to delete on your behalf.</li>
+      <li><strong>Cloud save data:</strong> saved games belong to your Google account, not to the developer. Delete them yourself from the Play Games app (your profile, then Settings, then delete individual games or your whole Play Games account), or by removing the game's data from your Google account. Turning cloud save off in the game stops further uploads but does not by itself remove what is already stored with Google.</li>
+      <li><strong>Purchase records:</strong> your order history is held by Google Play. Requests about it go to Google.</li>
+    </ul>
+    <p>Because the developer holds no personal data about you, there is nothing to export or erase on the developer's side. Requests under India's Digital Personal Data Protection Act, the GDPR or the CCPA can still be sent to the address below and will be answered.</p>
+
+    <h2>8. Changes to this policy</h2>
+    <p>Material changes, including the day advertising is switched on, will be published here with a new "last updated" date before or at the time the change reaches players.</p>
+
+    <h2>9. Contact</h2>
+    <p>Questions about this policy or about the game:<br>
+      <strong>Email:</strong> &lt;CONTACT EMAIL&gt;<br>
+      <strong>Developer:</strong> Nine Rivers Studio, India</p>
 
     <footer>
-      &copy; 2026 Nine Rivers Studio. All rights reserved.
+      This page is the published rendering of <strong>release/privacy-policy.md</strong> in the
+      Nine Rivers repository, which is the canonical text.<br>
+      &copy; 2026 Nine Rivers Studio.
     </footer>
   </div>
 </body>

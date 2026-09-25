@@ -1,4 +1,4 @@
-# Nine Rivers (九河) — Game Design Document & Technical Specification
+# Nine Rivers — Game Design Document & Technical Specification
 
 **Target Platform:** Mobile (iOS / Android), PC (Steam / Web)  
 **Engine:** Godot 4.6 (GDScript / 2.5D Canvas & Mobile Renderer)  
@@ -57,7 +57,7 @@ When a player uses a wild tile to complete a set, or when an odd single tile is 
 
 ## 3. Game Modes & Daily Retention Engine
 
-### 3.1 The Daily Tide (每日一潮) — The "Morning Coffee" Habit Loop
+### 3.1 The Daily Tide — The "Morning Coffee" Habit Loop
 - **One Global Seeded Challenge Per Day:** Every player worldwide plays the exact same 3-stage board, resetting daily at midnight UTC.
 - **2–3 Minute Target Session:** Tuned for morning coffee, commutes, or quick breaks.
 - **Wordle-Style Shareable Scorecard:** Generates an emoji/brushstroke spoiler-free summary ready for copy-pasting to social apps:
@@ -75,7 +75,7 @@ When a player uses a wild tile to complete a set, or when an odd single tile is 
   - ⭐ **1 Star:** Board cleared.
   - ⭐ **2 Stars:** Secondary objective met (e.g., "Clear all Bamboo before 40% of board is cleared", "Reach Flow ×4", or "Clear without using props").
   - ⭐ **3 Stars:** Flawless run (≤ 2 misplays and no shuffle used).
-- **River Jade Drops:** Every match and star earned awards **River Jade**, the core currency for the Koi Sanctuary.
+- **Spirit Pearl Drops:** Every star earned awards **Spirit Pearls** (20 per star), the game's single currency. River Jade was folded into Pearls; old saves migrate at 3 jade to 1 pearl.
 
 ### 3.3 Timed River Run (Roguelite Survival with 3-Act Pacing)
 - **Session Pacing (The 5-Minute Window):**
@@ -105,9 +105,9 @@ When a player uses a wild tile to complete a set, or when an odd single tile is 
 
 ---
 
-## 4. The Metagame: The Koi Sanctuary (鲤鱼潭)
+## 4. The Metagame: The Koi Sanctuary
 
-Abstract stars don't retain players; personal ownership does. Between runs, players spend **River Jade** to restore an ancient Zen water garden:
+Abstract stars don't retain players; personal ownership does. Between runs, players spend **Spirit Pearls** to restore an ancient Zen water garden:
 1. **Water Clarity:** Cleared stages clean the murky river water, revealing river pebbles and sunken stones.
 2. **Koi Fish Collection:** Unlock and release 12 varieties of swimming Koi (Kohaku, Taisho Sanke, Showa, Platinum Ogon), each granting subtle ambient blessings.
 3. **Garden Elements:** Place Lotus Blossoms, Stone Lanterns, and Bamboo Water Fountains (Shishi-odoshi) that tap softly in the background.

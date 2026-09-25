@@ -587,23 +587,9 @@ func show_daily_clear(score: int, best_flow: int, streak: int, blessing: int = 0
 
 	_add_sheet_row("Final Score", str(score), UITheme.GOLD_CORE)
 	_add_sheet_row("Best Combo", "×%d" % best_flow)
-	_add_sheet_row("River Streak", "%d days" % streak)
+	_add_sheet_row("Day Streak", "%d days" % streak)
 	_add_sheet_row("Daily Reward",
 		"+%d ◈" % blessing if blessing > 0 else "claimed today")
-
-	_add_separator()
-
-	_add_tile_row(GLYPH_GOLD, "Share Scorecard", "Copied to your clipboard", "", func():
-		# A bar of geometric blocks instead of a row of wave emoji: it survives
-		# being pasted into any app, on any platform, without changing shape.
-		var flow_bar := ""
-		for i in range(mini(10, best_flow)):
-			flow_bar += "▰"
-		var share_text := "Nine Rivers - Daily Puzzle\nStreak: %d Days\nFlow: %s (×%d)\nScore: %s\nStatus: Clean Clear" % [
-			streak, flow_bar, best_flow, score
-		]
-		DisplayServer.clipboard_set(share_text)
-	, true)
 
 	_add_separator()
 	_add_toggle_row("Main Menu", "›", func():
@@ -659,12 +645,6 @@ func show_game_over(reason: String) -> void:
 	, true)
 
 	_add_separator()
-	_add_toggle_row("Share Scorecard", "›", func():
-		var share_text := "Nine Rivers\nFlow: ×%d\nScore: %s\nStages: %d" % [
-			GameManager.best_flow, GameManager.score, GameManager.current_stage_no - 1
-		]
-		DisplayServer.clipboard_set(share_text)
-	, UITheme.IVORY_MUTED)
 	_add_toggle_row("Main Menu", "›", func():
 		return_home_requested.emit()
 	, UITheme.IVORY_MUTED)
@@ -885,17 +865,12 @@ func show_background_detail_modal(theme_id: String) -> void:
 	_clear_content()
 	
 	var detail: Dictionary = BG_THEME_DETAILS.get(theme_id, BG_THEME_DETAILS["emerald_pond"])
-	_add_header(String(detail["name"]), String(detail["subtitle"]))
+	_add_header(String(detail["name"]), "")
 
-	_add_palette_preview_card(detail["theme_data"])
-
-	_add_description(detail["desc"])
-	_add_hairline()
-	_add_feature_row("Water Atmosphere", detail["mood"])
-	_add_hairline()
-	_add_feature_row("Living Koi Species", detail["koi"])
-	_add_hairline()
-	_add_feature_row("Floating Aquatic Flora", detail["flora"])
+	# The pond, large, and nothing else - the same cut the tile sets got. This
+	# carried a subtitle, a description, and rows for Water Atmosphere, Living
+	# Koi Species and Floating Aquatic Flora above the price.
+	_add_palette_preview_card(detail["theme_data"], DETAIL_TILE_SCALE)
 	_add_separator()
 
 	var cur_bg := MonetizationManager.get_active_background_theme()
@@ -1561,9 +1536,9 @@ func _add_tile_preview_row(samples: Array, theme_id: String, scale: float = 1.0)
 	center_box.add_child(preview_panel)
 	card_container.add_child(center_box)
 
-func _add_palette_preview_card(theme_data: Dictionary) -> void:
+func _add_palette_preview_card(theme_data: Dictionary, scale: float = 1.0) -> void:
 	var center_box := CenterContainer.new()
-	center_box.custom_minimum_size = Vector2(0, 90)
+	center_box.custom_minimum_size = Vector2(0, 90.0 * scale)
 	
 	var preview_panel := PanelContainer.new()
 	var sb := UITheme.create_panel_box(Color(0.02, 0.08, 0.06, 0.0), UITheme.GOLD_MUTED, 0, 14, 0.0)
@@ -1592,7 +1567,7 @@ func _add_palette_preview_card(theme_data: Dictionary) -> void:
 		
 		var swatch := ColorRect.new()
 		swatch.color = c_info["col"]
-		swatch.custom_minimum_size = Vector2(60, 36)
+		swatch.custom_minimum_size = Vector2(60.0 * scale, 36.0 * scale)
 		
 		var lbl := Label.new()
 		lbl.text = c_info["name"]

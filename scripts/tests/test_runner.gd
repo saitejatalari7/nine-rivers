@@ -232,10 +232,21 @@ func _ready() -> void:
 	assert(is_instance_valid(restored_v2) and not restored_v2.is_queued_for_deletion(), "TileView 2 must be recreated")
 	print("[PASS] Undo Node Reconstruction & State Rollback verified.")
 	
-	# 17. Test Turtle 144-tile Deal with Greedy Dynamic Peel
+	# 17. The flagship board deals, in full, every time.
+	#
+	# This asserted 144 until the boards were capped at twelve columns to make
+	# the tiles legible on a phone; turtle lost its two outermost columns and
+	# now deals 138. The number is read from the layout rather than written in,
+	# so a future reshaping changes the board without changing this line - what
+	# matters is that every seat in the shape gets a tile, and that the count
+	# stays even, because tiles are dealt in pairs and triples.
+	var turtle_seats: int = BoardGenerator.get_layout_positions("turtle").size()
 	var turtle_tiles := BoardGenerator.deal_board("turtle")
-	assert(turtle_tiles.size() == 144, "Turtle board must have exactly 144 tiles (got %d)" % turtle_tiles.size())
-	print("[PASS] 144-Tile Turtle Layout dealt with 100% solvability.")
+	assert(turtle_tiles.size() == turtle_seats,
+		"Turtle board must fill all %d seats (got %d)" % [turtle_seats, turtle_tiles.size()])
+	assert(turtle_seats % 2 == 0,
+		"Turtle board must hold an even number of tiles (got %d)" % turtle_seats)
+	print("[PASS] %d-Tile Turtle Layout dealt with 100%% solvability." % turtle_seats)
 	
 	# 18. Test the plain rules the koi blessings used to bend
 	# Sanke (+5% jade), Ogon (+10% Calm score), Dragon Koi (Overdrive at 6) and
