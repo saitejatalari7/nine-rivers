@@ -13,13 +13,11 @@ config_version=5
 config/name="Nine Rivers"
 config/description="Zen Roguelite Mahjong Solitaire"
 run/main_scene="res://scenes/main.tscn"
+config/quit_on_go_back=false
 config/features=PackedStringArray("4.6", "GL Compatibility")
 boot_splash/bg_color=Color(0.0156, 0.137, 0.105, 1)
 boot_splash/image="res://assets/branding/splash.png"
 config/icon="res://assets/branding/app_icon.jpg"
-; Godot quits on the Android back gesture by default, which closed the game
-; mid-board before _handle_back_action() could show the pause menu.
-config/quit_on_go_back=false
 
 [autoload]
 
@@ -28,7 +26,7 @@ SettingsManager="*res://scripts/autoload/settings_manager.gd"
 AudioManager="*res://scripts/autoload/audio_manager.gd"
 GameManager="*res://scripts/autoload/game_manager.gd"
 MonetizationManager="*res://scripts/autoload/monetization_manager.gd"
-GodotPlayGameServices="*res://addons/GodotPlayGameServices/scripts/autoloads/godot_play_game_services.gd"
+GodotPlayGameServices="*uid://r4l1qjx3vraf"
 CloudSaveManager="*res://scripts/autoload/cloud_save_manager.gd"
 
 [display]
@@ -50,5 +48,4 @@ enabled=PackedStringArray("res://addons/GodotGooglePlayBilling/plugin.cfg", "res
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
 textures/vram_compression/import_etc2_astc=true
-anti_aliasing/quality/msaa_2d=0
 environment/defaults/default_clear_color=Color(0.0156, 0.137, 0.105, 1)

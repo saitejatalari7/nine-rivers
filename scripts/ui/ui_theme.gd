@@ -1,7 +1,7 @@
 class_name UITheme
 extends RefCounted
 
-## Nine Rivers (九河) — Luxury Zen Roguelite Design System & Theme Engine
+## Nine Rivers — Luxury Zen Roguelite Design System & Theme Engine
 ## Provides mastercrafted StyleBoxFlat definitions, palette tokens, and UI decorators.
 
 # ================= PALETTE CONSTANTS =================

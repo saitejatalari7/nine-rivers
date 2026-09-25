@@ -1,6 +1,6 @@
 extends Node
 
-## Nine Rivers (九河) — Monetization & In-App Economy Service
+## Nine Rivers — Monetization & In-App Economy Service
 ## Manages Spirit Pearls, IAPs (No-Ads, Pearl Treasury, Cosmetic Themes),
 ## Rewarded Offerings, Zen Interstitial Frequency Capping, and Tile/Banner Ads.
 ## Tailored for Google Play Store with Indian Market (INR / UPI) & Global USD support.
@@ -104,7 +104,6 @@ const PRODUCTS: Dictionary = {
 		"id": "bg_misty_spring",
 		"theme_id": "misty_spring",
 		"name": "Misty Mountain Spring",
-		"name_zh": "清岚泉",
 		"desc": "Teal mist water, delicate sakura petals, and rare Asagi koi.",
 		"price_usd": "$0.99",
 		"price_inr": "₹49",
@@ -116,7 +115,6 @@ const PRODUCTS: Dictionary = {
 		"id": "bg_sunset_haven",
 		"theme_id": "sunset_haven",
 		"name": "Sunset Lotus Haven",
-		"name_zh": "夕霞泽",
 		"desc": "Twilight purple water, glowing crimson caustics, and royal Tancho koi.",
 		"price_usd": "$0.99",
 		"price_inr": "₹49",
@@ -157,8 +155,43 @@ var _pending_callbacks: Dictionary = {}
 var _pending_ad_placement: String = ""
 var _pending_ad_callback: Callable = Callable()
 
+## Test builds only. The "testbuild" feature is set by a dedicated export
+## preset, and a release export does not carry it. Belt and braces: it also
+## refuses to run unless this is a debug build, so a preset edited by hand
+## cannot turn it on in something shipped.
+##
+## It exists because there is no other way to see the paid sets on real
+## hardware before billing works.
+const TEST_BUILD_FEATURE := "testbuild"
+const TEST_BUILD_PEARLS: int = 50000
+
+func _grant_everything_for_testing() -> void:
+	if not OS.has_feature(TEST_BUILD_FEATURE) or not OS.is_debug_build():
+		return
+	var themes: Array = ["classic_jade"]
+	var backgrounds: Array = ["auto"]
+	for pid in PRODUCTS.keys():
+		var id: String = String(pid)
+		if id.begins_with("theme_"):
+			themes.append(id)
+		elif id.begins_with("bg_"):
+			backgrounds.append(id.trim_prefix("bg_"))
+	for bg in FREE_BACKGROUND_THEMES:
+		if not backgrounds.has(bg):
+			backgrounds.append(bg)
+
+	SaveManager.economy["unlocked_themes"] = themes
+	SaveManager.economy["unlocked_background_themes"] = backgrounds
+	SaveManager.economy["no_ads_purchased"] = true
+	SaveManager.economy["pearls"] = TEST_BUILD_PEARLS
+	SaveManager.request_save()
+	print("Nine Rivers: TEST BUILD - %d tile sets, %d ponds, no ads, %d pearls." % [
+		themes.size(), backgrounds.size(), TEST_BUILD_PEARLS])
+
+
 func _ready() -> void:
 	_check_daily_ad_reset()
+	_grant_everything_for_testing()
 	_init_platform_billing()
 	_init_platform_ads()
 

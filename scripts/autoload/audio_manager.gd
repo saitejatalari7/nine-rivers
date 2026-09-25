@@ -1,6 +1,6 @@
 extends Node
 
-## ASMR & Procedural Acoustic Engine for Nine Rivers (九河)
+## ASMR & Procedural Acoustic Engine for Nine Rivers
 ## 44.1 kHz CD-Quality Physical Modeling:
 ## - Authentic dual-resonance melamine tile clack transients
 ## - Multi-harmonic Guzheng/Pipa string pluck synthesis with soundboard resonance

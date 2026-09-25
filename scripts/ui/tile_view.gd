@@ -1,7 +1,7 @@
 class_name TileView
 extends Control
 
-## Nine Rivers (九河) — Tactile 2.5D Physical Ceramic Tile View
+## Nine Rivers — Tactile 2.5D Physical Ceramic Tile View
 ## Dual-layer bamboo/ivory construction, dynamic contact & ambient occlusion shadows,
 ## authentic engraved vector artwork, and cinematic "Turn to Dust" dissolution FX.
 

@@ -1,7 +1,7 @@
 class_name ZenPondBackground
 extends CanvasLayer
 
-## Nine Rivers (九河) — Living Zen Pond & River Parallax System
+## Nine Rivers — Living Zen Pond & River Parallax System
 ## Multi-layered parallax depth behind the stationary Mahjong board:
 ## 1. Deep Caustic Water Bed (0.05x Parallax)
 ## 2. Subterranean Swimming Koi Fish (0.22x Parallax)
@@ -18,7 +18,6 @@ const THEMES: Array[Dictionary] = [
 	{
 		"id": "emerald_pond",
 		"name": "Emerald Serenity",
-		"name_zh": "翠玉池",
 		"felt_color": Color("#021711"),
 		"secondary_color": Color("#053325"),
 		"caustic_color": Color(0.06, 0.65, 0.48, 0.42),
@@ -32,7 +31,6 @@ const THEMES: Array[Dictionary] = [
 	{
 		"id": "moonlit_river",
 		"name": "Moonlit Twilight",
-		"name_zh": "月华江",
 		"felt_color": Color("#040d1e"),
 		"secondary_color": Color("#0b1e42"),
 		"caustic_color": Color(0.18, 0.45, 0.85, 0.45),
@@ -46,7 +44,6 @@ const THEMES: Array[Dictionary] = [
 	{
 		"id": "autumn_stream",
 		"name": "Autumn Maple Falls",
-		"name_zh": "丹枫溪",
 		"felt_color": Color("#1a0903"),
 		"secondary_color": Color("#3a1506"),
 		"caustic_color": Color(0.85, 0.35, 0.10, 0.45),
@@ -60,7 +57,6 @@ const THEMES: Array[Dictionary] = [
 	{
 		"id": "misty_spring",
 		"name": "Misty Mountain Spring",
-		"name_zh": "清岚泉",
 		"felt_color": Color("#05161b"),
 		"secondary_color": Color("#0e323b"),
 		"caustic_color": Color(0.20, 0.65, 0.72, 0.45),
@@ -74,7 +70,6 @@ const THEMES: Array[Dictionary] = [
 	{
 		"id": "sunset_haven",
 		"name": "Sunset Lotus Haven",
-		"name_zh": "夕霞泽",
 		"felt_color": Color("#1a061d"),
 		"secondary_color": Color("#3c0e44"),
 		"caustic_color": Color(0.82, 0.25, 0.48, 0.45),

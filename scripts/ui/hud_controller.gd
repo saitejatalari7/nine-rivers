@@ -1,7 +1,7 @@
 class_name HudController
 extends CanvasLayer
 
-## Nine Rivers (九河) — Product-Ready Luxury HUD Controller
+## Nine Rivers — Product-Ready Luxury HUD Controller
 ## Obsidian-jade lacquer top bar, dragon river flow meter, and tactile talisman props bar.
 
 signal menu_clicked()

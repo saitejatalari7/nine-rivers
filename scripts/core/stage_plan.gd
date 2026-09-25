@@ -28,26 +28,26 @@ const TEACH_LEVELS: int = 4
 const MILESTONE_EVERY: int = 25
 
 const CHAPTER_NAMES: Array[Dictionary] = [
-	{"name": "The Spring Brooks", "zh": "春溪"},
-	{"name": "The Bamboo Valley", "zh": "竹谷"},
-	{"name": "The Golden Rapids", "zh": "金滩"},
-	{"name": "The Jade Gorges", "zh": "玉峡"},
-	{"name": "The Dragon Sea", "zh": "龙海"},
-	{"name": "The Misty Fords", "zh": "雾津"},
-	{"name": "The Lantern Shallows", "zh": "灯滩"},
-	{"name": "The Heron Marshes", "zh": "鹭泽"},
-	{"name": "The Cinnabar Cliffs", "zh": "丹崖"},
-	{"name": "The Moonlit Weir", "zh": "月堰"},
-	{"name": "The Pine Narrows", "zh": "松峡"},
-	{"name": "The Thunder Reach", "zh": "雷川"},
-	{"name": "The Lotus Basin", "zh": "莲池"},
-	{"name": "The Ink Estuary", "zh": "墨江"},
-	{"name": "The Frost Channel", "zh": "霜渠"},
-	{"name": "The Imperial Canal", "zh": "御河"},
-	{"name": "The Phoenix Delta", "zh": "凤洲"},
-	{"name": "The Obsidian Trench", "zh": "玄渊"},
-	{"name": "The Celestial Bend", "zh": "天曲"},
-	{"name": "The Nine Rivers Mouth", "zh": "九河口"},
+	{"name": "The Spring Brooks"},
+	{"name": "The Bamboo Valley"},
+	{"name": "The Golden Rapids"},
+	{"name": "The Jade Gorges"},
+	{"name": "The Dragon Sea"},
+	{"name": "The Misty Fords"},
+	{"name": "The Lantern Shallows"},
+	{"name": "The Heron Marshes"},
+	{"name": "The Cinnabar Cliffs"},
+	{"name": "The Moonlit Weir"},
+	{"name": "The Pine Narrows"},
+	{"name": "The Thunder Reach"},
+	{"name": "The Lotus Basin"},
+	{"name": "The Ink Estuary"},
+	{"name": "The Frost Channel"},
+	{"name": "The Imperial Canal"},
+	{"name": "The Phoenix Delta"},
+	{"name": "The Obsidian Trench"},
+	{"name": "The Celestial Bend"},
+	{"name": "The Nine Rivers Mouth"},
 ]
 
 const ROMAN: Array[String] = [
@@ -80,7 +80,7 @@ static func chapter_title(chapter: int) -> String:
 static func chapter_subtitle(chapter: int) -> String:
 	var c: int = clampi(chapter, 0, CHAPTERS - 1)
 	var r: Vector2i = chapter_range(c)
-	return "%s · Stages %d - %d" % [CHAPTER_NAMES[c]["zh"], r.x, r.y]
+	return "Stages %d - %d" % [r.x, r.y]
 
 
 ## How many tiles are free at deal time, as a share of the board. Tile count
