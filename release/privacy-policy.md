@@ -57,8 +57,10 @@ The game does not collect, and contains no code to collect:
 - Your installed applications or browsing history.
 - Any analytics, crash-reporting or attribution telemetry.
 
-The app requests one Android permission: vibration, used for the tile haptics. It requests no
-location, storage, contacts or camera permission.
+The only permission the game asks for on its own account is vibration, for the tile haptics.
+Network access is present because the Google Play Billing and Google Play Games libraries
+require it, and is used for nothing else. The app requests no location, storage, contacts,
+microphone or camera permission, and no advertising identifier permission.
 
 ---
 
