@@ -105,3 +105,21 @@ This is the last release blocker, and it cannot be done from a PC.
 - [ ] Internal testing first, then closed, then production
 - [ ] First production review takes days, sometimes longer for a new account
 - [ ] Rollout at a small percentage, not 100%
+
+## Export settings that are NOT in version control
+
+`export_presets.cfg` is gitignored, so these live only on this machine. A fresh
+clone will not have them and Android builds will fail without them.
+
+- `godot_play_game_services/game_id` - set on all three presets. Currently the
+  placeholder `000000000000`. The Play Games plugin writes it into
+  `res/values/strings.xml` at export time and its manifest references that
+  string, so an EMPTY value means the resource is never written and every
+  Android build dies at resource linking, with nothing in the error naming the
+  plugin. Replace with the real Play Games project id once Play Console issues
+  one: Play Console > Play Games Services > Configuration.
+- A third preset, "Android APK (all unlocked)", exports
+  `build/nine_rivers_unlocked.apk` with `custom_features="testbuild"` and the
+  package `com.ninerivers.mahjong.testbuild`, so a fully unlocked build can sit
+  on a phone beside the real one. Never upload it: it grants every item.
+- The release keystore fields - see issues/15.
