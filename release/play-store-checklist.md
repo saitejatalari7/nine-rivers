@@ -13,6 +13,12 @@ changed after the first upload, and it cannot be reused if the app is deleted.
 - [ ] Identity verification (ID + address). Can take a few days, so start here
 - [ ] Payments profile, for receiving money
 - [ ] Bank account and tax details, needed before any paid item can sell
+- [ ] Decide whose address goes public. Selling in-app items means a contact
+      address on the listing, taken from the payments profile - on a personal
+      account that is usually a home address, visible to everyone
+- [ ] Line up 12 testers with Google accounts. Start now; they cannot join
+      until the closed test exists, but finding twelve willing people is
+      usually slower than any of the technical work
 
 ## 1. Create the app
 
@@ -68,7 +74,12 @@ Consumable means it can be bought again (pearls). One-time means it is owned
 forever (themes, no ads). Getting this wrong on the pearl packs means a player
 can buy them once and never again.
 
-## 5. First upload
+## 5. First upload — START THE CLOCK HERE
+
+Get to this step early even if the listing is unfinished. The 14 days run
+while you write descriptions and test purchases.
+
+
 
 - [ ] Issue 15 done, so the build is signed from outside the project
 - [ ] Bump `version/code` in `export_presets.cfg` — currently 2, and every
