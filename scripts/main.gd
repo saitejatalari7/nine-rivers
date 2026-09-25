@@ -287,6 +287,13 @@ func _return_home() -> void:
 	modal.show_main_menu()
 
 func _start_calm_mode(level: int) -> void:
+	# Before anything is dealt. Dealing stage 1 and then starting the lesson
+	# over the top of it meant GameManager was mid-stage-1 the whole time,
+	# and clearing a four-tile lesson board recorded a three-star clear of
+	# stage 1 - the player finished the tutorial already past it.
+	if level == 1 and not SaveManager.prog.get("tutorial_completed", false) and not _onboarding_active:
+		_start_onboarding()
+		return
 	board.visible = true
 	hud.visible = true
 	GameManager.start_calm(level)
@@ -310,10 +317,6 @@ func _start_calm_mode(level: int) -> void:
 	
 	_offer_theme_sample(level)
 
-	if level == 1 and not SaveManager.prog.get("tutorial_completed", false):
-		# The board is handed over so the lesson can point at real tiles rather
-		# than describe them.
-		tutorial.start_tutorial(board)
 
 ## False until this run has cost the player one of their three. A run is
 ## charged when the first match is made, not when the board is dealt: opening
@@ -505,6 +508,12 @@ func _charge_rapids_run() -> void:
 var _pending_clear: Dictionary = {}
 
 func _on_board_cleared() -> void:
+	# A lesson board emptying is not a level cleared. It has no stars, no
+	# score and no next stage - the tutorial decides what follows it. Without
+	# this, finishing the four-tile first lesson recorded a three-star clear
+	# of stage 1 and moved the player past it.
+	if _onboarding_active:
+		return
 	SaveManager.clear_session()
 	GameManager.is_timer_active = false
 	hud.visible = false
@@ -627,6 +636,33 @@ func _resume_session() -> bool:
 	modal.hide_modal()
 	return true
 
+## The onboarding owns the board while it runs, and hands it back when done.
+## The HUD goes with it: a lesson about matching two tiles has no use for a
+## score, a tile count or a props bar, and every one of them is something to
+## explain that nobody asked about yet.
+var _onboarding_active: bool = false
+
+func _start_onboarding() -> void:
+	_onboarding_active = true
+	hud.visible = false
+	board.visible = true
+	modal.hide_modal()
+	if not tutorial.tutorial_finished.is_connected(_on_onboarding_finished):
+		tutorial.tutorial_finished.connect(_on_onboarding_finished)
+	tutorial.start_tutorial(board)
+
+
+func _on_onboarding_finished() -> void:
+	_onboarding_active = false
+	hud.visible = true
+	# The stage the player is actually up to, dealt fresh. For a first-timer
+	# that is stage 1; for someone replaying the lesson from Settings at stage
+	# 10 it is stage 10. The lesson consumed the board either way, so one of
+	# them has to be dealt, and it must not be stage 1 for a player who is
+	# well past it.
+	_start_calm_mode(int(SaveManager.prog.get("level", 1)))
+
+
 ## A set the player cannot see is a set they will not buy. Rather than a trial
 ## with an expiry - new save state, a clock to defend, and a decision about what
 ## happens when it lapses mid-board - a few tiles simply arrive wearing it.
@@ -658,11 +694,7 @@ func _offer_theme_sample(level: int) -> void:
 ## when there is none - and then it deals the stage the player is up to.
 func _on_replay_tutorial() -> void:
 	modal.hide_modal()
-	if board.get_active_tiles().size() < 4:
-		_start_calm_mode(int(SaveManager.prog.get("level", 1)))
-	board.visible = true
-	hud.visible = true
-	tutorial.start_tutorial(board)
+	_start_onboarding()
 
 
 func _on_no_moves_left() -> void:

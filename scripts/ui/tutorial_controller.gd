@@ -1,55 +1,50 @@
 extends CanvasLayer
 
-## First-run onboarding, taught by doing.
+## First-run onboarding, taught by doing, on boards of its own.
 ##
-## The previous version was three paragraphs of prose behind a Next button -
-## "Free tiles gleam with ceramic light; blocked tiles softly slumber in shade"
-## - which nobody reads and which never asks the player to do anything. A player
-## could click through all of it and still not know what a free tile is.
+## This used to run on stage 1: four captions laid over the player's real first
+## level, the last of which said "clear the board" - thirty-six tiles of
+## homework before they had decided they wanted to play. Quitting halfway left
+## stage 1 half-played, and it taught by BLOCKING every tile except the answer,
+## which is coercion rather than instruction.
 ##
-## This is four beats, each completed by an action on the real board:
+## Now it is three small boards of its own, each teaching one rule and each
+## ending in a win, then a card about stars. Nothing here is a level: no score,
+## no timer, no props, no stars, and the player's progress is not touched. See
+## tutorial_boards.gd for the boards and why they are hand-authored.
 ##
-##   1. Tap two matching tiles          - the whole game, in one move
-##   2. Tap a covered tile, see it stay  - what "free" means, felt rather than read
-##   3. Match again to raise Flow        - the only live multiplier
-##   4. Clear the board                  - hand back control
-##
-## Nothing advances on a button. The board is real, the tiles are the ones in
-## play, and board.tutorial_focus keeps a wandering first-timer from walking out
-## of the lesson. Skip is always present: a player who already knows Mahjong
-## should not be held for thirty seconds.
+## Skip is present from the first frame. Someone who has played mahjong before
+## should not be held for a minute to be told what a pair is.
 
 signal tutorial_finished()
 
 const UITheme = preload("res://scripts/ui/ui_theme.gd")
 const RiverTile = preload("res://scripts/core/river_tile.gd")
 
-## Each beat names what it wants and how it is satisfied. `focus` decides which
-## tiles answer a tap while the beat is up.
-##   pair    - a legal matching set; completed by matching it
-##   covered - one blocked tile; completed by tapping it and feeling it refuse
-##   free    - any legal set; completed by matching it
-##   none    - nothing to point at; completed immediately, the board is theirs
+const TutorialBoards = preload("res://scripts/ui/tutorial_boards.gd")
+
+## One beat per board, plus a closing card with no board at all. `board` is the
+## layout to deal; a beat with none is read and dismissed.
 const BEATS: Array[Dictionary] = [
 	{
-		"text": "Tap these two tiles to match them.",
-		"sub": "Two tiles with the same face clear together.",
-		"focus": "pair",
+		"text": "Tap two tiles with the same face.",
+		"sub": "They clear together. That is the whole game.",
+		"board": "A",
 	},
 	{
-		"text": "Now tap the tile with something on top of it.",
-		"sub": "It will not move. A tile has to be uncovered first.",
-		"focus": "covered",
+		"text": "Some tiles will not lift.",
+		"sub": "A tile needs a clear side and nothing on top. Take the ones on the ends first.",
+		"board": "B",
 	},
 	{
-		"text": "Match another pair.",
-		"sub": "Matches in a row build your Flow, worth more each time.",
-		"focus": "free",
+		"text": "Clear the top to reach what is under it.",
+		"sub": "The flower is wild - it matches any tile you like.",
+		"board": "C",
 	},
 	{
-		"text": "That is all of it. Clear the board.",
-		"sub": "",
-		"focus": "none",
+		"text": "Three stars for a clean board.",
+		"sub": "One for clearing it, one for two mistakes or fewer, one for using no undo, hint or shuffle.",
+		"board": "",
 	},
 ]
 
@@ -60,7 +55,8 @@ var _line: Label
 var _sub: Label
 var _dots: Label
 var _skip: Button
-var _armed_covered: RiverTile = null
+var _done: Button = null
+var _col: VBoxContainer = null
 
 
 func _ready() -> void:
@@ -84,17 +80,17 @@ func _build_ui() -> void:
 		UITheme.create_panel_box(Color("#11191b"), UITheme.GOLD_CORE, 2, 16, 0.94))
 	wrap.add_child(_card)
 
-	var col := VBoxContainer.new()
-	col.mouse_filter = Control.MOUSE_FILTER_PASS
-	col.add_theme_constant_override("separation", 6)
-	_card.add_child(col)
+	_col = VBoxContainer.new()
+	_col.mouse_filter = Control.MOUSE_FILTER_PASS
+	_col.add_theme_constant_override("separation", 6)
+	_card.add_child(_col)
 
 	# PASS, not IGNORE: the Skip button lives in here and has to be tappable,
 	# while the row itself must not swallow taps meant for the board.
 	var head := HBoxContainer.new()
 	head.mouse_filter = Control.MOUSE_FILTER_PASS
 	head.add_theme_constant_override("separation", 12)
-	col.add_child(head)
+	_col.add_child(head)
 
 	_line = Label.new()
 	_line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -122,7 +118,7 @@ func _build_ui() -> void:
 	_sub = Label.new()
 	_sub.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	UITheme.style_label(_sub, "ui", UITheme.FS_CAPTION, UITheme.IVORY_MUTED, UITheme.W_MEDIUM)
-	col.add_child(_sub)
+	_col.add_child(_sub)
 
 
 
@@ -149,103 +145,72 @@ func _next_beat() -> void:
 	var t := create_tween()
 	t.tween_property(_card, "modulate:a", 1.0, 0.18)
 
-	_apply_focus(String(b["focus"]))
+	_deal(String(b["board"]))
 
 
-## Points the beat at real tiles on the real board. A beat that cannot find what
-## it needs is skipped rather than left hanging - a board where no tile happens
-## to be covered is unusual but not impossible, and being stuck on step two of a
-## tutorial is the worst outcome available.
-func _apply_focus(kind: String) -> void:
-	_armed_covered = null
+## Lays out the beat's board. The closing card has none, so it takes an empty
+## board and a button rather than a match to move on.
+func _deal(which: String) -> void:
 	if _board == null:
-		_next_beat_deferred()
 		return
-	_board.clear_all_hints()
-	# Typed through a local: assigning an untyped [] to an Array[RiverTile] held
-	# on a dynamically-typed reference is refused at runtime.
-	var none: Array[RiverTile] = []
-	_board.tutorial_focus = none
-
-	match kind:
-		"pair", "free":
-			var sets: Array = _board.get_legal_sets()
-			if sets.is_empty():
-				_next_beat_deferred()
-				return
-			# The first beat says "two tiles with the same face", so it has to
-			# point at two tiles with the same face. Flowers and seasons are
-			# wild here and match anything, and sets[0] happily offered a flower
-			# beside a character - a first lesson that contradicts its own text.
-			var chosen: Array = _plain_pair(sets)
-			if chosen.is_empty():
-				chosen = sets[0]
-			var focus: Array[RiverTile] = []
-			for tile in chosen:
-				focus.append(tile)
-			_board.tutorial_focus = focus
-			for tile in chosen:
-				var v = _board.tile_views.get(tile)
-				if is_instance_valid(v):
-					v.set_hint(true)
-		"covered":
-			var covered: RiverTile = _find_covered()
-			if covered == null:
-				_next_beat_deferred()
-				return
-			_armed_covered = covered
-			var one: Array[RiverTile] = [covered]
-			_board.tutorial_focus = one
-			var cv = _board.tile_views.get(covered)
-			if is_instance_valid(cv):
-				cv.set_hint(true)
-		"none":
-			pass
+	var layout: Array = []
+	match which:
+		"A": layout = TutorialBoards.A_MATCH
+		"B": layout = TutorialBoards.B_BLOCKED
+		"C": layout = TutorialBoards.C_LAYERS
+		_:
+			_board.clear_board()
+			_show_done_button()
+			return
+	_hide_done_button()
+	# duplicate(true): restore_stage reads these dictionaries into live tiles,
+	# and the constants must survive being played through more than once.
+	_board.restore_stage(layout.duplicate(true))
+	_frame_board()
 
 
-## A set of two identical, non-wild tiles, or empty if the board offers none.
-func _plain_pair(sets: Array) -> Array:
-	for s in sets:
-		if s.size() != 2:
-			continue
-		var a: RiverTile = s[0]
-		var b: RiverTile = s[1]
-		if a.is_wild_suit() or b.is_wild_suit() or a.is_wild() or b.is_wild():
-			continue
-		if a.suit == b.suit and a.rank == b.rank:
-			return s
-	return []
+## The tutorial boards are a tenth the size of a real one, so the camera has to
+## be told - left alone it keeps the framing of whatever was on screen before
+## and these sit as a postage stamp in the middle.
+func _frame_board() -> void:
+	var cam = _board.get_parent().get_node_or_null("Camera2D")
+	if cam != null and cam.has_method("frame_board"):
+		cam.frame_board(_board.board_bounds, get_viewport().get_visible_rect().size)
 
 
-func _find_covered() -> RiverTile:
-	var active: Array = _board.get_active_tiles()
-	var grid: Dictionary = _board.get_spatial_grid(active)
-	for tile in active:
-		if _board.get_tile_blocked_reason(tile, grid) == "covered":
-			return tile
-	return null
+func _show_done_button() -> void:
+	if _done != null:
+		_done.visible = true
+		return
+	_done = Button.new()
+	_done.text = "Play"
+	_done.custom_minimum_size = Vector2(0, UITheme.TOUCH_MIN)
+	UITheme.style_button(_done, true, 16)
+	_done.pressed.connect(_finish)
+	UITheme.add_press_feedback(_done)
+	_col.add_child(_done)
 
 
-func _next_beat_deferred() -> void:
-	call_deferred("_next_beat")
+func _hide_done_button() -> void:
+	if _done != null:
+		_done.visible = false
 
 
 ## Beat two is complete the moment the player tries the covered tile and it
 ## refuses. Nothing is matched, so move_completed never fires - the board's
 ## rejection toast is the signal.
-func notify_blocked_tap(tile: RiverTile) -> void:
-	if not visible or _armed_covered == null:
-		return
-	if tile == _armed_covered:
-		_armed_covered = null
-		_next_beat()
+func notify_blocked_tap(_tile: RiverTile) -> void:
+	return
 
 
+## A beat is finished when its board is empty - not when a particular pair is
+## matched. The player can clear these in any order they like, which is the
+## point: they are being taught, not steered.
 func notify_match() -> void:
-	if not visible:
+	if not visible or _board == null:
 		return
-	if _beat < BEATS.size() and String(BEATS[_beat]["focus"]) in ["pair", "free"]:
-		_next_beat()
+	if _board.get_active_tiles().is_empty():
+		call_deferred("_next_beat")
 
 
 func _finish() -> void:

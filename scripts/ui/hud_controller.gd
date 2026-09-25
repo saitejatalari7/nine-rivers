@@ -13,7 +13,6 @@ signal pearls_clicked()
 const UITheme = preload("res://scripts/ui/ui_theme.gd")
 
 
-var calm_goals_label: Label
 var btn_pearls: Button
 
 @onready var readout_panel: PanelContainer = $TopBar/Readout
@@ -74,19 +73,6 @@ func _ready() -> void:
 
 func _init_dynamic_hud_elements() -> void:
 	# 1. Relics Bar for Timed Run Mode
-	
-	# 2. Calm Mode 3-Star Live Objectives Header
-	calm_goals_label = Label.new()
-	calm_goals_label.name = "CalmGoals"
-	calm_goals_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	calm_goals_label.anchors_preset = Control.PRESET_TOP_WIDE
-	calm_goals_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	# Below TopBar, which now ends at 208; at 176 it sat on top of the readout.
-	calm_goals_label.position = Vector2(28, 224)
-	calm_goals_label.size = Vector2(get_viewport().get_visible_rect().size.x - 56, 38)
-	calm_goals_label.add_theme_font_size_override("font_size", UITheme.FS_CAPTION)
-	calm_goals_label.add_theme_color_override("font_color", Color(0.78, 0.90, 0.84, 0.95))
-	add_child(calm_goals_label)
 	
 	# 3. Spirit Pearls Counter Pill in TopBar
 	btn_pearls = Button.new()
@@ -167,8 +153,6 @@ func _apply_luxury_theme() -> void:
 			UITheme.style_label(stat_lbl, "ui", UITheme.FS_CAPTION, Color(0.65, 0.80, 0.73, 1),
 				UITheme.W_MEDIUM, 2)
 	
-	if is_instance_valid(calm_goals_label):
-		UITheme.style_label(calm_goals_label, "ui", UITheme.FS_CAPTION, Color(0.78, 0.90, 0.84, 0.95))
 
 ## Previously applied insets, so re-applying is idempotent. The old version
 ## did `position.y += inset` once in _ready(); running it a second time would
@@ -183,8 +167,6 @@ func _apply_safe_area() -> void:
 	_applied_insets = insets
 	$TopBar.position.y += delta.x
 	$PropsBar.position.y -= delta.y
-	if is_instance_valid(calm_goals_label):
-		calm_goals_label.position.y += delta.x
 	for n in ["TimerWrap", "FlowBanner"]:
 		var c := get_node_or_null(n)
 		if c is Control:
@@ -204,25 +186,12 @@ func setup_hud(mode: GameManager.GameMode, level_no: int) -> void:
 		GameManager.GameMode.CALM:
 			lbl_level.text = "L" + str(level_no)
 			timer_container.visible = false
-			if is_instance_valid(calm_goals_label):
-				calm_goals_label.visible = true
-				update_calm_goals()
 		GameManager.GameMode.RUN:
 			lbl_level.text = "R" + str(level_no)
 			timer_container.visible = true
-			if is_instance_valid(calm_goals_label): calm_goals_label.visible = false
 		GameManager.GameMode.DAILY:
 			lbl_level.text = "DAILY"
 			timer_container.visible = true
-			if is_instance_valid(calm_goals_label): calm_goals_label.visible = false
-
-func update_calm_goals() -> void:
-	if not is_instance_valid(calm_goals_label) or not calm_goals_label.visible:
-		return
-	var s1 := "★ Clear Board"
-	var s2 := "★ ≤2 Misplays" if GameManager.misplays <= 2 else "☆ >2 Misplays"
-	var s3 := "★ No Props" if GameManager.props_used == 0 else "☆ Props Used"
-	calm_goals_label.text = "%s   ·   %s   ·   %s" % [s1, s2, s3]
 
 func update_board_stats(remaining_tiles: int, legal_moves: int) -> void:
 	lbl_tiles.text = str(remaining_tiles)
@@ -233,7 +202,6 @@ func update_board_stats(remaining_tiles: int, legal_moves: int) -> void:
 		lbl_sets.add_theme_color_override("font_color", Color(1.0, 0.78, 0.35))
 	else:
 		lbl_sets.remove_theme_color_override("font_color")
-	update_calm_goals()
 
 func _on_score_updated(new_score: int, _delta: int) -> void:
 	target_score = new_score
@@ -308,7 +276,6 @@ func _on_props_updated(u: int, h: int, s: int) -> void:
 	btn_hint.modulate.a = 0.65 if h <= 0 else 1.0
 	btn_shuffle.text = "Shuffle\n(%d)" % s if s > 0 else "Shuffle\n(+)"
 	btn_shuffle.modulate.a = 0.65 if s <= 0 else 1.0
-	update_calm_goals()
 
 func show_toast(msg: String) -> void:
 	lbl_toast.text = msg
