@@ -1536,52 +1536,40 @@ func _add_tile_preview_row(samples: Array, theme_id: String, scale: float = 1.0)
 	center_box.add_child(preview_panel)
 	card_container.add_child(center_box)
 
-func _add_palette_preview_card(theme_data: Dictionary, scale: float = 1.0) -> void:
-	var center_box := CenterContainer.new()
-	center_box.custom_minimum_size = Vector2(0, 90.0 * scale)
-	
-	var preview_panel := PanelContainer.new()
-	var sb := UITheme.create_panel_box(Color(0.02, 0.08, 0.06, 0.0), UITheme.GOLD_MUTED, 0, 14, 0.0)
-	preview_panel.add_theme_stylebox_override("panel", sb)
+## The pond itself, running, rather than four colour chips captioned "Water
+## Felt" and "Depth Tone". A player buying a background is buying how the water
+## looks; naming its constituent colours told them everything except that.
+##
+## The live shader, not a screenshot: it is the same material the board uses, so
+## the preview cannot drift away from the thing being sold.
+const RiverFeltShader = preload("res://assets/shaders/river_felt.gdshader")
 
-	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 20)
-	margin.add_theme_constant_override("margin_right", 20)
-	margin.add_theme_constant_override("margin_top", 10)
-	margin.add_theme_constant_override("margin_bottom", 10)
-	
-	var hbox := HBoxContainer.new()
-	hbox.add_theme_constant_override("separation", 16)
-	hbox.alignment = BoxContainer.ALIGNMENT_CENTER
-	
-	var colors: Array = [
-		{"name": "Water Felt", "col": theme_data.get("felt_color", Color.BLACK)},
-		{"name": "Depth Tone", "col": theme_data.get("secondary_color", Color.BLACK)},
-		{"name": "Caustics", "col": theme_data.get("caustic_color", Color.WHITE)},
-		{"name": "Gold Vein", "col": theme_data.get("gold_color", Color.GOLD)}
-	]
-	
-	for c_info in colors:
-		var v_item := VBoxContainer.new()
-		v_item.alignment = BoxContainer.ALIGNMENT_CENTER
-		
-		var swatch := ColorRect.new()
-		swatch.color = c_info["col"]
-		swatch.custom_minimum_size = Vector2(60.0 * scale, 36.0 * scale)
-		
-		var lbl := Label.new()
-		lbl.text = c_info["name"]
-		UITheme.style_label(lbl, "ui", UITheme.FS_CAPTION, UITheme.IVORY_MUTED)
-		lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		
-		v_item.add_child(swatch)
-		v_item.add_child(lbl)
-		hbox.add_child(v_item)
-		
-	margin.add_child(hbox)
-	preview_panel.add_child(margin)
-	center_box.add_child(preview_panel)
-	card_container.add_child(center_box)
+func _add_palette_preview_card(theme_data: Dictionary, scale: float = 1.0) -> void:
+	var frame := PanelContainer.new()
+	var sb := UITheme.create_panel_box(Color(0, 0, 0, 0), UITheme.GOLD_MUTED, 1, 14, 0.0)
+	frame.add_theme_stylebox_override("panel", sb)
+
+	var water := ColorRect.new()
+	water.custom_minimum_size = Vector2(0, 120.0 * maxf(1.0, scale))
+	water.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	water.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	var mat := ShaderMaterial.new()
+	mat.shader = RiverFeltShader
+	mat.set_shader_parameter("felt_color", theme_data.get("felt_color", Color.BLACK))
+	mat.set_shader_parameter("secondary_color", theme_data.get("secondary_color", Color.BLACK))
+	mat.set_shader_parameter("caustic_color", theme_data.get("caustic_color", Color.WHITE))
+	mat.set_shader_parameter("gold_color", theme_data.get("gold_color", Color.GOLD))
+	# Not still. flow_level is what lights the caustics, and at zero the preview
+	# rendered as a near-black rectangle - technically the pond, and no use at
+	# all for choosing one. Mid-flow is what the water looks like in play.
+	mat.set_shader_parameter("flow_level", 4.0)
+	mat.set_shader_parameter("overdrive", 0.0)
+	mat.set_shader_parameter("speed", 0.6)
+	water.material = mat
+
+	frame.add_child(water)
+	card_container.add_child(frame)
 
 func _add_button(text: String, on_click: Callable, is_gold: bool = false) -> void:
 	var b := Button.new()

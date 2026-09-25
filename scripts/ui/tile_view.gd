@@ -483,9 +483,11 @@ func get_accent_color() -> Color:
 ## A picked-up tile draws over its neighbours; without this the lift disappears
 ## behind whatever is stacked in front of it.
 const SELECT_Z_BOOST: int = 400
-## 3 -> 4.5: half again as thick, because a 3px line on a 64px tile is a hairline.
-const SELECT_BORDER_W: int = 5
-const SELECT_BORDER_DARK := Color("#0b0d0c")
+## Gold, at 4px. It went black and 5px to be more visible; the black ring read
+## as a hole punched in the board and the extra weight made it heavier still.
+## The lift, the scale and the shadow are what sell selection now, so the ring
+## can go back to being a rim rather than a frame.
+const SELECT_BORDER_W: int = 4
 const SELECT_SCALE: float = 1.08
 
 func set_selected(sel: bool) -> void:
@@ -804,10 +806,7 @@ func _draw() -> void:
 	if is_selected:
 		var sel_sb := StyleBoxFlat.new()
 		sel_sb.draw_center = false
-		# Gold on a pale face is gold on gold - it was the least visible choice on
-		# four of the five sets. Black reads against every face except the one
-		# that is already black, which keeps the gold.
-		sel_sb.border_color = COL_GOLD if get_effective_theme() == "theme_obsidian_ink" else SELECT_BORDER_DARK
+		sel_sb.border_color = COL_GOLD
 		sel_sb.set_border_width_all(SELECT_BORDER_W)
 		sel_sb.set_corner_radius_all(8)
 		sel_sb.anti_aliasing = true

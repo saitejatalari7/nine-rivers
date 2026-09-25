@@ -109,7 +109,7 @@ When a player uses a wild tile to complete a set, or when an odd single tile is 
 
 Abstract stars don't retain players; personal ownership does. Between runs, players spend **Spirit Pearls** to restore an ancient Zen water garden:
 1. **Water Clarity:** Cleared stages clean the murky river water, revealing river pebbles and sunken stones.
-2. **Koi Fish Collection:** Unlock and release 12 varieties of swimming Koi (Kohaku, Taisho Sanke, Showa, Platinum Ogon), each granting subtle ambient blessings.
+2. **Koi Fish Collection:** Unlock and release varieties of swimming Koi (Kohaku, Taisho Sanke, Showa, Platinum Ogon). Purely decorative — the Koi Blessings that once granted passive bonuses were removed, because a cosmetic pond that quietly changes the maths is not cosmetic.
 3. **Garden Elements:** Place Lotus Blossoms, Stone Lanterns, and Bamboo Water Fountains (Shishi-odoshi) that tap softly in the background.
 4. **Tile Mastery:** Every tile rank (e.g. 1-Bamboo, Red Dragon, Autumn) levels up through gameplay, unlocking ornate gold-filigree borders and passive score boosts.
 
@@ -160,7 +160,7 @@ res://
 │   ├── autoload/
 │   │   ├── game_manager.gd   # Game state, mode, scoring, flow logic
 │   │   ├── audio_manager.gd  # ASMR audio system & music director
-│   │   ├── save_manager.gd   # JSON persistence (user://savedata.json)
+│   │   ├── save_manager.gd   # Encrypted persistence (user://nine_rivers_save.json)
 │   │   └── settings_manager.gd# Audio/haptics/motion settings
 │   ├── core/
 │   │   ├── board_generator.gd# Peel algorithm & layout geometry
@@ -207,10 +207,13 @@ func generate_solvable_board(positions: Array, sets: Array) -> Array:
 ## 6. Commercialization & Live-Ops Blueprint
 
 1. **Monetization Model (Ethical Hybrid):**
-   - **Free-to-Play Core:** All 50 levels and Daily River Run are 100% free.
-   - **Cosmetic Customization:** Unlockable tile sets (Imperial Jade, Obsidian & Gold, Cyber Neon, Hand-carved Bamboo) and table felts (Night Sky, Cherry Blossom, Velvet Crimson).
-   - **Optional Rewarded Video:** Watch an ad for +1 extra shuffle or +30s clock continue (max 1 per run).
-   - **One-Time "River Master" IAP:** Removes all ads forever, unlocks all themes, and grants permanent +1 undo charge.
+   - **Free-to-Play Core:** All 350 Calm stages, the Daily Tide and the Timed River Run are free.
+   - **Single Currency:** Spirit Pearls, earned from stars or bought outright. There is no second currency and no wagering of Pearls.
+   - **Cosmetic Customization:** Three purchasable tile sets (Imperial Gold, Obsidian Ink, Cherry Blossom, Rs 99 each) and two backgrounds (Misty Mountain Spring, Sunset Lotus Haven, Rs 49 each). Each is also buyable with Pearls. Deep Indigo is earned at stage 50 and is never sold. Classic Jade and three backgrounds ship free.
+   - **Pearl Packs:** Rs 49 / Rs 149 / Rs 399 for 500 / 2,500 / 7,500 Pearls.
+   - **One-Time "Remove Ads" IAP (Rs 199):** Removes banners and interstitials permanently, and grants 500 Pearls. It does not unlock themes.
+   - **Shop Structure:** Four rows — Tile Sets, Backgrounds, Buy Pearls, Restore Purchases. The Free Rewards screen was cut; the Daily Tide is the free-Pearl surface.
+   - **Advertising:** the shipping build has no ad network wired up. AdMob is signed up for and intended, with rewarded video currently having no UI entry point.
 2. **Retention Features:**
-   - **Daily River Run:** Seeded daily challenge identical for all global players with daily leaderboard rankings.
+   - **Daily Tide:** Seeded daily challenge identical for all global players. No leaderboard: the game ships with no online ranking of any kind.
    - **Haptic ASMR Marketing:** Perfect for TikTok / Instagram Reels gameplay videos showcasing satisfying tile clacks, chain reactions, and high-flow clearing combos.
