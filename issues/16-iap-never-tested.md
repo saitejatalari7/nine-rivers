@@ -1,9 +1,9 @@
 # 16 — IAP flow never tested end to end
 
-**Status:** PENDING — blocks release if paid items ship on day one
+**Status:** RESOLVED — 2026-09-26
 **Raised:** 2026-09-21
 **Last reviewed:** 2026-09-23
-**Resolved:** —
+**Resolved:** 2026-09-26
 
 **Blocks release: probably, if paid items ship on day one.**
 
@@ -25,3 +25,18 @@ Related: [03](03-rewarded-ads-grant-without-ad.md) shows the same class of
 fallback *without* the guard, on the ads path.
 
 Files: `scripts/autoload/monetization_manager.gd:552-620`
+
+
+## Resolution — 2026-09-26
+
+Tested on a real phone through the Internal testing track with license
+testing (test card, no charge):
+
+- `pearls_small` bought: Play confirmed, 500 pearls granted, purchase consumed.
+- `theme_imperial_gold` bought with money: set unlocked and equipped.
+- Uninstall and reinstall: Imperial Gold restored as owned from Play.
+
+Testing exposed that the purchase code targeted the v2 plugin API while the
+shipped plugin is v3 (no initPlugin, wrong purchase() arity, product details
+never queried, `sku` instead of `product_ids`). Fixed in c68eced by moving to
+the plugin's BillingClient wrapper. All 9 products are active in Play Console.
