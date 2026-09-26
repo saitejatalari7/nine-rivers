@@ -1064,18 +1064,24 @@ func show_settings_menu() -> void:
 	)
 	show_modal()
 
+const PRIVACY_POLICY_URL := "https://saitejatalari7.github.io/nine-rivers/"
+
 func show_privacy_modal() -> void:
 	_current_screen = "privacy"
 	_clear_content()
 	_add_header("Privacy", "Nine Rivers")
 	_add_hairline()
 
-	_add_sheet_row("Data Collection", "None")
-	_add_sheet_row("Save Storage", "Local device only")
-	_add_sheet_row("In-App Purchases", "Apple / Google Play")
-	_add_sheet_row("Family Safe", "COPPA & all-ages")
+	_add_sheet_row("Your progress", "Stays on this phone")
+	_add_sheet_row("Cloud save", "Optional, off by default")
+	_add_sheet_row("Purchases", "Google Play")
 
 	_add_separator()
+	# Play requires the policy to be reachable from inside the app, not only
+	# from the store listing.
+	_add_button("Read Full Policy", func():
+		OS.shell_open(PRIVACY_POLICY_URL)
+	)
 	_add_button("Back", func():
 		show_settings_menu()
 	)
