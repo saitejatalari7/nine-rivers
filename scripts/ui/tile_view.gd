@@ -481,7 +481,7 @@ func _init_styleboxes() -> void:
 	sb_extrusion.set_corner_radius_all(8)
 	sb_extrusion.anti_aliasing = true
 	sb_extrusion.anti_aliasing_size = 1.0
-	
+
 	# 2. Top Ceramic Face Slab
 	sb_base = StyleBoxFlat.new()
 	sb_base.bg_color = get_theme_face_color(is_free or is_revealed, get_effective_theme())
@@ -490,14 +490,14 @@ func _init_styleboxes() -> void:
 	sb_base.set_corner_radius_all(8)
 	sb_base.anti_aliasing = true
 	sb_base.anti_aliasing_size = 1.0
-	
+
 	# 3. Contact Drop Shadow
 	sb_shadow = StyleBoxFlat.new()
 	sb_shadow.bg_color = Color(0.01, 0.04, 0.03, 0.42)
 	sb_shadow.set_corner_radius_all(9)
 	sb_shadow.anti_aliasing = true
 	sb_shadow.anti_aliasing_size = 2.2
-	
+
 	# 4. Ambient Occlusion Blur Shadow
 	sb_ambient_shadow = StyleBoxFlat.new()
 	sb_ambient_shadow.bg_color = Color(0, 0, 0, 0.18)
@@ -549,6 +549,14 @@ const SELECT_Z_BOOST: int = 400
 ## The lift, the scale and the shadow are what sell selection now, so the ring
 ## can go back to being a rim rather than a frame.
 const SELECT_BORDER_W: int = 4
+## Gold everywhere except on the gold tiles, where a gold ring vanished into
+## the face and only the lift showed the tile was picked up.
+const SELECT_RING_OVERRIDE: Dictionary = {
+	"theme_imperial_gold": Color("#111111"),
+}
+
+func selection_ring_color() -> Color:
+	return SELECT_RING_OVERRIDE.get(get_effective_theme(), COL_GOLD)
 const SELECT_SCALE: float = 1.08
 
 func set_selected(sel: bool) -> void:
@@ -631,7 +639,7 @@ func play_clear_animation() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	is_dissolving = true
 	z_index += 300 # Bring dissolving tile above all others during disintegration
-	
+
 	# Instantiate runtime Voronoi burning ember dissolve shader
 	var mat := ShaderMaterial.new()
 	mat.shader = DissolveShader
@@ -652,12 +660,12 @@ func play_clear_animation() -> void:
 	# while the slab underneath it stays whole.
 	if is_instance_valid(_body_layer):
 		_body_layer.material = mat
-	
+
 	var tween := create_tween()
 	# Step 1: 0.06s Anticipation scale pop & radiant gold flash
 	tween.tween_property(self, "scale", Vector2(1.12, 1.12), 0.06).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	tween.parallel().tween_property(self, "modulate", Color(1.8, 1.7, 1.3, 1.0), 0.06)
-	
+
 	# Step 2: Incense smoke vaporization & upward levitation
 	tween.chain().tween_property(self, "modulate", Color.WHITE, 0.12)
 	tween.parallel().tween_method(func(val: float):
@@ -667,7 +675,7 @@ func play_clear_animation() -> void:
 	, 0.0, 1.0, 0.42).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 	tween.parallel().tween_property(self, "position:y", position.y - 18.0, 0.42).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	tween.parallel().tween_property(self, "scale", Vector2(0.90, 0.90), 0.42).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
-	
+
 	tween.chain().tween_callback(queue_free)
 
 func play_strand_ripple() -> void:
@@ -679,7 +687,7 @@ func _process(delta: float) -> void:
 	if tile_data and tile_data.is_open:
 		anim_wild_pulse += delta * 4.8
 		_redraw_all()
-		
+
 	if is_pressing and not long_press_fired:
 		if (Time.get_ticks_msec() / 1000.0) - press_start_time >= long_press_threshold:
 			long_press_fired = true
@@ -825,7 +833,7 @@ func _draw() -> void:
 		draw_rect(band_rect, COL_GOLD, true)
 		draw_line(band_rect.position, band_rect.position + Vector2(band_rect.size.x, 0), Color(1, 0.95, 0.7, 0.9), 1.0, true)
 		draw_line(band_rect.position + Vector2(0, band_h), band_rect.position + Vector2(band_rect.size.x, band_h), COL_GOLD_DARK, 1.0, true)
-	
+
 	# 5. Wild / Stranded Luminous Gem (elegant diamond star crest)
 	if tile_data.is_wild():
 		var center_pt := face_rect.position + Vector2(TILE_W - 9.0, 9.0)
@@ -841,7 +849,7 @@ func _draw() -> void:
 		])
 		draw_colored_polygon(pts, Color(COL_GOLD.r, COL_GOLD.g, COL_GOLD.b, glow_a))
 		draw_circle(center_pt, 1.8, Color.WHITE, true, -1.0, true)
-	
+
 	# 5.5 Special Crystal Glass Tile Treatment (Prismatic Reflection & Diamond Crest)
 	if tile_data.is_glass:
 		# Prismatic ice-cyan glass border
@@ -852,12 +860,12 @@ func _draw() -> void:
 		glass_sb.set_corner_radius_all(8)
 		glass_sb.anti_aliasing = true
 		draw_style_box(glass_sb, face_rect)
-		
+
 		# Diagonal specular glass reflection beams
 		var glint_col := Color(1.0, 1.0, 1.0, 0.45)
 		draw_line(face_rect.position + Vector2(4, 22), face_rect.position + Vector2(24, 2), glint_col, 2.0, true)
 		draw_line(face_rect.position + Vector2(TILE_W - 24, TILE_H - DEPTH_3D - 2), face_rect.position + Vector2(TILE_W - 4, TILE_H - DEPTH_3D - 22), glint_col, 1.5, true)
-		
+
 		# Delicate 4-point Diamond Crystal crest in top-left
 		var crystal_pt := face_rect.position + Vector2(9.0, 9.0)
 		var c_pts := PackedVector2Array([
@@ -868,12 +876,12 @@ func _draw() -> void:
 		])
 		draw_colored_polygon(c_pts, Color(0.75, 0.92, 1.0, 0.95))
 		draw_circle(crystal_pt, 1.5, Color.WHITE, true, -1.0, true)
-	
+
 	# 6. Selection, Reveal & Hint Overlays (matching HTML .tile.sel / .tile.hint)
 	if is_selected:
 		var sel_sb := StyleBoxFlat.new()
 		sel_sb.draw_center = false
-		sel_sb.border_color = COL_GOLD
+		sel_sb.border_color = selection_ring_color()
 		sel_sb.set_border_width_all(SELECT_BORDER_W)
 		sel_sb.set_corner_radius_all(8)
 		sel_sb.anti_aliasing = true
@@ -894,7 +902,7 @@ func _draw() -> void:
 		hint_sb.set_corner_radius_all(8)
 		hint_sb.anti_aliasing = true
 		draw_style_box(hint_sb, face_rect)
-	
+
 	# 7. Canonical artwork, veiled by fog when the tile is still blocked.
 	# The face is drawn FIRST and the mist laid over it, rather than the mist
 	# replacing it. That is what lets the artwork ghost through as a shape
@@ -903,7 +911,7 @@ func _draw() -> void:
 		draw_canonical_face(face_rect)
 	if StageModifiers.is_fog_active() and not is_free and not is_revealed:
 		_draw_fog_shroud(face_rect)
-	
+
 	# 9. Atmospheric Depth Wash for Blocked Tiles (matching HTML .tile.blocked::after)
 	if not is_free and not is_revealed and not StageModifiers.is_fog_active() and not is_dissolving:
 		_draw_atmospheric_blocked_tint(face_rect)
@@ -940,7 +948,7 @@ func _draw_imperial_gold_framing(face_r: Rect2) -> void:
 	var frame_r := Rect2(face_r.position + Vector2(2.5, 2.5), face_r.size - Vector2(5.0, 5.0))
 	# 1. 24k Gold leaf inner border
 	draw_rect(frame_r, Color(0.85, 0.68, 0.22, 0.65), false, 1.0)
-	
+
 	# 2. Regal Gilded Filigree L-Brackets at 4 corners
 	var fg_col := Color(0.95, 0.78, 0.25, 0.95)
 	var fl: float = 5.0
@@ -1016,7 +1024,7 @@ func draw_white_dragon_frame(face_r: Rect2) -> void:
 		col = Color("#38bdf8") # Radiant electric cyan frame
 	elif th == "theme_cherry_blossom":
 		col = Color("#cf3b5b") # Soft rose cinnabar frame
-	
+
 	# Outer rounded rectangle, widened from 64x82 so the white dragon reads at
 	# the same size as the other two.
 	# Outer rounded rectangle
@@ -1029,7 +1037,7 @@ func draw_white_dragon_frame(face_r: Rect2) -> void:
 	sb_outer.anti_aliasing_size = 1.0
 	var outer_r := Rect2(face_r.position.x + 12.0 * scale_x, face_r.position.y + 18.0 * scale_y, 76.0 * scale_x, 98.0 * scale_y)
 	draw_style_box(sb_outer, outer_r)
-	
+
 	# Inner rounded rectangle (38x56, rx=5, stroke=3.4 in 100x132 viewBox)
 	var sb_inner := StyleBoxFlat.new()
 	sb_inner.draw_center = false
@@ -1047,12 +1055,12 @@ func draw_canonical_characters(face_r: Rect2, rank: int) -> void:
 	var num_str: String = CN_NUMS[rank] if rank < CN_NUMS.size() else str(rank)
 	var cx: float = face_r.position.x + face_r.size.x * 0.5
 	var cy: float = face_r.position.y + face_r.size.y * 0.5
-	
+
 	# 0.46/0.38 put the pair at 45% of the tile width. 0.58/0.52 is the largest
 	# that still stacks inside the 80px face without the numeral clipping.
 	var top_sz: int = int(face_r.size.x * 0.58)
 	var bot_sz: int = int(face_r.size.x * 0.52)
-	
+
 	if th == "theme_imperial_gold":
 		# Same trap as the dragons: the numeral was gilded #d49826 on a #8b6c26
 		# gold face and 萬 was dark crimson on dark gold, both hardcoded past
@@ -1084,7 +1092,7 @@ func draw_canonical_glyph(face_r: Rect2, text: String, col: Color, font_size: in
 	var font := get_cjk_font()
 	var cx: float = face_r.position.x + face_r.size.x * 0.5
 	var cy: float = face_r.position.y + face_r.size.y * 0.5
-	
+
 	if th == "theme_imperial_gold":
 		# These two used to hardcode their own colours and ignore `col`, which
 		# is why fixing the palette did nothing for the dragons: 發 was drawn
@@ -1102,7 +1110,7 @@ func draw_canonical_glyph(face_r: Rect2, text: String, col: Color, font_size: in
 		draw_string(font, Vector2(cx - font_size * 0.5, cy + font_size * 0.36), text, HORIZONTAL_ALIGNMENT_CENTER, font_size, font_size, Color(col.r, col.g, col.b, 0.35))
 		draw_string(font, Vector2(cx - font_size * 0.5, cy + font_size * 0.36), text, HORIZONTAL_ALIGNMENT_CENTER, font_size, font_size, col)
 		return
-		
+
 	draw_string(font, Vector2(cx - font_size * 0.5, cy + font_size * 0.36), text, HORIZONTAL_ALIGNMENT_CENTER, font_size, font_size, col)
 
 func draw_canonical_dots(face_r: Rect2, n: int) -> void:
