@@ -42,6 +42,11 @@ const BEATS: Array[Dictionary] = [
 		"board": "W",
 	},
 	{
+		"text": "A gold underline means three.",
+		"sub": "Those tiles clear in threes, not pairs. Tap all three of a kind.",
+		"board": "T",
+	},
+	{
 		"text": "Clear the top to reach what is under it.",
 		"sub": "Tiles stack in layers. The flower on top is still wild.",
 		"board": "C",
@@ -163,6 +168,7 @@ func _deal(which: String) -> void:
 		"A": layout = TutorialBoards.A_MATCH
 		"B": layout = TutorialBoards.B_BLOCKED
 		"W": layout = TutorialBoards.W_WILD
+		"T": layout = TutorialBoards.T_TRIPLE
 		"C": layout = TutorialBoards.C_LAYERS
 		_:
 			_board.clear_board()

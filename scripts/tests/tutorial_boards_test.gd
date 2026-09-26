@@ -26,10 +26,12 @@ func _ready() -> void:
 	await _clears("A - match", TutorialBoards.A_MATCH)
 	await _clears("B - blocked", TutorialBoards.B_BLOCKED)
 	await _clears("W - wild", TutorialBoards.W_WILD)
+	await _clears("T - triple", TutorialBoards.T_TRIPLE)
 	await _clears("C - layers", TutorialBoards.C_LAYERS)
 
 	await _b_really_blocks()
 	await _w_needs_the_wild()
+	await _t_needs_three()
 	await _c_teaches_the_wild()
 
 	print("")
@@ -89,6 +91,21 @@ func _w_needs_the_wild() -> void:
 			both_wild += 1
 	_check(plain == 0, "W has no pair without a wild", "%d plain" % plain)
 	_check(both_wild == 0, "and the wilds cannot pair with each other", "%d" % both_wild)
+
+
+## Board T teaches that underlined tiles go in threes: no pair may clear there.
+func _t_needs_three() -> void:
+	board.restore_stage(TutorialBoards.T_TRIPLE.duplicate(true))
+	await get_tree().process_frame
+	var pairs: int = 0
+	var triples: int = 0
+	for s in board.get_legal_sets():
+		if s.size() == 2:
+			pairs += 1
+		elif s.size() == 3:
+			triples += 1
+	_check(pairs == 0 and triples == 2, "T only clears in threes",
+		"%d pairs, %d triples" % [pairs, triples])
 
 
 ## The flower on top must be matchable with the character beside it, or the

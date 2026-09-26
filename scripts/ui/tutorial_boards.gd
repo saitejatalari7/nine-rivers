@@ -1,7 +1,7 @@
 class_name TutorialBoards
 extends RefCounted
 
-## The four boards the onboarding teaches on, written out tile by tile.
+## The five boards the onboarding teaches on, written out tile by tile.
 ##
 ## They are hand-authored rather than dealt, because each one has to demonstrate
 ## exactly one rule and nothing else. A generated board cannot promise that: the
@@ -50,6 +50,18 @@ const W_WILD: Array = [
 	{"x": 8, "y": 0, "z": 0, "suit": "bam", "rank": 9, "set_id": 4, "size": 2},
 ]
 
+const T_TRIPLE: Array = [
+	# Two sets of three, every tile free. A tile with the gold underline only
+	# clears with two more of its face, so a pair of them does nothing - the
+	# board is the whole of that rule.
+	{"x": 0, "y": 0, "z": 0, "suit": "dot", "rank": 4, "set_id": 1, "size": 3},
+	{"x": 4, "y": 0, "z": 0, "suit": "dot", "rank": 4, "set_id": 1, "size": 3},
+	{"x": 8, "y": 0, "z": 0, "suit": "dot", "rank": 4, "set_id": 1, "size": 3},
+	{"x": 0, "y": 2, "z": 0, "suit": "char", "rank": 2, "set_id": 2, "size": 3},
+	{"x": 4, "y": 2, "z": 0, "suit": "char", "rank": 2, "set_id": 2, "size": 3},
+	{"x": 8, "y": 2, "z": 0, "suit": "char", "rank": 2, "set_id": 2, "size": 3},
+]
+
 const C_LAYERS: Array = [
 	# Ten tiles on two layers. The pair on top is a flower and a character:
 	# a flower matches anything, which is the one rule that cannot be worked
@@ -70,4 +82,4 @@ const C_LAYERS: Array = [
 
 
 static func all() -> Array:
-	return [A_MATCH, B_BLOCKED, W_WILD, C_LAYERS]
+	return [A_MATCH, B_BLOCKED, W_WILD, T_TRIPLE, C_LAYERS]

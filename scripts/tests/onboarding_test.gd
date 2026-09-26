@@ -45,7 +45,7 @@ func _ready() -> void:
 		"on a board of its own, not stage 1", "%d tiles" % board.get_active_tiles().size())
 
 	# Each board is finished by clearing it. Nothing advances on a button.
-	for expected in [1, 2, 3, 4]:
+	for expected in [1, 2, 3, 4, 5]:
 		await _clear_one_board(expected)
 		_check(tut._beat == expected, "clearing board %d moves on" % expected,
 			"beat=%d" % tut._beat)
