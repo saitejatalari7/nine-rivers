@@ -319,6 +319,8 @@ func set_level(level: int, animate: bool = true) -> void:
 		theme_changed.emit(theme_data, level)
 
 func _apply_theme(theme_data: Dictionary, animate: bool) -> void:
+	if is_instance_valid(AudioManager):
+		AudioManager.set_soundscape(String(theme_data.get("id", "")))
 	# 1. Shader Colors
 	if bg_color and bg_color.material is ShaderMaterial:
 		var mat: ShaderMaterial = bg_color.material as ShaderMaterial

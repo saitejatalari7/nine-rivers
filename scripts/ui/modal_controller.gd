@@ -1090,8 +1090,14 @@ func show_credits_modal() -> void:
 	_add_sheet_row("Game Design", "Nine Rivers Studio")
 	_add_sheet_row("Art Direction", "Ceramic & ink vector engine")
 	_add_sheet_row("Typography", "Noto Serif CJK · Ma Shan Zheng")
-	_add_sheet_row("Audio", "Procedural guzheng & clacks")
+	_add_sheet_row("Audio", "Procedural guzheng & recorded nature")
 	_add_sheet_row("Engine", "Godot 4.6")
+
+	_add_hairline()
+	# CC-BY 3.0 requires these. The rain and forest recordings are CC0.
+	_add_sheet_row("Stream sounds", "kurt · CC-BY 3.0")
+	_add_sheet_row("Birdsong", "koertes, via qubodup · CC-BY 3.0")
+	_add_sheet_row("Rain & forest", "OpenGameArt · CC0")
 
 	_add_separator()
 	_add_button("Back", func():

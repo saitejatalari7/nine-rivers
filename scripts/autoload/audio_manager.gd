@@ -43,6 +43,10 @@ var _guzheng_cache: Dictionary = {}
 
 const BUS_MUSIC := "NRMusic"
 const BUS_SFX := "NRSfx"
+const BUS_AMBIENT := "NRAmbient"
+## Nature and bed sit at half volume, and there is no control to raise them:
+## they are the room the game is played in, never the thing you listen to.
+const AMBIENT_CEILING_DB: float = -6.02
 
 ## Everything used to play bone dry on Master. A plucked string with no space
 ## around it is the single biggest reason the audio read as cheap: real
@@ -53,6 +57,7 @@ func _setup_audio_buses() -> void:
 	for spec in [
 		{"name": BUS_MUSIC, "room": 0.82, "damp": 0.42, "wet": 0.34, "spread": 1.0, "predelay": 28.0},
 		{"name": BUS_SFX,   "room": 0.46, "damp": 0.58, "wet": 0.16, "spread": 0.7, "predelay": 12.0},
+		{"name": BUS_AMBIENT, "room": 0.70, "damp": 0.50, "wet": 0.18, "spread": 1.0, "predelay": 20.0},
 	]:
 		var bus_name: String = spec["name"]
 		if AudioServer.get_bus_index(bus_name) != -1:
@@ -69,6 +74,9 @@ func _setup_audio_buses() -> void:
 		rv.spread = spec["spread"]
 		rv.predelay_msec = spec["predelay"]
 		AudioServer.add_bus_effect(idx, rv)
+	var amb: int = AudioServer.get_bus_index(BUS_AMBIENT)
+	if amb != -1:
+		AudioServer.set_bus_volume_db(amb, AMBIENT_CEILING_DB)
 
 func _ready() -> void:
 	_setup_audio_buses()
@@ -85,11 +93,12 @@ func _ready() -> void:
 	add_child(music_player)
 
 	ambient_player = AudioStreamPlayer.new()
-	ambient_player.bus = BUS_MUSIC
+	ambient_player.bus = BUS_AMBIENT
 	ambient_player.volume_db = -80.0
 	add_child(ambient_player)
 	
 	_setup_drift_layer()
+	_setup_soundscape()
 	_setup_positional_players()
 	_pregenerate_ui_click()
 	_pregenerate_clack_sounds()
@@ -121,6 +130,22 @@ func _on_setting_changed(setting_name: String, new_val: Variant) -> void:
 			start_ambient_music()
 		else:
 			stop_ambient_music()
+		if soundscape != null:
+			soundscape.set_enabled(bool(new_val))
+
+
+const Soundscape = preload("res://scripts/audio/soundscape.gd")
+var soundscape: Node = null
+
+func _setup_soundscape() -> void:
+	soundscape = Soundscape.new()
+	soundscape.bus = BUS_AMBIENT
+	add_child(soundscape)
+	soundscape.set_enabled(SettingsManager.music_enabled)
+
+func set_soundscape(background_id: String) -> void:
+	if soundscape != null:
+		soundscape.set_scape(background_id)
 
 func start_ambient_music() -> void:
 	if ambient_player.stream == null:
@@ -136,15 +161,31 @@ func stop_ambient_music() -> void:
 	tween.tween_callback(ambient_player.stop)
 
 func _start_ambient_guzheng_loop() -> void:
-	var delay: float = randf_range(7.5, 12.5)
+	# Longer and less even than before: the rests are what make it calm.
+	var delay: float = randf_range(9.0, 22.0)
 	get_tree().create_timer(delay).timeout.connect(func():
 		if SettingsManager.music_enabled and ambient_player.playing:
 			_play_random_ambient_phrase()
 		_start_ambient_guzheng_loop()
 	)
 
+## A short walk on the pentatonic scale: mostly steps, the odd leap, and a
+## fall back towards where it started. The seven fixed motifs are still in the
+## mix, but most phrases are new, so none of them becomes a jingle.
+func _compose_phrase() -> Array:
+	var idx: int = randi_range(3, 10)
+	var phrase: Array = [PENTATONIC[idx]]
+	for i in randi_range(2, 4):
+		var step: int = [-2, -1, -1, 1, 1, 2, 3][randi() % 7]
+		idx = clampi(idx + step, 2, 12)
+		phrase.append(PENTATONIC[idx])
+	if randf() < 0.4:
+		phrase.append(phrase[0])
+	return phrase
+
+
 func _play_random_ambient_phrase() -> void:
-	var motif: Array = GUZHENG_MOTIFS[randi() % GUZHENG_MOTIFS.size()]
+	var motif: Array = GUZHENG_MOTIFS[randi() % GUZHENG_MOTIFS.size()] 		if randf() < 0.25 else _compose_phrase()
 	var base_time: float = 0.0
 	for i in range(motif.size()):
 		var freq: float = float(motif[i])
@@ -230,7 +271,6 @@ func _pregenerate_ambient_track() -> void:
 	for vi in range(voices.size()):
 		swell_phase[vi] = float(voices[vi]["phase"]) / TAU * float(LUT_SIZE)
 
-	var last_noise: float = 0.0
 	var lp_state: float = 0.0
 	var swell := PackedFloat32Array(); swell.resize(voices.size())
 
@@ -252,13 +292,6 @@ func _pregenerate_ambient_track() -> void:
 		lp_state += (pad - lp_state) * 0.22
 		pad = lp_state
 
-		# Filtered water. The old lap used a 0.25Hz swell - a 4 second
-		# inhale/exhale, which is the "breathing presence" part of the ghost.
-		# Faster and shallower reads as moving water instead.
-		var white: float = randf() * 2.0 - 1.0
-		last_noise = (last_noise * 0.94) + (white * 0.06)
-		var lap_envelope: float = (0.62 + 0.38 * sin(t * TAU * 0.85)) * 0.055
-		var water_lap: float = last_noise * lap_envelope
 
 		# Smooth window at loop boundary to guarantee zero click
 		var window: float = 1.0
@@ -267,7 +300,7 @@ func _pregenerate_ambient_track() -> void:
 		elif norm_t > 0.95:
 			window = (1.0 - norm_t) / 0.05
 			
-		var val: float = (pad + water_lap) * window * 0.62
+		var val: float = pad * window * 0.62
 		val = clampf(val, -1.0, 1.0)
 		pcm.encode_s16(frame * 2, int(val * 32767.0))
 		
@@ -949,7 +982,7 @@ func _setup_drift_layer() -> void:
 	_drift_rng.randomize()
 	for i in range(3):
 		var p := AudioStreamPlayer.new()
-		p.bus = BUS_MUSIC
+		p.bus = BUS_AMBIENT
 		p.volume_db = -19.0
 		add_child(p)
 		drift_players.append(p)
@@ -972,7 +1005,9 @@ func _play_drift_event() -> void:
 			break
 	if free_player == null:
 		return
-	var kind: int = _drift_rng.randi_range(0, 2)
+	# The synthetic air swell was the "gush of wind" that kept coming back; the
+	# recorded soundscape carries air and water now, so only drops and notes.
+	var kind: int = 0 if _drift_rng.randf() < 0.5 else 2
 	var ltr: bool = _drift_rng.randf() < 0.5
 	var mono: PackedFloat32Array
 	match kind:
