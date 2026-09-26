@@ -12,6 +12,7 @@ extends Node
 signal rewarded
 
 const RETRY_SECONDS: float = 30.0
+const DEVELOPER_TEST_DEVICES: Array[String] = ["9524D58E36EA045039FEFE6522D20123"]
 
 var rewarded_unit: String = ""
 var interstitial_unit: String = ""
@@ -19,6 +20,10 @@ var interstitial_unit: String = ""
 var _rewarded_ad: RewardedAd = null
 var _interstitial_ad: InterstitialAd = null
 var _started: bool = false
+## True only once the SDK reports initialisation complete. Loading an ad
+## before that throws on Android's main thread, which kills touch input while
+## the game keeps drawing - the first device build shipped exactly that.
+var _ready_to_load: bool = false
 
 
 func start(rewarded_id: String, interstitial_id: String) -> void:
@@ -46,10 +51,17 @@ func _start_sdk() -> void:
 	# A calm game for all ages: keep mature ad content out of it.
 	var config := RequestConfiguration.new()
 	config.max_ad_content_rating = RequestConfiguration.MAX_AD_CONTENT_RATING_PG
+	# The developer's own phone, so it never receives live ads: viewing or
+	# tapping your own live ads gets AdMob accounts suspended. The console's
+	# test-device list does the same but can take hours to apply.
+	config.test_device_ids = DEVELOPER_TEST_DEVICES
 	MobileAds.set_request_configuration(config)
-	MobileAds.initialize()
-	_load_rewarded()
-	_load_interstitial()
+	var listener := OnInitializationCompleteListener.new()
+	listener.on_initialization_complete = func(_status):
+		_ready_to_load = true
+		_load_rewarded()
+		_load_interstitial()
+	MobileAds.initialize(listener)
 
 
 func is_rewarded_ready() -> bool:
@@ -89,7 +101,7 @@ func show_interstitial() -> void:
 
 
 func _load_rewarded() -> void:
-	if not _started:
+	if not _ready_to_load:
 		return
 	var cb := RewardedAdLoadCallback.new()
 	cb.on_ad_loaded = func(ad: RewardedAd): _rewarded_ad = ad
@@ -98,7 +110,7 @@ func _load_rewarded() -> void:
 
 
 func _load_interstitial() -> void:
-	if not _started:
+	if not _ready_to_load:
 		return
 	var cb := InterstitialAdLoadCallback.new()
 	cb.on_ad_loaded = func(ad: InterstitialAd): _interstitial_ad = ad
@@ -109,4 +121,5 @@ func _load_interstitial() -> void:
 ## No fill is common, especially for a new app. Retrying on a timer rather
 ## than immediately keeps a dead network from spinning.
 func _retry(loader: Callable) -> void:
-	get_tree().create_timer(RETRY_SECONDS).timeout.connect(loader)
+	if is_inside_tree():
+		get_tree().create_timer(RETRY_SECONDS).timeout.connect(loader)

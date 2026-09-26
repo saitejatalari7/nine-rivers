@@ -222,7 +222,7 @@ func _init_platform_billing() -> void:
 	if not Engine.has_singleton("GodotGooglePlayBilling"):
 		return
 	_billing = BillingClientScript.new()
-	add_child(_billing)
+	add_child.call_deferred(_billing)
 	_billing.connected.connect(_on_billing_connected)
 	_billing.disconnected.connect(_on_billing_disconnected)
 	_billing.connect_error.connect(_on_billing_purchase_error)
@@ -473,10 +473,12 @@ func _init_platform_ads() -> void:
 	if OS.get_name() != "Android":
 		return
 	var ads = load("res://scripts/ads/admob_ads.gd").new()
-	add_child(ads)
 	ads.rewarded.connect(_on_admob_reward_granted)
-	ads.start(rewarded_unit_id(), interstitial_unit_id())
 	_admob = ads
+	# Autoloads are still being parented when _ready runs, so add_child fails
+	# outright; defer both the attach and the start.
+	add_child.call_deferred(ads)
+	ads.start.call_deferred(rewarded_unit_id(), interstitial_unit_id())
 
 ## Only an ad WE asked for pays out. This used to grant on any call: with no
 ## pending placement it fell to the catch-all arm of _grant_reward and paid 50

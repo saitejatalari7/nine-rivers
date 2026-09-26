@@ -34,7 +34,7 @@ func _ready() -> void:
 			var want: float = m.card_container.get_combined_minimum_size().y
 			var top: float = m.card_panel.global_position.y
 			var h: float = m.get_viewport().get_visible_rect().size.y
-			var ok: bool = top > h * 0.08 and early == got
+			var ok: bool = top >= m.CARD_MARGIN * 0.9 and early == got
 			if not ok:
 				_fails += 1
 			print("  %s  %-32s top=%.0f height=%.0f content=%.0f" % ["PASS" if ok else "FAIL", s, top, got, want])

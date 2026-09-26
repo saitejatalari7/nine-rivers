@@ -191,7 +191,29 @@ func _set_current_screen(value: String) -> void:
 
 ## A ScrollContainer reports a near-zero minimum size, which would collapse the
 ## card, so size it to its content and cap it at the space available.
-const MAX_CARD_SHARE: float = 0.8
+## Space kept clear above and below a long card, so it floats like the rest.
+const CARD_MARGIN: float = 110.0
+
+## A swipe that starts on a row used to end as a tap on it: the rows are
+## buttons, and a button fires on release. Rows now pass drags through to the
+## scroll container (MOUSE_FILTER_PASS), and any press that ends a scroll is
+## dropped here.
+var _dragging: bool = false
+var _drag_ended_at: int = -100000
+const TAP_AFTER_SCROLL_MS: int = 200
+
+func _on_scroll_started() -> void:
+	_dragging = true
+
+func _on_scroll_ended() -> void:
+	_dragging = false
+	_drag_ended_at = Time.get_ticks_msec()
+
+func _tap(on_click: Callable) -> Callable:
+	return func():
+		if _dragging or Time.get_ticks_msec() - _drag_ended_at < TAP_AFTER_SCROLL_MS:
+			return
+		on_click.call()
 
 func _fit_scroll() -> void:
 	if not is_instance_valid(scroll_view):
@@ -212,7 +234,7 @@ func _fit_scroll() -> void:
 	# A long screen (Settings, Levels) used to fill the height and sit against
 	# the top edge while every other menu floated mid-screen. Capping it keeps
 	# the card centred like the rest, with the overflow scrolling inside.
-	avail = minf(avail, vp.get_visible_rect().size.y * MAX_CARD_SHARE - chrome)
+	avail = minf(avail, vp.get_visible_rect().size.y - CARD_MARGIN * 2.0 - chrome)
 	var wanted: float = card_container.get_combined_minimum_size().y
 	scroll_view.custom_minimum_size.y = minf(wanted, maxf(avail, 240.0))
 
@@ -228,6 +250,8 @@ func _apply_safe_area() -> void:
 
 func _ready() -> void:
 	visible = false
+	scroll_view.scroll_started.connect(_on_scroll_started)
+	scroll_view.scroll_ended.connect(_on_scroll_ended)
 	_apply_safe_area()
 	get_tree().get_root().size_changed.connect(_apply_safe_area)
 	await get_tree().process_frame
@@ -289,11 +313,11 @@ func show_main_menu() -> void:
 
 	_add_title("NINE RIVERS")
 	_add_subtitle("Zen Roguelite Mahjong Solitaire")
-	
+
 	var cur_lvl: int = int(SaveManager.prog.get("level", 1))
 	var streak: int = int(SaveManager.prog.get("daily_streak", 0))
 	var pearls: int = MonetizationManager.get_pearls()
-	
+
 	# One compact purse line instead of four stacked tallies. The old version
 	# gave the eye four identical rows to read before reaching anything
 	# actionable.
@@ -380,13 +404,13 @@ func show_main_menu() -> void:
 func show_level_select() -> void:
 	_current_screen = "level_select"
 	_clear_content()
-	
+
 	var max_unlocked: int = int(SaveManager.prog.get("level", 1))
 	var stars_data: Dictionary = SaveManager.prog.get("stars", {})
 	var total_stars: int = 0
 	for s_val in stars_data.values():
 		total_stars += int(s_val)
-		
+
 	_add_header("Levels", "%d chapters" % StagePlan.CHAPTERS)
 	_add_purse_line("%d / %d ★  ·  Stage %d unlocked" % [
 		total_stars, StagePlan.total_stars(), max_unlocked])
@@ -397,7 +421,7 @@ func show_level_select() -> void:
 	var vbox := VBoxContainer.new()
 	vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	vbox.add_theme_constant_override("separation", 16)
-	
+
 	# Only chapters the player has reached, plus the next one, so 20 chapters
 	# do not become 1000 rows of mostly-blank grid.
 	var shown_last: int = mini(StagePlan.chapter_of(max_unlocked) + 1, StagePlan.CHAPTERS - 1)
@@ -411,11 +435,11 @@ func show_level_select() -> void:
 			"gate": StagePlan.stars_required(c),
 			"open": StagePlan.is_chapter_unlocked(c, total_stars),
 		})
-	
+
 	for ch in chapters:
 		var ch_box := VBoxContainer.new()
 		ch_box.add_theme_constant_override("separation", 6)
-		
+
 		# Chapter Header Row
 		var h_box := HBoxContainer.new()
 		h_box.add_theme_constant_override("separation", 16)
@@ -439,7 +463,7 @@ func show_level_select() -> void:
 		UITheme.style_label(ch_sub, "ui", UITheme.FS_CAPTION, UITheme.IVORY_MUTED,
 			UITheme.W_MEDIUM, 2)
 		title_col.add_child(ch_sub)
-		
+
 		var ch_stars: int = 0
 		for lvl in range(ch["start"], ch["end"] + 1):
 			ch_stars += int(stars_data.get(str(lvl), 0))
@@ -454,14 +478,14 @@ func show_level_select() -> void:
 			UITheme.W_SEMIBOLD)
 		h_box.add_child(stars_lbl)
 		ch_box.add_child(h_box)
-		
+
 		# Chapter Grid
 		var grid := GridContainer.new()
 		grid.columns = 5
 		grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		grid.add_theme_constant_override("h_separation", 8)
 		grid.add_theme_constant_override("v_separation", 8)
-		
+
 		if not bool(ch["open"]):
 			# Locked: the gate line above says what it costs, so the grid would
 			# only be 50 identical dead tokens.
@@ -483,10 +507,11 @@ func show_level_select() -> void:
 				# A cleared stage is a face-up tile, small enough to fit the
 				# map grid; the same material as the rest of the interface.
 				_style_stage_token(btn, lvl == max_unlocked)
-				btn.pressed.connect(func():
+				btn.mouse_filter = Control.MOUSE_FILTER_PASS
+				btn.pressed.connect(_tap(func():
 					hide_modal()
 					start_calm_requested.emit(lvl)
-				)
+				))
 			else:
 				# No padlock glyph: a stage you have not reached is simply a
 				# tile still lying face-down, not inked in yet.
@@ -494,10 +519,10 @@ func show_level_select() -> void:
 				btn.disabled = true
 				_style_stage_token_locked(btn)
 			grid.add_child(btn)
-			
+
 		ch_box.add_child(grid)
 		vbox.add_child(ch_box)
-		
+
 	card_container.add_child(vbox)
 
 	_add_separator()
@@ -551,7 +576,7 @@ func show_level_clear(level: int, score: int, stars: int, sampled: String = "") 
 	star_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	UITheme.style_label(star_lbl, "ui", UITheme.FS_DISPLAY, UITheme.GOLD_BRIGHT)
 	card_container.add_child(star_lbl)
-	
+
 	_add_hairline()
 	_add_sheet_row("Final Score", str(score), UITheme.GOLD_CORE)
 	_add_sheet_row("Pearls Earned", "+%d ◈" % (SaveManager.PEARLS_PER_STAR * stars))
@@ -669,7 +694,7 @@ func show_game_over(reason: String) -> void:
 func show_bazaar_modal() -> void:
 	_current_screen = "bazaar"
 	_clear_content()
-	
+
 	_add_header("Shop", "Tiles, backgrounds and deals")
 
 	var pearls: int = MonetizationManager.get_pearls()
@@ -707,7 +732,7 @@ func show_bazaar_modal() -> void:
 func show_tile_catalog_modal() -> void:
 	_current_screen = "tile_catalog"
 	_clear_content()
-	
+
 	_add_header("Tile Sets", "Ceramic, gold leaf and basalt")
 	_add_hairline()
 
@@ -804,7 +829,7 @@ const DETAIL_TILE_SCALE: float = 2.4
 func show_tile_detail_modal(theme_key: String) -> void:
 	_current_screen = "tile_detail"
 	_clear_content()
-	
+
 	var detail: Dictionary = TILE_THEME_DETAILS.get(theme_key, TILE_THEME_DETAILS["classic_jade"])
 	_add_header(String(detail["name"]), "")
 
@@ -864,7 +889,7 @@ func show_tile_detail_modal(theme_key: String) -> void:
 func show_background_catalog_modal() -> void:
 	_current_screen = "bg_catalog"
 	_clear_content()
-	
+
 	_add_header("Backgrounds", "Living water, koi and flora")
 	_add_hairline()
 
@@ -873,7 +898,7 @@ func show_background_catalog_modal() -> void:
 		var detail: Dictionary = BG_THEME_DETAILS[bg_id]
 		var is_active: bool = (cur_bg == bg_id)
 		var is_unlocked: bool = MonetizationManager.is_background_theme_unlocked(bg_id)
-		
+
 		var tag := ""
 		if is_active:
 			tag = "Flowing"
@@ -899,7 +924,7 @@ func show_background_catalog_modal() -> void:
 func show_background_detail_modal(theme_id: String) -> void:
 	_current_screen = "bg_detail"
 	_clear_content()
-	
+
 	var detail: Dictionary = BG_THEME_DETAILS.get(theme_id, BG_THEME_DETAILS["emerald_pond"])
 	_add_header(String(detail["name"]), "")
 
@@ -944,7 +969,7 @@ func show_background_detail_modal(theme_id: String) -> void:
 func show_treasury_modal() -> void:
 	_current_screen = "treasury"
 	_clear_content()
-	
+
 	_add_header("Buy Pearls", "Pearls and the no-ads upgrade")
 	_add_purse_line("%d ◈ Spirit Pearls in Treasury" % MonetizationManager.get_pearls())
 	_add_hairline()
@@ -1046,7 +1071,7 @@ func show_settings_menu() -> void:
 
 	# NOTE: the Cloud Save toggle lives on feat/cloud-save-pgs, where the
 	# CloudSaveManager autoload exists. Referencing it here would not parse.
-	
+
 	_add_separator()
 	_add_toggle_row("Replay Tutorial", "›", func():
 		hide_modal()
@@ -1093,7 +1118,7 @@ func show_credits_modal() -> void:
 	_add_header("Credits", "Nine Rivers")
 	_add_hairline()
 
-	_add_sheet_row("Game Design", "Nine Rivers Studio")
+	_add_sheet_row("Game Design", "Sai Teja Talari")
 	_add_sheet_row("Art Direction", "Ceramic & ink vector engine")
 	_add_sheet_row("Typography", "Noto Serif CJK · Ma Shan Zheng")
 	_add_sheet_row("Audio", "Procedural guzheng & recorded nature")
@@ -1235,7 +1260,8 @@ func _add_tile_row(accent: Color, title: String, sub: String,
 	b.add_theme_stylebox_override("hover", _make_tile_box())
 	b.add_theme_stylebox_override("focus", _make_tile_box())
 	b.add_theme_stylebox_override("pressed", _make_tile_box(true))
-	b.pressed.connect(on_click)
+	b.mouse_filter = Control.MOUSE_FILTER_PASS
+	b.pressed.connect(_tap(on_click))
 	UITheme.add_press_feedback(b)
 
 	var row := HBoxContainer.new()
@@ -1423,7 +1449,8 @@ func _add_toggle_row(label: String, value: String,
 	b.add_theme_stylebox_override("focus", flat)
 	b.add_theme_stylebox_override("hover", hov)
 	b.add_theme_stylebox_override("pressed", UITheme.create_press_wash(5))
-	b.pressed.connect(on_click)
+	b.mouse_filter = Control.MOUSE_FILTER_PASS
+	b.pressed.connect(_tap(on_click))
 	UITheme.add_press_feedback(b)
 
 	var row := HBoxContainer.new()
@@ -1520,11 +1547,11 @@ func _add_tally(key: String, val: String) -> void:
 	l_k.text = key
 	l_k.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	UITheme.style_label(l_k, "ui", UITheme.FS_BODY, Color(0.72, 0.82, 0.77))
-	
+
 	var l_v := Label.new()
 	l_v.text = val
 	UITheme.style_label(l_v, "ui", UITheme.FS_BODY_LG, UITheme.GOLD_BRIGHT, UITheme.W_SEMIBOLD)
-	
+
 	box.add_child(l_k)
 	box.add_child(l_v)
 	card_container.add_child(box)
@@ -1532,16 +1559,16 @@ func _add_tally(key: String, val: String) -> void:
 func _add_feature_row(key: String, val: String) -> void:
 	var v_box := VBoxContainer.new()
 	v_box.add_theme_constant_override("separation", 2)
-	
+
 	var l_k := Label.new()
 	l_k.text = key
 	UITheme.style_label(l_k, "ui", UITheme.FS_BODY, UITheme.GOLD_CORE, UITheme.W_SEMIBOLD)
-	
+
 	var l_v := Label.new()
 	l_v.text = val
 	l_v.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	UITheme.style_label(l_v, "ui", UITheme.FS_CAPTION, Color(0.82, 0.90, 0.86))
-	
+
 	v_box.add_child(l_k)
 	v_box.add_child(l_v)
 	card_container.add_child(v_box)
@@ -1552,7 +1579,7 @@ func _add_feature_row(key: String, val: String) -> void:
 func _add_tile_preview_row(samples: Array, theme_id: String, scale: float = 1.0) -> void:
 	var center_box := CenterContainer.new()
 	center_box.custom_minimum_size = Vector2(0, 110.0 * scale)
-	
+
 	var preview_panel := PanelContainer.new()
 	# No border: the tiles are the object here, and a gold box around them would
 	# be one more frame inside an already-framed card.
@@ -1564,11 +1591,11 @@ func _add_tile_preview_row(samples: Array, theme_id: String, scale: float = 1.0)
 	margin.add_theme_constant_override("margin_right", 24)
 	margin.add_theme_constant_override("margin_top", 12)
 	margin.add_theme_constant_override("margin_bottom", 12)
-	
+
 	var hbox := HBoxContainer.new()
 	hbox.add_theme_constant_override("separation", int(24.0 * scale))
 	hbox.alignment = BoxContainer.ALIGNMENT_CENTER
-	
+
 	for s in samples:
 		var suit: String = s[0]
 		var rank: int = int(s[1])
@@ -1581,7 +1608,7 @@ func _add_tile_preview_row(samples: Array, theme_id: String, scale: float = 1.0)
 		holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		holder.add_child(tile_ctrl)
 		hbox.add_child(holder)
-		
+
 	margin.add_child(hbox)
 	preview_panel.add_child(margin)
 	center_box.add_child(preview_panel)
@@ -1639,7 +1666,8 @@ func _add_button(text: String, on_click: Callable, is_gold: bool = false) -> voi
 	b.custom_minimum_size = Vector2(0, UITheme.TOUCH_MIN)
 	UITheme.style_button(b, is_gold, 16)
 	b.add_theme_font_size_override("font_size", UITheme.FS_BODY_LG)
-	b.pressed.connect(on_click)
+	b.mouse_filter = Control.MOUSE_FILTER_PASS
+	b.pressed.connect(_tap(on_click))
 	card_container.add_child(b)
 
 

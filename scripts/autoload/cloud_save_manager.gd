@@ -58,7 +58,9 @@ func _ready() -> void:
 		set_process(false)
 		return
 
-	_connect_to_play_games()
+	# Deferred: autoloads are still being parented during _ready, and the
+	# sign-in and snapshot clients are added as children.
+	_connect_to_play_games.call_deferred()
 
 ## True only where the Android plugin actually exists.
 func _is_supported() -> bool:
