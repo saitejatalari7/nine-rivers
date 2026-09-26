@@ -102,8 +102,9 @@ Delete `ADS / This version has none.` and use:
 
 ```
 ADS
-A banner, and a full-screen ad between stages now and then - never in the middle of a board,
-and never in your first few stages. A one-time purchase removes both.
+A full-screen ad between stages now and then - never in the middle of a board, and never in
+your first few stages. Optional short videos you can choose to watch for pearls. A one-time
+purchase removes the full-screen ads.
 ```
 
 Recount the description after swapping this in.

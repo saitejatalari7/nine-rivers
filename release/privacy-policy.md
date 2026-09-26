@@ -1,7 +1,7 @@
 # Privacy Policy for Nine Rivers
 
 **Effective date:** 25 September 2026
-**Last updated:** 25 September 2026
+**Last updated:** 26 September 2026
 **Application:** Nine Rivers (Android, package `com.ninerivers.mahjong`)
 **Developer contact:** `saiteja.talari@gmail.com`
 
@@ -58,9 +58,10 @@ The game does not collect, and contains no code to collect:
 - Any analytics, crash-reporting or attribution telemetry.
 
 The only permission the game asks for on its own account is vibration, for the tile haptics.
-Network access is present because the Google Play Billing and Google Play Games libraries
-require it, and is used for nothing else. The app requests no location, storage, contacts,
-microphone or camera permission, and no advertising identifier permission.
+Network access is used by Google Play Billing, Google Play Games and Google AdMob, and for
+nothing else. The app requests no location, storage, contacts, microphone or camera
+permission. The Google Mobile Ads library adds the advertising identifier permission
+(`AD_ID`), described in section 5.
 
 ---
 
@@ -89,42 +90,32 @@ reinstall or a new phone.
   is withheld from you for declining.
 - The developer has no access to your Google account, and no way to read your saved game.
 
-### 4.3 Advertising (Google AdMob) - planned, see section 5
+### 4.3 Advertising (Google AdMob) - in use, see section 5
 
 ---
 
 ## 5. Advertising
 
-**The build being published contains no ad network.** No advertising SDK is bundled, the
-`com.google.android.gms.permission.AD_ID` permission is not in the app's manifest, and no
-advertising identifier is read or transmitted. If you install this version and never update,
-you will see no advertisements at all.
+**Nine Rivers shows advertisements, served by Google AdMob, from 26 September 2026.**
 
-**Advertising is intended, and is expected to arrive in an update.** The developer has
-registered with Google AdMob and plans to serve advertising in Nine Rivers. This policy
-describes that use now so that it is disclosed before it begins rather than after.
-
-When advertising is enabled:
-
-- Advertisements will be served by **Google AdMob**. Ads will appear as a banner, as
-  occasional full-screen interstitials between stages, and as optional rewarded videos that
-  you choose to watch.
-- Interstitials are paced by the game: none during the first three stages, at least three
-  stages and four minutes between any two, and never during a board you are playing.
-- AdMob and its partners may read and use the **Android advertising ID** and related device
-  and ad-interaction signals to select advertisements, limit repetition, measure performance
-  and detect fraud. This is Google's processing, under Google's policies, not the developer's.
-  See [how Google uses data from partner sites and apps](https://policies.google.com/technologies/partner-sites)
-  and the [AdMob and AdSense policies](https://support.google.com/admob/answer/6128543).
+- Two kinds of ad: occasional full-screen ads between stages, and optional rewarded videos that
+  you choose to watch for a small in-game reward. There is no banner.
+- Full-screen ads are paced by the game: none before stage 4, at least three stages and four
+  minutes between any two, none for fifteen minutes after a purchase, and never during a board
+  you are playing.
+- Rewarded videos are only ever shown when you tap to watch one, at most four a day.
+- Ad content is limited to Google's PG rating.
+- Players in the European Economic Area and the United Kingdom are shown Google's consent form
+  before any ad is requested, and can choose personalised or non-personalised ads.
+- AdMob and its partners may read and use the Android advertising ID and related device and
+  ad-interaction signals to select advertisements, limit repetition, measure performance and
+  detect fraud. This is Google's processing, under Google's policies, not the developer's:
+  https://policies.google.com/technologies/partner-sites
 - The advertising ID is resettable, and can be deleted, in Android Settings under Privacy.
   Android also offers an opt-out of ad personalisation there, which the game honours because
   it passes the choice straight to Google.
-- The one-time **Remove Ads** purchase (Rs 199) permanently removes the banner and the
-  interstitials.
-
-Once advertising ships, the app will declare the `AD_ID` permission and the Play Data Safety
-declaration will be updated to say that an advertising identifier is collected and shared.
-This section will be rewritten from "planned" to "in use", with the date, at that time.
+- The one-time Remove Ads purchase (Rs 199) permanently removes the full-screen ads. Rewarded
+  videos stay available because you only ever see one by choice.
 
 ---
 
