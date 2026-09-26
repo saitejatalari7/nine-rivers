@@ -3,7 +3,7 @@
 **Effective date:** 25 September 2026
 **Last updated:** 25 September 2026
 **Application:** Nine Rivers (Android, package `com.ninerivers.mahjong`)
-**Developer contact:** `<CONTACT EMAIL>`
+**Developer contact:** `saiteja.talari@gmail.com`
 
 This is the single authoritative privacy policy for Nine Rivers. The page published at the
 project's GitHub Pages site is a rendering of this file. If the two ever disagree, this file
@@ -133,7 +133,7 @@ This section will be rewritten from "planned" to "in use", with the date, at tha
 Nine Rivers is intended for players aged 13 and over and is **not directed to children**. It
 is not enrolled in Google Play's Designed for Families programme. The developer does not
 knowingly collect any information from a child under 13. If you believe a child has provided
-information, write to `<CONTACT EMAIL>` and it will be dealt with.
+information, write to `saiteja.talari@gmail.com` and it will be dealt with.
 
 Note that the game contains in-app purchases. Google Play's parental controls and purchase
 authentication settings are the right way to prevent unintended spending.
@@ -155,7 +155,7 @@ authentication settings are the right way to prevent unintended spending.
 
 Because the developer holds no personal data about you, there is nothing to export or erase
 on the developer's side. Requests under India's Digital Personal Data Protection Act, the
-GDPR or the CCPA can still be sent to `<CONTACT EMAIL>` and will be answered.
+GDPR or the CCPA can still be sent to `saiteja.talari@gmail.com` and will be answered.
 
 ---
 
@@ -168,4 +168,4 @@ new "last updated" date before or at the time the change reaches players.
 
 ## 9. Contact
 
-Questions about this policy or about the game: `<CONTACT EMAIL>`.
+Questions about this policy or about the game: `saiteja.talari@gmail.com`.

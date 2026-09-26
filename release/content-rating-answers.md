@@ -15,7 +15,7 @@ grounds for removal, and the form is re-answerable at any time if the game chang
 Communication or Other". Nine Rivers is a game, and picking a non-game category to get a
 shorter form is a misrepresentation.
 
-**Email for the rating certificate:** `<CONTACT EMAIL>`
+**Email for the rating certificate:** `saiteja.talari@gmail.com`
 
 ---
 
