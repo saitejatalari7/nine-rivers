@@ -17,6 +17,15 @@ const DEVELOPER_TEST_DEVICES: Array[String] = ["9524D58E36EA045039FEFE6522D20123
 var rewarded_unit: String = ""
 var interstitial_unit: String = ""
 
+## Held for the life of this node. The plugin's loaders keep themselves alive
+## with reference() and drop it with a deferred unreference() once the ad
+## arrives; with no other holder that takes the count to zero while the loader
+## is still connected to the plugin's signals, and the next signal lands on a
+## freed object ("pthread_mutex_lock called on a destroyed mutex" on device).
+## Each load gets its own loader (the plugin keys the native ad by the
+## loader's uid), and every one is kept. They are tiny; a session makes a
+## handful.
+var _loaders: Array[RefCounted] = []
 var _rewarded_ad: RewardedAd = null
 var _interstitial_ad: InterstitialAd = null
 var _started: bool = false
@@ -104,18 +113,30 @@ func _load_rewarded() -> void:
 	if not _ready_to_load:
 		return
 	var cb := RewardedAdLoadCallback.new()
-	cb.on_ad_loaded = func(ad: RewardedAd): _rewarded_ad = ad
-	cb.on_ad_failed_to_load = func(_e): _retry(_load_rewarded)
-	RewardedAdLoader.new().load(rewarded_unit, AdRequest.new(), cb)
+	cb.on_ad_loaded = func(ad: RewardedAd):
+		_rewarded_ad = ad
+		print("Nine Rivers: rewarded ad ready")
+	cb.on_ad_failed_to_load = func(e):
+		print("Nine Rivers: rewarded ad failed: %s" % e.message)
+		_retry(_load_rewarded)
+	var loader := RewardedAdLoader.new()
+	_loaders.append(loader)
+	loader.load(rewarded_unit, AdRequest.new(), cb)
 
 
 func _load_interstitial() -> void:
 	if not _ready_to_load:
 		return
 	var cb := InterstitialAdLoadCallback.new()
-	cb.on_ad_loaded = func(ad: InterstitialAd): _interstitial_ad = ad
-	cb.on_ad_failed_to_load = func(_e): _retry(_load_interstitial)
-	InterstitialAdLoader.new().load(interstitial_unit, AdRequest.new(), cb)
+	cb.on_ad_loaded = func(ad: InterstitialAd):
+		_interstitial_ad = ad
+		print("Nine Rivers: interstitial ad ready")
+	cb.on_ad_failed_to_load = func(e):
+		print("Nine Rivers: interstitial ad failed: %s" % e.message)
+		_retry(_load_interstitial)
+	var loader := InterstitialAdLoader.new()
+	_loaders.append(loader)
+	loader.load(interstitial_unit, AdRequest.new(), cb)
 
 
 ## No fill is common, especially for a new app. Retrying on a timer rather
