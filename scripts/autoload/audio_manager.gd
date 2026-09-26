@@ -96,7 +96,7 @@ func _ready() -> void:
 	ambient_player.bus = BUS_AMBIENT
 	ambient_player.volume_db = -80.0
 	add_child(ambient_player)
-	
+
 	_setup_drift_layer()
 	_setup_soundscape()
 	_setup_positional_players()
@@ -106,12 +106,21 @@ func _ready() -> void:
 	_pregenerate_shatter_sounds()
 	_pregenerate_sand_sounds()
 	_pregenerate_glass_shatter_sounds()
-	
+
 	# Offload heavy ambient water track generation to WorkerThreadPool to avoid blocking main thread
 	WorkerThreadPool.add_task(_pregenerate_ambient_track_task)
-	
+
 	SettingsManager.setting_changed.connect(_on_setting_changed)
 	_start_ambient_guzheng_loop()
+
+## Set once the ambient bed has been synthesised. The boot loader waits on it,
+## so the menu does not appear while a worker thread is still busy.
+signal ambient_ready
+var is_ambient_ready: bool = false
+
+func _mark_ambient_ready() -> void:
+	is_ambient_ready = true
+	ambient_ready.emit()
 
 func _pregenerate_ambient_track_task() -> void:
 	# Runs on a worker thread. If the game is closed before generation
@@ -121,6 +130,7 @@ func _pregenerate_ambient_track_task() -> void:
 	_pregenerate_ambient_track()
 	if not is_instance_valid(self) or is_queued_for_deletion():
 		return
+	call_deferred("_mark_ambient_ready")
 	if is_instance_valid(SettingsManager) and SettingsManager.music_enabled:
 		call_deferred("start_ambient_music")
 
@@ -203,7 +213,7 @@ func _pregenerate_ambient_track() -> void:
 	var total_frames: int = int(sample_rate * duration)
 	var pcm := PackedByteArray()
 	pcm.resize(total_frames * 2)
-	
+
 	# WHY THIS WAS REWRITTEN
 	# The old bed was three bare sine waves on D2-A2-D3. Three separate things
 	# made that sound haunted rather than calm:
@@ -299,11 +309,11 @@ func _pregenerate_ambient_track() -> void:
 			window = norm_t / 0.05
 		elif norm_t > 0.95:
 			window = (1.0 - norm_t) / 0.05
-			
+
 		var val: float = pad * window * 0.62
 		val = clampf(val, -1.0, 1.0)
 		pcm.encode_s16(frame * 2, int(val * 32767.0))
-		
+
 	var wav := AudioStreamWAV.new()
 	wav.format = AudioStreamWAV.FORMAT_16_BITS
 	wav.mix_rate = int(sample_rate)
@@ -321,14 +331,14 @@ func _pregenerate_ui_click() -> void:
 	var total_frames: int = int(sample_rate * duration)
 	var pcm := PackedByteArray()
 	pcm.resize(total_frames * 2)
-	
+
 	for frame in range(total_frames):
 		var t: float = float(frame) / sample_rate
 		var s: float = sin(t * TAU * 1650.0) * exp(-t * 110.0) * 0.55
 		var snap: float = (randf() * 2.0 - 1.0) * exp(-t * 300.0) * 0.35
 		var val: float = clampf(s + snap, -1.0, 1.0)
 		pcm.encode_s16(frame * 2, int(val * 32767.0))
-		
+
 	var wav := AudioStreamWAV.new()
 	wav.format = AudioStreamWAV.FORMAT_16_BITS
 	wav.mix_rate = int(sample_rate)
@@ -540,30 +550,30 @@ func _pregenerate_shatter_sounds() -> void:
 		var total_frames: int = int(sample_rate * duration)
 		var pcm := PackedByteArray()
 		pcm.resize(total_frames * 2)
-		
+
 		var crack_freq: float = 2800.0 + variation * 350.0
 		var ping_freq: float = 4200.0 - variation * 200.0
-		
+
 		for frame in range(total_frames):
 			var t: float = float(frame) / sample_rate
-			
+
 			# 1. Immediate ceramic fracture crack (sharp transient)
 			var crack_env: float = exp(-t * 150.0)
 			var crack_tone: float = sin(t * TAU * crack_freq) * 0.48 + sin(t * TAU * ping_freq) * 0.32
 			var crack_snap: float = (randf() * 2.0 - 1.0) * exp(-t * 350.0) * 0.72
 			var crack: float = (crack_tone + crack_snap) * crack_env
-			
+
 			# 2. Tactile low-frequency body thud
 			var body: float = sin(t * TAU * 185.0) * exp(-t * 38.0) * 0.36
-			
+
 			# 3. Soft crumbling dust whoosh (fine powder dispersing into air)
 			var dust_env: float = exp(-t * 15.0) * (1.0 - exp(-t * 130.0))
 			var dust_whoosh: float = (randf() * 2.0 - 1.0) * dust_env * 0.26
-			
+
 			var sample_val: float = (crack + body + dust_whoosh) * 0.62
 			sample_val = clampf(sample_val, -1.0, 1.0)
 			pcm.encode_s16(frame * 2, int(sample_val * 32767.0))
-			
+
 		var wav := AudioStreamWAV.new()
 		wav.format = AudioStreamWAV.FORMAT_16_BITS
 		wav.mix_rate = int(sample_rate)
@@ -578,31 +588,31 @@ func _pregenerate_sand_sounds() -> void:
 		var total_frames: int = int(sample_rate * duration)
 		var pcm := PackedByteArray()
 		pcm.resize(total_frames * 2)
-		
+
 		var shimmer_f1: float = 1760.0 + variation * 220.0
 		var shimmer_f2: float = 2640.0 - variation * 180.0
 		var last_sand: float = 0.0
-		
+
 		for frame in range(total_frames):
 			var t: float = float(frame) / sample_rate
-			
+
 			# 1. Granular sand trickle noise (band-pass filtered random grains)
 			var white: float = randf() * 2.0 - 1.0
 			last_sand = (last_sand * 0.78) + (white * 0.22)
 			var sand_env: float = (1.0 - exp(-t * 40.0)) * exp(-t * 9.5)
 			var sand_cascade: float = last_sand * sand_env * 0.55
-			
+
 			# 2. Golden sparkle chime (delicate harmonic overtone)
 			var sparkle_env: float = exp(-t * 18.0)
 			var sparkle: float = (sin(t * TAU * shimmer_f1) * 0.22 + sin(t * TAU * shimmer_f2) * 0.14) * sparkle_env
-			
+
 			# 3. Soft warm foundation
 			var warm_body: float = sin(t * TAU * 220.0) * exp(-t * 22.0) * 0.18
-			
+
 			var sample_val: float = (sand_cascade + sparkle + warm_body) * 0.68
 			sample_val = clampf(sample_val, -1.0, 1.0)
 			pcm.encode_s16(frame * 2, int(sample_val * 32767.0))
-			
+
 		var wav := AudioStreamWAV.new()
 		wav.format = AudioStreamWAV.FORMAT_16_BITS
 		wav.mix_rate = int(sample_rate)
@@ -617,31 +627,31 @@ func _pregenerate_glass_shatter_sounds() -> void:
 		var total_frames: int = int(sample_rate * duration)
 		var pcm := PackedByteArray()
 		pcm.resize(total_frames * 2)
-		
+
 		var crack_f1: float = 4200.0 + variation * 350.0
 		var crack_f2: float = 5873.0 - variation * 250.0
 		var ring_f: float = 3520.0 + variation * 400.0
-		
+
 		for frame in range(total_frames):
 			var t: float = float(frame) / sample_rate
-			
+
 			# 1. High-energy brittle glass fracture snap
 			var snap_env: float = exp(-t * 260.0)
 			var snap: float = (randf() * 2.0 - 1.0) * snap_env * 0.95
 			var glass_crack: float = (sin(t * TAU * crack_f1) * 0.55 + sin(t * TAU * crack_f2) * 0.42) * exp(-t * 140.0)
-			
+
 			# 2. Resonant high-Q crystalline bell ring (glass chalice fracture resonance)
 			var ring_env: float = exp(-t * 14.0)
 			var crystal_ring: float = sin(t * TAU * ring_f) * ring_env * 0.38
-			
+
 			# 3. Tinkling micro-shards falling
 			var tinkle_phase: float = sin(t * TAU * 18.0) * 0.5 + 0.5
 			var tinkle: float = (randf() * 2.0 - 1.0) * exp(-t * 24.0) * tinkle_phase * 0.22
-			
+
 			var sample_val: float = (snap + glass_crack + crystal_ring + tinkle) * 0.72
 			sample_val = clampf(sample_val, -1.0, 1.0)
 			pcm.encode_s16(frame * 2, int(sample_val * 32767.0))
-			
+
 		var wav := AudioStreamWAV.new()
 		wav.format = AudioStreamWAV.FORMAT_16_BITS
 		wav.mix_rate = int(sample_rate)
@@ -696,23 +706,23 @@ func play_tile_match(flow_level: int, is_triple: bool = false, is_glass: bool = 
 	haptic(35 if is_glass else (25 if is_triple else 15))
 	if not SettingsManager.sfx_enabled:
 		return
-	
+
 	# 1. Vanishing sound: Breaking Glass for special tile, Golden Sand for standard tiles
 	if is_glass:
 		play_glass_shatter(is_triple)
 	else:
 		play_golden_sand(is_triple)
-	
+
 	# 2. Ascending Guzheng pentatonic chime
 	var note_idx: int = clampi(flow_level + 4, 0, PENTATONIC.size() - 1)
 	var freq: float = PENTATONIC[note_idx]
 	_play_guzheng_string(freq, 0.42, 0.68, at, z)
-	
+
 	if is_triple:
 		# Triple harmony: fifth interval Guzheng chime
 		var fifth_freq: float = freq * 1.5
 		get_tree().create_timer(0.06).timeout.connect(func(): _play_guzheng_string(fifth_freq, 0.48, 0.52))
-	
+
 	if flow_level >= 5:
 		# Deep temple gong chime for Flow Overdrive!
 		get_tree().create_timer(0.12).timeout.connect(func(): _play_guzheng_string(freq * 0.5, 0.85, 0.88))
@@ -785,7 +795,7 @@ func play_misplay() -> void:
 func play_win() -> void:
 	if not SettingsManager.sfx_enabled:
 		return
-	
+
 	# Grand 3.5s Ascending Chinese Pentatonic Victory Fanfare
 	# 8-note Guzheng glissando culminating in a grand bell & low gong resonance
 	var glissando: Array[float] = [
@@ -798,14 +808,14 @@ func play_win() -> void:
 		587.33, # D5
 		783.99  # G5
 	]
-	
+
 	for i in range(glissando.size()):
 		var f: float = glissando[i]
 		var delay: float = i * 0.09
 		get_tree().create_timer(delay).timeout.connect(func():
 			_play_guzheng_string(f, 0.9, 0.75)
 		)
-		
+
 	# Culminating grand temple chime chord at +0.85s (C3 + G3 + C4 + G4)
 	get_tree().create_timer(0.85).timeout.connect(func():
 		_play_guzheng_string(130.81, 2.8, 0.9)  # C3 deep gong
@@ -890,7 +900,7 @@ func _play_guzheng_string(freq: float, duration: float, volume: float,
 		at: Vector2 = Vector2.INF, z: int = 0) -> void:
 	var key: int = int(freq * 10.0) ^ (int(duration * 100.0) << 16)
 	var wav: AudioStreamWAV
-	
+
 	if _guzheng_cache.has(key):
 		wav = _guzheng_cache[key]
 	else:
@@ -899,43 +909,43 @@ func _play_guzheng_string(freq: float, duration: float, volume: float,
 		if _guzheng_cache.size() > 64:
 			_guzheng_cache.clear()
 		_guzheng_cache[key] = wav
-	
+
 	_play_at(wav, at, z, linear_to_db(clampf(volume, 0.01, 1.0)), 1.0)
 
 func _synthesize_guzheng_wav(freq: float, duration: float) -> AudioStreamWAV:
 	var total_frames := int(sample_rate * duration)
 	var pcm := PackedByteArray()
 	pcm.resize(total_frames * 2)
-	
+
 	var inv_dur := 1.0 / duration
-	
+
 	for i in range(total_frames):
 		var t := float(i) / sample_rate
-		
+
 		# Micro pitch-drop on initial string pluck tension release
 		var cur_freq: float = freq * (1.0 + 0.008 * exp(-t * 85.0))
-		
+
 		# Subtle vibrato on sustained notes
 		if duration > 0.45 and t > 0.12:
 			cur_freq += sin(t * TAU * 5.2) * (freq * 0.0035) * minf(1.0, (t - 0.12) * 3.0)
-		
+
 		# Multi-harmonic string spectrum with frequency-dependent overtone damping
 		var h1 := sin(t * TAU * cur_freq) * exp(-t * (2.8 * inv_dur))
 		var h2 := sin(t * TAU * cur_freq * 2.0) * 0.38 * exp(-t * (4.5 * inv_dur))
 		var h3 := sin(t * TAU * cur_freq * 3.0) * 0.18 * exp(-t * (6.5 * inv_dur))
 		var h4 := sin(t * TAU * cur_freq * 4.0) * 0.09 * exp(-t * (9.0 * inv_dur))
 		var h5 := sin(t * TAU * cur_freq * 5.0) * 0.04 * exp(-t * (13.0 * inv_dur))
-		
+
 		# Pluck pick impact transient (brief 4ms high-frequency strike burst)
 		var pluck_transient := (randf() * 2.0 - 1.0) * exp(-t * 450.0) * 0.14
-		
+
 		# Paulownia wood Guzheng body resonance (warm lower chamber vibration)
 		var body_res := sin(t * TAU * 240.0) * exp(-t * 18.0) * 0.08
-		
+
 		var sample := (h1 + h2 + h3 + h4 + h5 + pluck_transient + body_res) * 0.72
 		sample = clampf(sample, -1.0, 1.0)
 		pcm.encode_s16(i * 2, int(sample * 32767.0))
-		
+
 	var wav := AudioStreamWAV.new()
 	wav.format = AudioStreamWAV.FORMAT_16_BITS
 	wav.mix_rate = int(sample_rate)

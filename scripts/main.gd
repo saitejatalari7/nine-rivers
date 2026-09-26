@@ -32,14 +32,14 @@ func _ready() -> void:
 	tutorial = TutorialController.new()
 	tutorial.name = "TutorialController"
 	add_child(tutorial)
-	
+
 	# Wire HUD signals
 	hud.menu_clicked.connect(_on_menu_clicked)
 	hud.undo_clicked.connect(_on_undo_clicked)
 	hud.hint_clicked.connect(_on_hint_clicked)
 	hud.shuffle_clicked.connect(_on_shuffle_clicked)
 	hud.pearls_clicked.connect(func(): modal.show_bazaar_modal())
-	
+
 	# Wire Board signals
 	board.move_completed.connect(_on_board_move_completed)
 	board.tile_matched.connect(_on_tile_matched_ripple)
@@ -49,11 +49,11 @@ func _ready() -> void:
 	board.toast_requested.connect(func(msg): hud.show_toast(msg))
 	board.blocked_tap.connect(func(tile): tutorial.notify_blocked_tap(tile))
 	board.move_completed.connect(func(_r, _l): tutorial.notify_match())
-	
+
 	# Wire Zen Background theme notifications
 	if zen_background and zen_background.has_signal("theme_changed"):
 		zen_background.theme_changed.connect(_on_theme_changed)
-	
+
 	# Wire Modal signals
 	modal.start_calm_requested.connect(_start_calm_mode)
 	modal.start_run_requested.connect(_start_run_mode)
@@ -73,40 +73,104 @@ func _ready() -> void:
 	modal.resume_session_requested.connect(func():
 		if not _resume_session():
 			_start_calm_mode(int(SaveManager.prog.get("level", 1))))
-	
+
 	# Wire GameManager
 	GameManager.game_over.connect(_on_game_over)
 	GameManager.flow_updated.connect(_on_flow_updated_shader)
-	
+
 	if BACK_DIAGNOSTIC:
 		_build_back_diagnostic()
 
 	# Show intro splash on boot
 	_show_intro_splash()
 
+## The splash is a loading screen: it stays up until the game is actually
+## ready, so the menu never appears half-built and the first board never
+## stutters. It used to dissolve after 0.55 s regardless, while the ambient
+## bed was still being synthesised and every tile shader was still waiting to
+## compile on first use.
+const BOOT_MIN_SECONDS: float = 1.0
+const BOOT_MAX_SECONDS: float = 4.0
+
+var _booting: bool = false
+var _boot_bar: ColorRect = null
+
 func _show_intro_splash() -> void:
 	splash_screen.visible = true
 	$SplashScreen/SplashTexture.modulate.a = 1.0
 	board.visible = false
 	hud.visible = false
+	_build_boot_bar()
+	_boot_load()
+
+
+func _build_boot_bar() -> void:
+	var track := ColorRect.new()
+	track.color = Color(1, 1, 1, 0.10)
+	track.anchor_left = 0.3
+	track.anchor_right = 0.7
+	track.anchor_top = 0.86
+	track.anchor_bottom = 0.86
+	track.offset_bottom = 4.0
+	track.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	splash_screen.add_child(track)
+	_boot_bar = ColorRect.new()
+	_boot_bar.color = UITheme.GOLD_CORE
+	_boot_bar.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_boot_bar.anchor_right = 0.0
+	_boot_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	track.add_child(_boot_bar)
+
+
+func _boot_progress(p: float) -> void:
+	if _boot_bar != null:
+		create_tween().tween_property(_boot_bar, "anchor_right", clampf(p, 0.0, 1.0), 0.25)
+
+
+func _boot_load() -> void:
+	_booting = true
+	var started: int = Time.get_ticks_msec()
+	var deadline: int = started + int(BOOT_MAX_SECONDS * 1000.0)
+	_boot_progress(0.15)
+
+	# 1. The ambient bed, synthesised on a worker thread.
+	while not AudioManager.is_ambient_ready and Time.get_ticks_msec() < deadline:
+		await get_tree().process_frame
+	_boot_progress(0.5)
+	if not splash_screen.visible:
+		_booting = false
+		return
+
+	# 2. Tile shaders compile on first draw. Draw a lesson board once, hidden
+	#    under the splash, so the first real board does not hitch.
+	board.visible = true
+	board.restore_stage(TutorialBoards.C_LAYERS.duplicate(true))
+	for i in 3:
+		await get_tree().process_frame
+	board.clear_board()
+	board.visible = false
+	_boot_progress(0.8)
+	# Anything that took the splash down already (the test harnesses do, to
+	# drive the game directly) owns the screen now; do not pull it home.
+	if not splash_screen.visible:
+		_booting = false
+		return
+
+	# 3. The menu, built behind the splash so it is whole when revealed.
+	_return_home()
+	for i in 2:
+		await get_tree().process_frame
+	_boot_progress(1.0)
+
+	var elapsed: float = float(Time.get_ticks_msec() - started) / 1000.0
+	if elapsed < BOOT_MIN_SECONDS:
+		await get_tree().create_timer(BOOT_MIN_SECONDS - elapsed).timeout
+	_booting = false
 	AudioManager.play_win()
-	# The engine already shows the same artwork during init; this only dissolves
-	# it into the pond. Keep it short.
 	var tween := create_tween()
-	tween.tween_interval(0.15)
-	tween.tween_property($SplashScreen/SplashTexture, "modulate:a", 0.0, 0.4)
-	tween.tween_callback(func():
-		# Only finish the splash if the splash is still up. Tapping through it,
-		# or any route that dismisses it first, used to leave this callback armed
-		# to fire 0.55s later and haul the player back to the main menu from
-		# wherever they had got to.
-		if not splash_screen.visible:
-			return
-		splash_screen.visible = false
-		board.visible = true
-		hud.visible = true
-		_return_home()
-	)
+	tween.tween_property($SplashScreen/SplashTexture, "modulate:a", 0.0, 0.5) 		.set_trans(Tween.TRANS_SINE)
+	tween.parallel().tween_property(_boot_bar.get_parent(), "modulate:a", 0.0, 0.3)
+	tween.tween_callback(func(): splash_screen.visible = false)
 
 ## Every tap disturbs the water. _input() runs before the GUI consumes the
 ## event, so this fires over menus and modals as well as the board - the pond
@@ -148,13 +212,11 @@ func _notification(what: int) -> void:
 		_capture_session()
 
 func _unhandled_input(event: InputEvent) -> void:
+	# The splash can no longer be tapped away: it lifts itself when loading is
+	# done, and the menu behind it is already built.
 	if splash_screen.visible and event is InputEventMouseButton and event.pressed:
-		splash_screen.visible = false
-		board.visible = true
-		hud.visible = true
-		_return_home()
 		return
-		
+
 
 ## Back can arrive on two routes at once, and godotengine/godot#123454 reports
 ## the notification itself firing twice for one press. Either would walk two
@@ -171,11 +233,8 @@ func _handle_back_action(route: String = "unknown") -> void:
 
 	var outcome: String = ""
 	if splash_screen.visible:
-		outcome = "splash->home"
-		splash_screen.visible = false
-		board.visible = true
-		hud.visible = true
-		_return_home()
+		# Loading: the splash lifts itself onto a menu that is already built.
+		outcome = "splash (loading)"
 	elif modal.visible:
 		# Back never leaves the game. It used to exit from the main menu, on the
 		# Android convention that back quits at the root, and losing a session to
@@ -302,20 +361,20 @@ func _start_calm_mode(level: int) -> void:
 	var plan: Dictionary = StagePlan.describe(level)
 	var layout_name: String = plan["layout"]
 	GameManager.current_layout_name = layout_name
-	
+
 	if zen_background and zen_background.has_method("set_level"):
 		zen_background.set_level(level)
-	
+
 	StageModifiers.active_modifier = plan["modifier"] as StageModifiers.Modifier
 	if StageModifiers.active_modifier != StageModifiers.Modifier.NONE:
 		hud.show_toast("%s: %s" % [StageModifiers.get_modifier_name(), StageModifiers.get_modifier_desc()])
-	
+
 	# Seeded from the level number, so a stage is the same puzzle every time.
 	var rng := RandomNumberGenerator.new()
 	rng.seed = plan["seed"]
 	board.load_stage(layout_name, rng)
 	camera.frame_board(board.board_bounds, get_viewport_rect().size)
-	
+
 	_offer_theme_sample(level)
 
 
@@ -340,12 +399,12 @@ func _start_run_mode() -> void:
 	hud.setup_hud(GameManager.GameMode.RUN, 1)
 	var layout_name: String = LADDER[0]
 	GameManager.current_layout_name = layout_name
-	
+
 	if zen_background and zen_background.has_method("set_level"):
 		zen_background.set_level(1)
-	
+
 	StageModifiers.set_modifier_for_stage(1, 1)
-	
+
 	board.load_stage(layout_name)
 	camera.frame_board(board.board_bounds, get_viewport_rect().size)
 
@@ -387,15 +446,15 @@ func _start_daily_mode() -> void:
 	var layout_name: String = daily_layout_for_seed(GameManager.daily_seed)
 	GameManager.current_layout_name = layout_name
 	GameManager.apply_daily_time(BoardGenerator.get_layout_positions(layout_name).size())
-	
+
 	if zen_background and zen_background.has_method("set_level"):
 		var daily_level: int = (abs(GameManager.daily_seed) % 25) + 1
 		zen_background.set_level(daily_level)
-	
+
 	StageModifiers.set_modifier_for_stage(2, 1, GameManager.daily_seed)
 	if StageModifiers.active_modifier != StageModifiers.Modifier.NONE:
 		hud.show_toast("%s: %s" % [StageModifiers.get_modifier_name(), StageModifiers.get_modifier_desc()])
-	
+
 	var rng := RandomNumberGenerator.new()
 	rng.seed = GameManager.daily_seed
 	board.load_stage(layout_name, rng)
@@ -436,15 +495,15 @@ func _next_stage() -> void:
 		GameManager.current_layout_name = layout_name
 		hud.setup_hud(GameManager.current_mode, GameManager.current_stage_no)
 		GameManager.on_stage_started()
-		
+
 		if zen_background and zen_background.has_method("set_level"):
 			zen_background.set_level(GameManager.current_stage_no)
-		
+
 		var mod_mode := 0 if GameManager.current_mode == GameManager.GameMode.CALM else 1
 		StageModifiers.set_modifier_for_stage(mod_mode, GameManager.current_stage_no)
 		if StageModifiers.active_modifier != StageModifiers.Modifier.NONE:
 			hud.show_toast("%s: %s" % [StageModifiers.get_modifier_name(), StageModifiers.get_modifier_desc()])
-		
+
 		board.load_stage(layout_name)
 		camera.frame_board(board.board_bounds, get_viewport_rect().size)
 
@@ -520,9 +579,9 @@ func _on_board_cleared() -> void:
 	GameManager.is_timer_active = false
 	hud.visible = false
 	AudioManager.play_win()
-	
+
 	MonetizationManager.record_level_cleared()
-	
+
 	if GameManager.current_mode == GameManager.GameMode.CALM:
 		var stars: int = 1
 		if GameManager.misplays <= 2: stars += 1
