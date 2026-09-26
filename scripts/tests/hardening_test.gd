@@ -89,7 +89,7 @@ func _play_response(product_ids: Array, code: int = 0) -> Dictionary:
 	var purchases: Array = []
 	for pid in product_ids:
 		purchases.append({
-			"sku": pid, "product_id": pid,
+			"product_ids": [pid],
 			"purchase_state": 1, "is_acknowledged": true,
 			"purchase_token": "tok_" + str(pid)
 		})

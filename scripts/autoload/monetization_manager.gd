@@ -149,7 +149,10 @@ const POST_PURCHASE_QUIET: float = 900.0
 
 var _banner_visible: bool = false
 
-var _billing: Object = null
+const BillingClientScript = preload("res://addons/GodotGooglePlayBilling/BillingClient.gd")
+var _billing: Node = null
+## Play's own localised price per product, once product details arrive.
+var _play_prices: Dictionary = {}
 var _admob: Object = null
 var _pending_callbacks: Dictionary = {}
 var _pending_ad_placement: String = ""
@@ -201,6 +204,8 @@ func is_india_locale() -> bool:
 	return loc.ends_with("_IN") or loc.begins_with("HI_") or loc == "IN"
 
 func get_formatted_price(product_id: String) -> String:
+	if _play_prices.has(product_id):
+		return String(_play_prices[product_id])
 	if not PRODUCTS.has(product_id):
 		return ""
 	var p: Dictionary = PRODUCTS[product_id]
@@ -209,69 +214,93 @@ func get_formatted_price(product_id: String) -> String:
 	return str(p.get("price_usd", p.get("price_str", "$0.99")))
 
 # ================= BILLING INITIALIZATION & HANDLING =================
+## Plugin v3 is driven through its BillingClient wrapper, which calls the
+## required initPlugin() and passes purchase() its full argument list. The raw
+## singleton was being called directly with v2-era names and arities, so on a
+## device every purchase failed before reaching Play.
 func _init_platform_billing() -> void:
-	if Engine.has_singleton("GodotGooglePlayBilling"):
-		_billing = Engine.get_singleton("GodotGooglePlayBilling")
-	elif Engine.has_singleton("GodotPlayBilling"):
-		_billing = Engine.get_singleton("GodotPlayBilling")
-		
-	if _billing != null:
-		if _billing.has_signal("connected"):
-			_billing.connected.connect(_on_billing_connected)
-		if _billing.has_signal("purchases_updated"):
-			_billing.purchases_updated.connect(_on_billing_purchases_updated)
-		elif _billing.has_signal("on_purchase_updated"):
-			_billing.on_purchase_updated.connect(_on_billing_purchases_updated)
-		if _billing.has_signal("purchase_error"):
-			_billing.purchase_error.connect(_on_billing_purchase_error)
-		elif _billing.has_signal("connect_error"):
-			_billing.connect_error.connect(func(code, msg): _on_billing_purchase_error(code, msg))
-		# The full owned-items list arrives on its own signal, separate from the
-		# per-purchase updates above. Without this the launch-time restore never
-		# produced a result and entitlements came from the save file alone.
-		if _billing.has_signal("query_purchases_response"):
-			_billing.query_purchases_response.connect(_on_billing_query_purchases_response)
-		if _billing.has_signal("sku_details_query_completed"):
-			_billing.sku_details_query_completed.connect(_on_billing_sku_details_completed)
-		if _billing.has_method("startConnection"):
-			_billing.startConnection()
-		elif _billing.has_method("start_connection"):
-			_billing.start_connection()
+	if not Engine.has_singleton("GodotGooglePlayBilling"):
+		return
+	_billing = BillingClientScript.new()
+	add_child(_billing)
+	_billing.connected.connect(_on_billing_connected)
+	_billing.disconnected.connect(_on_billing_disconnected)
+	_billing.connect_error.connect(_on_billing_purchase_error)
+	_billing.on_purchase_updated.connect(_on_billing_purchases_updated)
+	_billing.query_purchases_response.connect(_on_billing_query_purchases_response)
+	_billing.query_product_details_response.connect(_on_billing_product_details)
+	_billing.start_connection()
 
+
+func _iap_ids() -> PackedStringArray:
+	var ids := PackedStringArray()
+	for pid in PRODUCTS.keys():
+		if not is_earn_only(String(pid)):
+			ids.append(String(pid))
+	return ids
+
+
+## Play will not start a purchase for a product whose details were not fetched
+## first, so the catalogue is queried every time the connection comes up.
 func _on_billing_connected() -> void:
-	if _billing and _billing.has_method("query_purchases"):
-		_billing.query_purchases("inapp")
-	elif _billing and _billing.has_method("queryPurchases"):
-		_billing.queryPurchases("inapp", false)
+	_billing.query_product_details(_iap_ids(), BillingClientScript.ProductType.INAPP)
+	_billing.query_purchases(BillingClientScript.ProductType.INAPP)
 
-func _on_billing_purchases_updated(purchases: Variant) -> void:
-	var purchase_list: Array = []
-	if purchases is Array:
-		purchase_list = purchases
-	elif purchases is Dictionary and purchases.has("purchases"):
-		purchase_list = purchases.get("purchases", [])
-		
-	for p in purchase_list:
-		var pid: String = ""
-		if p is Dictionary:
-			var pstate = int(p.get("purchase_state", 1))
-			if pstate != 1:
-				continue
-			pid = str(p.get("sku", p.get("product_id", "")))
+
+func _on_billing_disconnected() -> void:
+	get_tree().create_timer(5.0).timeout.connect(func():
+		if _billing != null and not _billing.is_ready():
+			_billing.start_connection())
+
+
+func _on_billing_product_details(response: Dictionary) -> void:
+	if int(response.get("response_code", -1)) != 0:
+		push_warning("Nine Rivers: product details failed: %s" % str(response.get("debug_message", "")))
+		return
+	for d in response.get("product_details", []):
+		if not (d is Dictionary):
+			continue
+		var offers: Array = d.get("one_time_purchase_offer_details_list", [])
+		if offers.is_empty() or not (offers[0] is Dictionary):
+			continue
+		var price: String = String(offers[0].get("formatted_price", ""))
+		if not price.is_empty():
+			_play_prices[String(d.get("product_id", ""))] = price
+
+
+## v3 reports a purchase's products as an array, product_ids.
+static func _purchase_pid(p: Dictionary) -> String:
+	var ids: Array = p.get("product_ids", [])
+	if not ids.is_empty():
+		return String(ids[0])
+	return String(p.get("product_id", ""))
+
+func _on_billing_purchases_updated(response: Dictionary) -> void:
+	var code: int = int(response.get("response_code", 0))
+	if code != 0:
+		var reason: String = "Purchase cancelled"
+		if code != 1:
+			reason = "Billing error (%d): %s" % [code, str(response.get("debug_message", ""))]
+		for pid in _pending_callbacks.keys():
+			purchase_failed.emit(String(pid), reason)
+		_pending_callbacks.clear()
+		return
+
+	for p in response.get("purchases", []):
+		if not (p is Dictionary):
+			continue
+		# PENDING (2) is money not yet taken - e.g. a cash payment. It is
+		# granted when Play reports it PURCHASED, never before.
+		if int(p.get("purchase_state", 0)) != 1:
+			continue
+		var pid: String = _purchase_pid(p)
 		if PRODUCTS.has(pid):
 			var prod: Dictionary = PRODUCTS[pid]
 			var token: String = str(p.get("purchase_token", ""))
 			if bool(prod.get("is_consumable", false)):
-				if _billing and _billing.has_method("consume_purchase"):
-					_billing.consume_purchase(token)
-				elif _billing and _billing.has_method("consumePurchase"):
-					_billing.consumePurchase(token)
-			else:
-				if not bool(p.get("is_acknowledged", false)):
-					if _billing and _billing.has_method("acknowledge_purchase"):
-						_billing.acknowledge_purchase(token)
-					elif _billing and _billing.has_method("acknowledgePurchase"):
-						_billing.acknowledgePurchase(token)
+				_billing.consume_purchase(token)
+			elif not bool(p.get("is_acknowledged", false)):
+				_billing.acknowledge_purchase(token)
 			_fulfill_purchase(pid, prod)
 			if _pending_callbacks.has(pid):
 				var cb: Callable = _pending_callbacks[pid]
@@ -283,14 +312,9 @@ func _on_billing_purchases_updated(purchases: Variant) -> void:
 ## Response to our explicit query_purchases() call: the complete list of items
 ## this Google account owns. Unlike purchases_updated (which reports only what
 ## just changed), this is authoritative, so it is the one place we reconcile.
-func _on_billing_query_purchases_response(response: Variant) -> void:
-	var code: int = 0
-	var purchase_list: Array = []
-	if response is Dictionary:
-		code = int(response.get("response_code", response.get("code", 0)))
-		purchase_list = response.get("purchases", [])
-	elif response is Array:
-		purchase_list = response
+func _on_billing_query_purchases_response(response: Dictionary) -> void:
+	var code: int = int(response.get("response_code", -1))
+	var purchase_list: Array = response.get("purchases", [])
 
 	# Only reconcile against a successful answer. A network failure must never be
 	# read as "this player owns nothing".
@@ -302,9 +326,9 @@ func _on_billing_query_purchases_response(response: Variant) -> void:
 	for p in purchase_list:
 		if not (p is Dictionary):
 			continue
-		if int(p.get("purchase_state", 1)) != 1:
+		if int(p.get("purchase_state", 0)) != 1:
 			continue
-		var pid: String = str(p.get("sku", p.get("product_id", "")))
+		var pid: String = _purchase_pid(p)
 		if not pid.is_empty():
 			owned.append(pid)
 
@@ -318,20 +342,21 @@ func _grant_from_play(purchase_list: Array) -> void:
 	for p in purchase_list:
 		if not (p is Dictionary):
 			continue
-		if int(p.get("purchase_state", 1)) != 1:
+		if int(p.get("purchase_state", 0)) != 1:
 			continue
-		var pid: String = str(p.get("sku", p.get("product_id", "")))
+		var pid: String = _purchase_pid(p)
 		if not PRODUCTS.has(pid):
 			continue
 		var prod: Dictionary = PRODUCTS[pid]
 		if bool(prod.get("is_consumable", false)):
-			continue # Consumables are settled in _on_billing_purchases_updated.
-		if not bool(p.get("is_acknowledged", false)):
-			var token: String = str(p.get("purchase_token", ""))
-			if _billing and _billing.has_method("acknowledge_purchase"):
-				_billing.acknowledge_purchase(token)
-			elif _billing and _billing.has_method("acknowledgePurchase"):
-				_billing.acknowledgePurchase(token)
+			# A pearl pack paid for but never consumed (app killed mid-purchase)
+			# is owed: grant it once and consume it now.
+			if _billing != null:
+				_billing.consume_purchase(str(p.get("purchase_token", "")))
+			_fulfill_purchase(pid, prod)
+			continue
+		if not bool(p.get("is_acknowledged", false)) and _billing != null:
+			_billing.acknowledge_purchase(str(p.get("purchase_token", "")))
 		_fulfill_purchase(pid, prod, "iap", true)
 
 ## Withdraws any non-consumable that the save file claims was paid for with money
@@ -419,10 +444,7 @@ func _as_array(value: Variant, fallback: Array) -> Array:
 	return value.duplicate() if value is Array else fallback.duplicate()
 
 func _on_billing_purchase_error(code: int, msg: String) -> void:
-	purchase_failed.emit("", "Billing Error (%d): %s" % [code, msg])
-
-func _on_billing_sku_details_completed(_details: Array) -> void:
-	pass
+	push_warning("Nine Rivers: billing connection error (%d): %s" % [code, msg])
 
 # ================= ADS INITIALIZATION =================
 ## The AdMob account's own identifiers. Kept here, named, rather than pasted
@@ -620,10 +642,10 @@ func show_interstitial(context: String = "general") -> void:
 	SaveManager.economy["last_interstitial_unix"] = _unix_now()
 	SaveManager.economy["stages_since_ad"] = 0
 	SaveManager.request_save()
-	
+
 	if _admob != null and _admob.has_method("show_interstitial"):
 		_admob.show_interstitial()
-	
+
 	interstitial_ad_shown.emit(context)
 
 # ================= TILE / BANNER ADS =================
@@ -631,7 +653,7 @@ func show_banner_ad() -> void:
 	if is_no_ads():
 		hide_banner_ad()
 		return
-		
+
 	_banner_visible = true
 	if _admob != null and _admob.has_method("show_banner"):
 		_admob.show_banner()
@@ -651,26 +673,26 @@ func buy_product(product_id: String, on_success: Callable = Callable()) -> void:
 	if not PRODUCTS.has(product_id):
 		purchase_failed.emit(product_id, "Unknown product")
 		return
-		
+
 	var prod: Dictionary = PRODUCTS[product_id]
-	
+
 	if _billing != null:
+		if not _billing.is_ready():
+			_billing.start_connection()
+			purchase_failed.emit(product_id, "Connecting to Google Play. Please try again in a moment.")
+			return
 		_pending_callbacks[product_id] = on_success
-		var res = null
-		if _billing.has_method("purchase"):
-			res = _billing.purchase(product_id)
-		elif _billing.has_method("purchaseProduct"):
-			res = _billing.purchaseProduct(product_id)
-			
-		if res is Dictionary and res.get("status", OK) != OK:
-			purchase_failed.emit(product_id, "Purchase initialization error: " + str(res.get("response_code", "")))
+		var res: Dictionary = _billing.purchase(product_id)
+		if int(res.get("response_code", 0)) != 0:
+			_pending_callbacks.erase(product_id)
+			purchase_failed.emit(product_id, "Could not start the purchase (%s)." % str(res.get("debug_message", res.get("response_code", ""))))
 		return
-	
+
 	# Mobile Release Guard: never allow free fulfillment if billing service failed to connect
 	if OS.has_feature("mobile") and not OS.is_debug_build():
 		purchase_failed.emit(product_id, "Google Play Billing service unavailable. Please check your network connection.")
 		return
-		
+
 	# Desktop/Editor/Debug: Simulate purchase fulfillment for testing
 	_fulfill_purchase(product_id, prod)
 	if on_success.is_valid():
@@ -745,7 +767,7 @@ func buy_with_pearls(product_id: String, on_success: Callable = Callable()) -> b
 	var cost: int = int(prod.get("pearl_cost", 0))
 	if cost <= 0:
 		return false
-		
+
 	if spend_pearls(cost):
 		unlock_theme(product_id)
 		equip_theme(product_id)
@@ -799,11 +821,8 @@ func _fulfill_purchase(product_id: String, prod: Dictionary, source: String = "i
 
 func restore_purchases() -> void:
 	AudioManager.play_click()
-	if _billing != null:
-		if _billing.has_method("query_purchases"):
-			_billing.query_purchases("inapp")
-		elif _billing.has_method("queryPurchases"):
-			_billing.queryPurchases("inapp", false)
+	if _billing != null and _billing.is_ready():
+		_billing.query_purchases(BillingClientScript.ProductType.INAPP)
 	SaveManager.save_game()
 
 # ================= REWARDED AD OFFERINGS =================
