@@ -38,6 +38,13 @@ const PROBES: Array[Dictionary] = [
 	{"suit": "dot", "rank": 3}, {"suit": "dragon", "rank": 1},
 ]
 const FLOOR: float = 3.0
+## Blocked tiles on the dark themes are drawn grey and dull on purpose, at the
+## owner's decision: a fade that kept them above 3.0 was too subtle, and every
+## tile still looked playable. They still have to be RECOGNISABLE - a player
+## reads the blocked tiles to plan what to free - so they get their own floor
+## rather than none. Obsidian sits at 2.28 here; this stops it going further.
+const DARK_BLOCKED_FLOOR: float = 2.0
+const DARK_THEMES: Array[String] = ["theme_obsidian_ink", "theme_indigo"]
 const COMFORTABLE: float = 4.5
 ## Writes each probed tile to disk so the numbers can be checked against eyes.
 const DUMP_TILES: bool = false
@@ -101,8 +108,9 @@ func _measure(theme: String, free: bool, probe: Dictionary, mode: String) -> voi
 		return
 	var ratio: float = _contrast(c.x, c.y)
 	var flag := ""
-	if ratio < FLOOR:
-		flag = "  BELOW %.1f" % FLOOR
+	var floor: float = DARK_BLOCKED_FLOOR if (not free and theme in DARK_THEMES) else FLOOR
+	if ratio < floor:
+		flag = "  BELOW %.1f" % floor
 		_fails += 1
 	elif ratio < COMFORTABLE:
 		flag = "  marginal"

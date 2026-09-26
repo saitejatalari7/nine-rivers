@@ -87,6 +87,36 @@ const EDGE_LIGHT: Dictionary = {
 	"theme_indigo": Color(0.66, 0.74, 1.00, 0.85),
 }
 const EDGE_BLOCKED_ALPHA: float = 0.45
+
+## How blocked tiles read on the dark themes: grey and dull, per the owner.
+##
+## The light themes darken a blocked tile, and darkening a black tile leaves a
+## black tile - Obsidian's blocked ink measured 4.05 against 4.40 free, near
+## enough the same tile. A fade to 80% was tried first because it kept blocked
+## tiles above the 3.0 readability floor, and it was too subtle: everything
+## still looked playable. The owner's call is that a tile you cannot click
+## should look switched off, even at the cost of reading it less easily.
+const BlockedGreyShader = preload("res://assets/shaders/tile_blocked_grey.gdshader")
+static var _grey_mat: ShaderMaterial = null
+var _unlit_mat: Material = null
+
+static func _grey_material() -> ShaderMaterial:
+	if _grey_mat == null:
+		_grey_mat = ShaderMaterial.new()
+		_grey_mat.shader = BlockedGreyShader
+	return _grey_mat
+
+func _update_blocked_fade() -> void:
+	var grey: bool = EDGE_LIGHT.has(get_effective_theme()) and not (is_free or is_revealed or is_dissolving)
+	if _unlit_mat == null:
+		_unlit_mat = material
+	# The artwork only. Greying the body as well greyed its light edge, and two
+	# blocked tiles side by side merged back into one mass - the seam fell from
+	# 2.16 to 1.54, undoing the fix this sits on top of. Grey symbols on a dark
+	# tile read as switched off on their own.
+	material = _grey_material() if grey else _unlit_mat
+
+
 const EDGE_WIDTH: int = 2
 static var _edge_box_cache: Dictionary = {}
 
@@ -440,6 +470,7 @@ func _on_setting_changed(setting_name: String, _val: Variant) -> void:
 
 func update_theme_style() -> void:
 	_init_styleboxes()
+	_update_blocked_fade()
 	_redraw_all()
 
 func _init_styleboxes() -> void:
@@ -490,6 +521,7 @@ func setup(data: RiverTile, free_status: bool) -> void:
 	tile_data = data
 	is_free = free_status
 	is_dissolving = false
+	_update_blocked_fade()
 	_redraw_all()
 
 func get_accent_color() -> Color:
@@ -539,6 +571,7 @@ func set_selected(sel: bool) -> void:
 func set_free_status(free_val: bool) -> void:
 	if is_free != free_val:
 		is_free = free_val
+		_update_blocked_fade()
 		_redraw_all()
 
 func _exit_tree() -> void:
