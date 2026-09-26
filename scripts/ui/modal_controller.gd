@@ -191,6 +191,8 @@ func _set_current_screen(value: String) -> void:
 
 ## A ScrollContainer reports a near-zero minimum size, which would collapse the
 ## card, so size it to its content and cap it at the space available.
+const MAX_CARD_SHARE: float = 0.8
+
 func _fit_scroll() -> void:
 	if not is_instance_valid(scroll_view):
 		return
@@ -207,6 +209,10 @@ func _fit_scroll() -> void:
 	if sb != null:
 		chrome = sb.get_margin(SIDE_TOP) + sb.get_margin(SIDE_BOTTOM)
 	var avail: float = vp.get_visible_rect().size.y - insets.x - insets.y - chrome
+	# A long screen (Settings, Levels) used to fill the height and sit against
+	# the top edge while every other menu floated mid-screen. Capping it keeps
+	# the card centred like the rest, with the overflow scrolling inside.
+	avail = minf(avail, vp.get_visible_rect().size.y * MAX_CARD_SHARE - chrome)
 	var wanted: float = card_container.get_combined_minimum_size().y
 	scroll_view.custom_minimum_size.y = minf(wanted, maxf(avail, 240.0))
 
