@@ -152,9 +152,6 @@ func _play_set(group: Array) -> int:
 		if not is_instance_valid(view):
 			break
 		# Winter Frost: the first tap only shatters the ice, so tap twice.
-		if t.is_frozen:
-			board._on_tile_clicked(view)
-			n += 1
 		if t.is_removed or not is_instance_valid(view):
 			break
 		board._on_tile_clicked(view)

@@ -71,11 +71,6 @@ func _capture_theme(theme_id: String) -> void:
 		for t in group:
 			var v = board.tile_views.get(t)
 			if is_instance_valid(v):
-				if t.is_frozen:
-					board._on_tile_clicked(v)
-				board._on_tile_clicked(v)
-		await _wait(0.10)
-		await _shoot("shatter_%s" % theme_id)
 
 func _wait(seconds: float) -> void:
 	await get_tree().create_timer(seconds).timeout

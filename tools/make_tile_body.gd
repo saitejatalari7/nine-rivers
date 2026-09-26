@@ -83,7 +83,7 @@ const STYLES := {
 		# Wide and mostly solid: at 256px source drawn into 64px the rim is scaled
 		# down four times over, so a narrow band that looked like a frame in the
 		# texture was two pale pixels on the board and the theme read as Jade.
-		"rim": 0.0, "rim_px": 26.0,
+		"rim": 0.0, "rim_px": 19.5,
 		"rim_col": Color(0.812, 0.376, 0.459), "rim_mix": 1.0, "rim_hard": 0.55,
 		"patina": Color(0.004, -0.002, 0.000),
 		"crystal": 0.0,

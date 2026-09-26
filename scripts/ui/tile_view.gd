@@ -837,10 +837,6 @@ func _draw() -> void:
 	if StageModifiers.is_fog_active() and not is_free and not is_revealed:
 		_draw_fog_shroud(face_rect)
 	
-	# 8. Frost Encasement
-	if tile_data.is_frozen:
-		_draw_frost_encasement(face_rect)
-	
 	# 9. Atmospheric Depth Wash for Blocked Tiles (matching HTML .tile.blocked::after)
 	if not is_free and not is_revealed and not StageModifiers.is_fog_active() and not is_dissolving:
 		_draw_atmospheric_blocked_tint(face_rect)
@@ -873,18 +869,6 @@ func _draw_fog_shroud(face_r: Rect2) -> void:
 		draw_line(Vector2(mist_rect.position.x + 6, y_pos), Vector2(mist_rect.position.x + mist_rect.size.x - 6, y_pos), line_col, 1.2)
 	draw_canonical_glyph(face_r, "云", Color(0.45, 0.60, 0.65, 0.7), 24)
 
-func _draw_frost_encasement(face_r: Rect2) -> void:
-	var frost_rim := Color(0.65, 0.88, 1.0, 0.95)
-	var frost_glaze := Color(0.70, 0.88, 1.0, 0.38)
-	draw_rect(face_r.grow(1.0), frost_rim, false, 2.2)
-	draw_rect(face_r, frost_glaze, true)
-	var c := face_r.position + face_r.size * 0.5
-	draw_line(face_r.position + Vector2(6, 6), c + Vector2(-4, -4), frost_rim, 1.5)
-	draw_line(c + Vector2(-4, -4), c + Vector2(8, 2), frost_rim, 1.5)
-	draw_line(c + Vector2(8, 2), face_r.position + face_r.size - Vector2(6, 6), frost_rim, 1.5)
-	draw_circle(face_r.position + Vector2(face_r.size.x - 8, 8), 3.0, Color.WHITE, true)
-
-# ================= THEME ARTISAN FRAMING & ORNAMENTATION =================
 func _draw_imperial_gold_framing(face_r: Rect2) -> void:
 	var frame_r := Rect2(face_r.position + Vector2(2.5, 2.5), face_r.size - Vector2(5.0, 5.0))
 	# 1. 24k Gold leaf inner border

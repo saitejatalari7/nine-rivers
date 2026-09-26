@@ -451,8 +451,6 @@ func _clear_board() -> bool:
 			var view = board.tile_views.get(t)
 			if not is_instance_valid(view):
 				break
-			if t.is_frozen:
-				board._on_tile_clicked(view)
 			if t.is_removed or not is_instance_valid(view):
 				break
 			board._on_tile_clicked(view)

@@ -154,7 +154,7 @@ func _match_once() -> void:
 func _fingerprint() -> String:
 	var parts: PackedStringArray = PackedStringArray()
 	for t in board.get_active_tiles():
-		parts.append("%d,%d,%d,%s%d,%s" % [t.x, t.y, t.z, t.suit, t.rank, str(t.is_frozen)])
+		parts.append("%d,%d,%d,%s%d" % [t.x, t.y, t.z, t.suit, t.rank])
 	parts.sort()
 	return "|".join(parts)
 

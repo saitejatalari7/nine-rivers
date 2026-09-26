@@ -139,30 +139,24 @@ func _ready() -> void:
 	assert(GameManager.flow_level == 0, "Repeated misplays must reach 0")
 	print("[PASS] Flow verified without relics: advance, misplay step-down, floor at 0.")
 	
-	# 13. Test Stage Modifiers (Fog, Rush, Frost)
+	# 13. Test Stage Modifiers (Fog, Rush)
+	#
+	# Frost was here too - tiles dealt in ice that needed a tap to crack. It was
+	# cut for changing nothing: not what could be matched, not the order. The
+	# rotation is three outcomes wide now rather than four, so the stages these
+	# land on have moved.
 	StageModifiers.reset()
 	assert(not StageModifiers.is_fog_active(), "Fog must be inactive by default")
-	StageModifiers.set_modifier_for_stage(0, 7) # Calm lvl 7 -> Frost
-	assert(StageModifiers.is_frost_active(), "Lvl 7 must trigger Frost modifier")
-	StageModifiers.set_modifier_for_stage(0, 6) # Calm lvl 6 -> Fog
-	assert(StageModifiers.is_fog_active(), "Lvl 6 must trigger Fog modifier")
-	StageModifiers.set_modifier_for_stage(0, 5) # Calm lvl 5 -> Rush
-	assert(StageModifiers.is_rush_active(), "Lvl 5 must trigger Rush modifier")
-	
-	# Test Frost thaw mechanic
-	var frozen_tile := RiverTile.new(0, 0, 0, "dot", 1, 0, 2)
-	frozen_tile.is_frozen = true
-	test_board.clear_board()
-	test_board.live_tiles = [frozen_tile]
-	var test_view: TileView = tile_scene.instantiate()
-	test_board.add_child(test_view)
-	test_view.setup(frozen_tile, true)
-	test_board.tile_views[frozen_tile] = test_view
-	test_board._on_tile_clicked(test_view)
-	assert(frozen_tile.is_frozen == false, "First click on frozen tile must thaw it")
-	assert(test_board.selected_tiles.is_empty(), "First click must only thaw, not select")
+	var seen := {}
+	for lvl in range(5, 20):
+		StageModifiers.set_modifier_for_stage(0, lvl)
+		seen[StageModifiers.active_modifier] = true
+	assert(seen.has(StageModifiers.Modifier.FOG), "Calm must still deal Fog stages")
+	assert(seen.has(StageModifiers.Modifier.RUSH), "Calm must still deal Rush stages")
+	assert(seen.has(StageModifiers.Modifier.NONE), "Calm must still deal plain stages")
+	assert(seen.size() == 3, "Only three modifiers remain, got %d" % seen.size())
 	StageModifiers.reset()
-	print("[PASS] Stage Modifiers & Frost Thaw Mechanic verified.")
+	print("[PASS] Stage Modifiers verified: Fog, Rush and plain stages all deal.")
 	
 	# 14. Test Tile Mastery Progression
 	SaveManager.tile_mastery.clear()

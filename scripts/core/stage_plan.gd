@@ -210,14 +210,18 @@ static func layout_for_level(level: int) -> String:
 	return pool[nth % pool.size()]
 
 
-## 0 NONE, 1 FOG, 2 RUSH, 3 FROST - matching StageModifiers.Modifier.
+## 0 NONE, 1 FOG, 2 RUSH - matching StageModifiers.Modifier.
+##
+## Frost was 3 until it was cut. Both arms below count modulo the number of
+## outcomes, so they became %3 and %2 with it gone; left at %3 and %4 they
+## would have asked for a modifier that no longer exists.
 static func modifier_for_level(level: int) -> int:
 	if level <= TEACH_LEVELS:
 		return 0
 	var chapter: int = chapter_of(level)
 	if level % MILESTONE_EVERY == 0:
-		return 1 + ((level / MILESTONE_EVERY + chapter) % 3)
-	return (level + chapter) % 4
+		return 1 + ((level / MILESTONE_EVERY + chapter) % 2)
+	return (level + chapter) % 3
 
 
 static func is_milestone(level: int) -> bool:
