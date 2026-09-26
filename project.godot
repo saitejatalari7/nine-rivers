@@ -8,6 +8,11 @@
 
 config_version=5
 
+[admob]
+
+general/android/app_id="ca-app-pub-2056760294521107~6852510420"
+general/ios/enabled=false
+
 [application]
 
 config/name="Nine Rivers"
@@ -41,7 +46,7 @@ window/handheld/orientation=1
 
 [editor_plugins]
 
-enabled=PackedStringArray("res://addons/GodotGooglePlayBilling/plugin.cfg", "res://addons/GodotPlayGameServices/plugin.cfg")
+enabled=PackedStringArray("res://addons/GodotGooglePlayBilling/plugin.cfg", "res://addons/GodotPlayGameServices/plugin.cfg", "res://addons/admob/plugin.cfg")
 
 [rendering]
 

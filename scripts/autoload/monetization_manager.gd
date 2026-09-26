@@ -467,15 +467,16 @@ static func interstitial_unit_id() -> String:
 	return TEST_INTERSTITIAL_ID if OS.is_debug_build() else ADMOB_INTERSTITIAL_ID
 
 
+## Android only: on desktop the plugin substitutes mock ads, and the simulated
+## grant below is what tests and the editor rely on.
 func _init_platform_ads() -> void:
-	if Engine.has_singleton("GodotAdMob"):
-		_admob = Engine.get_singleton("GodotAdMob")
-		if _admob.has_signal("rewarded"):
-			_admob.rewarded.connect(_on_admob_reward_granted)
-	elif Engine.has_singleton("PoingGodotAdMob"):
-		_admob = Engine.get_singleton("PoingGodotAdMob")
-		if _admob.has_signal("on_rewarded_ad_user_earned_reward"):
-			_admob.on_rewarded_ad_user_earned_reward.connect(func(_type, _amt): _on_admob_reward_granted("", 0))
+	if OS.get_name() != "Android":
+		return
+	var ads = load("res://scripts/ads/admob_ads.gd").new()
+	add_child(ads)
+	ads.rewarded.connect(_on_admob_reward_granted)
+	ads.start(rewarded_unit_id(), interstitial_unit_id())
+	_admob = ads
 
 ## Only an ad WE asked for pays out. This used to grant on any call: with no
 ## pending placement it fell to the catch-all arm of _grant_reward and paid 50
@@ -852,7 +853,7 @@ func is_rewarded_ad_available() -> bool:
 	# Poing plugin was installed.
 	if _admob == null:
 		return false
-	return _admob.has_method("show_rewarded_video") or _admob.has_method("show")
+	return _admob.is_rewarded_ready()
 
 
 ## The one question the UI and show_rewarded_ad must both ask, so an offer is
