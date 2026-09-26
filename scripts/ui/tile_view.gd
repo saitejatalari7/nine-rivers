@@ -74,6 +74,35 @@ const BLOCKED_TINT: Dictionary = {
 }
 const BLOCKED_TINT_DEFAULT := Color(0.86, 0.86, 0.84, 1.0)
 
+## A light edge for the dark themes. Every other theme separates tiles with a
+## dark drop shadow and a darker rim, and on a near-black tile on a near-black
+## pond both are invisible: two neighbouring Obsidian tiles measured 1.17:1 at
+## their seam, which is no boundary at all. The dark themes draw their outline
+## in light instead. Measured by edge_contrast_check.
+##
+## Dimmed on blocked tiles, so the free ones - the only ones that matter at any
+## moment - are the ones with a bright edge. That doubles as the layer cue.
+const EDGE_LIGHT: Dictionary = {
+	"theme_obsidian_ink": Color(0.74, 0.78, 0.86, 0.90),
+	"theme_indigo": Color(0.66, 0.74, 1.00, 0.85),
+}
+const EDGE_BLOCKED_ALPHA: float = 0.45
+const EDGE_WIDTH: int = 2
+static var _edge_box_cache: Dictionary = {}
+
+static func _edge_box(col: Color) -> StyleBoxFlat:
+	var key: String = col.to_html()
+	if not _edge_box_cache.has(key):
+		var sb := StyleBoxFlat.new()
+		sb.draw_center = false
+		sb.border_color = col
+		sb.set_border_width_all(EDGE_WIDTH)
+		sb.set_corner_radius_all(8)
+		sb.anti_aliasing = true
+		sb.anti_aliasing_size = 1.0
+		_edge_box_cache[key] = sb
+	return _edge_box_cache[key]
+
 static var _normal_tex: Texture2D = null
 
 ## Pairs the body art with the shared bevel normal map. The silhouette is the
@@ -715,6 +744,11 @@ func _draw_body(ci: CanvasItem) -> void:
 		var body_rect := Rect2(offset_x, offset_y, TILE_W, TILE_H)
 		var tint: Color = Color.WHITE if (is_free or is_revealed or is_dissolving) else BLOCKED_TINT.get(cur_th, BLOCKED_TINT_DEFAULT)
 		ci.draw_texture_rect(body_tex, body_rect, false, tint)
+		if EDGE_LIGHT.has(cur_th):
+			var edge: Color = EDGE_LIGHT[cur_th]
+			if not (is_free or is_revealed or is_dissolving):
+				edge.a *= EDGE_BLOCKED_ALPHA
+			ci.draw_style_box(_edge_box(edge), body_rect.grow(-0.5))
 	else:
 		# Procedural fallback: original flat-slab path, used when the rendered
 		# art is missing or USE_RENDERED_BODY is off.
