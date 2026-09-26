@@ -27,6 +27,8 @@ func _ready() -> void:
 
 	await _t1_a_sample_stage_shows_a_locked_set()
 	await _t2_other_stages_are_left_alone()
+	await _t4_stage_5_clear_offers_shop_or_skip()
+	_t5_daily_samples_every_third_day()
 	await _t3_an_owner_is_not_sold_what_they_own()
 
 	print("")
@@ -72,10 +74,11 @@ func _t1_a_sample_stage_shows_a_locked_set() -> void:
 func _t2_other_stages_are_left_alone() -> void:
 	print("--- #2  most boards are just boards ---")
 	modal.hide_modal()
-	main._start_calm_mode(6)
-	await get_tree().create_timer(0.9).timeout
-	_check("a non-sample stage shows nothing", main.sampled_theme.is_empty(),
-		"sampled=%s" % main.sampled_theme)
+	for lv in [6, 10]:
+		main._start_calm_mode(lv)
+		await get_tree().create_timer(0.9).timeout
+		_check("stage %d shows nothing" % lv, main.sampled_theme.is_empty(),
+			"sampled=%s" % main.sampled_theme)
 	var dressed: int = 0
 	for t in board.get_active_tiles():
 		var v = board.tile_views.get(t)
@@ -89,10 +92,39 @@ func _t3_an_owner_is_not_sold_what_they_own() -> void:
 	SaveManager.economy["unlocked_themes"] = [
 		"classic_jade", "theme_imperial_gold", "theme_obsidian_ink",
 		"theme_cherry_blossom", "theme_indigo"]
-	main._start_calm_mode(10)
+	main._start_calm_mode(5)
 	await get_tree().create_timer(0.9).timeout
 	_check("a player who owns every set is shown none", main.sampled_theme.is_empty(),
 		"sampled=%s" % main.sampled_theme)
+
+
+func _t4_stage_5_clear_offers_shop_or_skip() -> void:
+	print("--- #4  clearing stage 5 asks: shop or skip ---")
+	modal.hide_modal()
+	main._start_calm_mode(5)
+	await get_tree().create_timer(0.9).timeout
+	main._on_board_cleared()
+	await get_tree().create_timer(0.4).timeout
+	_check("the offer card is shown", modal._current_screen == "premium_offer",
+		modal._current_screen)
+	_check("with a shop button", _find_text(modal, "Go to Shop") != "", "")
+	_check("and a skip", _find_text(modal, "Skip") != "", "")
+	modal.next_stage_requested.emit()
+	await get_tree().create_timer(0.4).timeout
+	_check("skip carries on to the clear screen", modal._current_screen == "level_clear",
+		modal._current_screen)
+	modal.hide_modal()
+
+
+func _t5_daily_samples_every_third_day() -> void:
+	print("--- #5  the daily puzzle wears them every third day ---")
+	var hits: int = 0
+	var start: int = 1_760_000_000
+	for d in 30:
+		if main.is_daily_sample_day(start + d * 86400):
+			hits += 1
+	_check("10 days in 30", hits == 10, "%d" % hits)
+	_check("with 10 tiles", main.DAILY_SAMPLE_TILES == 10, "")
 
 
 func _find_text(node: Node, needle: String) -> String:

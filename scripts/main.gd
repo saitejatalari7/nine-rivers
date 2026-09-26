@@ -60,6 +60,7 @@ func _ready() -> void:
 	modal.start_daily_requested.connect(_start_daily_mode)
 	modal.restart_stage_requested.connect(_restart_current_stage)
 	modal.next_stage_requested.connect(_next_stage)
+	modal.premium_shop_requested.connect(func(): _pending_clear = {})
 	modal.deadlock_accepted.connect(_on_deadlock_accepted)
 	modal.deadlock_retry.connect(_on_deadlock_retry)
 	modal.resume_game_requested.connect(_resume_game)
@@ -399,6 +400,7 @@ func _start_daily_mode() -> void:
 	rng.seed = GameManager.daily_seed
 	board.load_stage(layout_name, rng)
 	camera.frame_board(board.board_bounds, get_viewport_rect().size)
+	_offer_daily_theme_sample()
 
 func _restart_current_stage() -> void:
 	board.visible = true
@@ -530,10 +532,14 @@ func _on_board_cleared() -> void:
 		# the event it is rather than a row on a results sheet. Taking it or
 		# leaving it both carry on to the next stage.
 		var granted: Array[String] = MonetizationManager.grant_milestone_themes(GameManager.current_level)
-		if not granted.is_empty():
+		var offer_sample: bool = GameManager.current_level == SAMPLE_STAGE 			and not sampled_theme.is_empty() 			and not MonetizationManager.is_theme_unlocked(sampled_theme)
+		if not granted.is_empty() or offer_sample:
 			_pending_clear = {"level": GameManager.current_level, "score": GameManager.score,
 				"stars": stars, "sampled": sampled_theme}
-			modal.show_theme_unlocked(granted[0])
+			if not granted.is_empty():
+				modal.show_theme_unlocked(granted[0])
+			else:
+				modal.show_premium_offer(sampled_theme)
 			return
 		modal.show_level_clear(GameManager.current_level, GameManager.score, stars, sampled_theme)
 		MonetizationManager.show_interstitial_if_ready(GameManager.current_level, "level_clear")
@@ -543,7 +549,7 @@ func _on_board_cleared() -> void:
 		if blessing > 0:
 			SaveManager.add_pearls(blessing)
 		modal.show_daily_clear(GameManager.score, GameManager.best_flow,
-			int(SaveManager.prog.get("daily_streak", 1)), blessing)
+			int(SaveManager.prog.get("daily_streak", 1)), blessing, sampled_theme)
 	else:
 		# Straight into the next board. There used to be a relic draft here; it
 		# was the thing testers understood least and it is gone, so a cleared
@@ -669,9 +675,10 @@ func _on_onboarding_finished() -> void:
 ##
 ## Nothing is persisted. The stage number decides when it happens, so there is
 ## no counter to sign and nothing to corrupt.
-const SAMPLE_EVERY: int = 5
-const SAMPLE_FROM_STAGE: int = 4
+const SAMPLE_STAGE: int = 5
 const SAMPLE_TILES: int = 7
+const DAILY_SAMPLE_EVERY_DAYS: int = 3
+const DAILY_SAMPLE_TILES: int = 10
 
 ## The set being shown off on this board, or "". Read by the clear screen so the
 ## offer follows the board it belongs to.
@@ -679,12 +686,27 @@ var sampled_theme: String = ""
 
 func _offer_theme_sample(level: int) -> void:
 	sampled_theme = ""
-	if level < SAMPLE_FROM_STAGE or level % SAMPLE_EVERY != 0:
+	if level != SAMPLE_STAGE:
 		return
+	_apply_theme_sample(SAMPLE_TILES)
+
+
+static func is_daily_sample_day(unix_time: int) -> bool:
+	return (unix_time / 86400) % DAILY_SAMPLE_EVERY_DAYS == 0
+
+
+func _offer_daily_theme_sample() -> void:
+	sampled_theme = ""
+	if not is_daily_sample_day(int(Time.get_unix_time_from_system())):
+		return
+	_apply_theme_sample(DAILY_SAMPLE_TILES)
+
+
+func _apply_theme_sample(count: int) -> void:
 	var theme: String = MonetizationManager.cheapest_locked_theme()
 	if theme.is_empty():
 		return
-	if board.sample_theme(theme, SAMPLE_TILES) <= 0:
+	if board.sample_theme(theme, count) <= 0:
 		return
 	sampled_theme = theme
 	hud.show_toast("A few tiles are wearing %s" % modal.theme_display_name(theme))

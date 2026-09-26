@@ -9,6 +9,7 @@ signal start_run_requested()
 signal start_daily_requested()
 signal restart_stage_requested()
 signal next_stage_requested()
+signal premium_shop_requested()
 signal deadlock_accepted()
 signal deadlock_retry()
 signal resume_game_requested()
@@ -579,7 +580,7 @@ func show_level_clear(level: int, score: int, stars: int, sampled: String = "") 
 ## blessing is what the caller actually granted, not what it would have granted.
 ## The jade used to be added here, which paid out every time this screen was
 ## drawn rather than once per daily - replaying the daily farmed it freely.
-func show_daily_clear(score: int, best_flow: int, streak: int, blessing: int = 0) -> void:
+func show_daily_clear(score: int, best_flow: int, streak: int, blessing: int = 0, sampled: String = "") -> void:
 	_current_screen = "daily_clear"
 	_clear_content()
 	_add_header("Daily Puzzle", "Cleared")
@@ -592,6 +593,12 @@ func show_daily_clear(score: int, best_flow: int, streak: int, blessing: int = 0
 		"+%d ◈" % blessing if blessing > 0 else "claimed today")
 
 	_add_separator()
+	if not sampled.is_empty() and not MonetizationManager.is_theme_unlocked(sampled):
+		var captured_sample: String = sampled
+		_add_toggle_row("Keep the %s tiles" % theme_display_name(sampled),
+			"%s ◈" % _thousands(MonetizationManager.get_pearl_cost(sampled)), func():
+				show_tile_detail_modal(captured_sample)
+		)
 	_add_toggle_row("Main Menu", "›", func():
 		return_home_requested.emit()
 	, UITheme.IVORY_MUTED)
@@ -756,6 +763,29 @@ func show_theme_unlocked(theme_key: String) -> void:
 			next_stage_requested.emit()
 	, true)
 	_add_toggle_row("Keep my current set", "›", func():
+		hide_modal()
+		next_stage_requested.emit()
+	, UITheme.IVORY_MUTED)
+	show_modal()
+
+
+## Shown once, after the stage that wore a premium set. Skip carries on to the
+## clear screen; Shop drops it and opens the set's page.
+func show_premium_offer(theme_key: String) -> void:
+	_current_screen = "premium_offer"
+	_clear_content()
+	var detail: Dictionary = TILE_THEME_DETAILS.get(theme_key, {})
+	_add_header("Premium Tiles", "Like the %s tiles?" % theme_display_name(theme_key))
+	_add_hairline()
+	if detail.has("samples"):
+		_add_tile_preview_row(detail["samples"], theme_key, DETAIL_TILE_SCALE)
+	_add_separator()
+	var captured: String = theme_key
+	_add_tile_row(_accent_for(theme_key), "Go to Shop", "Get these and more tile sets", "", func():
+		premium_shop_requested.emit()
+		show_tile_detail_modal(captured)
+	, true)
+	_add_toggle_row("Skip", "›", func():
 		hide_modal()
 		next_stage_requested.emit()
 	, UITheme.IVORY_MUTED)
@@ -1071,6 +1101,9 @@ func handle_back_pressed() -> void:
 			show_bazaar_modal()
 		"tile_detail":
 			show_tile_catalog_modal()
+		"premium_offer":
+			hide_modal()
+			next_stage_requested.emit()
 		"bg_detail":
 			show_background_catalog_modal()
 		"settings":
