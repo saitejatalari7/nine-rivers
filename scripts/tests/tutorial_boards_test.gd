@@ -25,9 +25,11 @@ func _ready() -> void:
 
 	await _clears("A - match", TutorialBoards.A_MATCH)
 	await _clears("B - blocked", TutorialBoards.B_BLOCKED)
+	await _clears("W - wild", TutorialBoards.W_WILD)
 	await _clears("C - layers", TutorialBoards.C_LAYERS)
 
 	await _b_really_blocks()
+	await _w_needs_the_wild()
 	await _c_teaches_the_wild()
 
 	print("")
@@ -67,6 +69,26 @@ func _b_really_blocks() -> void:
 			blocked += 1
 	_check(blocked == 2, "B has exactly two blocked tiles to learn on",
 		"%d blocked" % blocked)
+
+
+## Board W is only clearable by spending wilds on unlike tiles: no pair may
+## exist without one, and the two wilds must never be free together.
+func _w_needs_the_wild() -> void:
+	board.restore_stage(TutorialBoards.W_WILD.duplicate(true))
+	await get_tree().process_frame
+	var plain: int = 0
+	var both_wild: int = 0
+	for s in board.get_legal_sets():
+		var wilds: int = 0
+		for t in s:
+			if t.is_wild():
+				wilds += 1
+		if wilds == 0:
+			plain += 1
+		elif wilds == s.size():
+			both_wild += 1
+	_check(plain == 0, "W has no pair without a wild", "%d plain" % plain)
+	_check(both_wild == 0, "and the wilds cannot pair with each other", "%d" % both_wild)
 
 
 ## The flower on top must be matchable with the character beside it, or the

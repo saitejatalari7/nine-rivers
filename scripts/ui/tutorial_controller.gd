@@ -37,8 +37,13 @@ const BEATS: Array[Dictionary] = [
 		"board": "B",
 	},
 	{
+		"text": "Flowers and seasons are wild.",
+		"sub": "A wild tile matches any tile at all. Pair each one with a tile that has no partner.",
+		"board": "W",
+	},
+	{
 		"text": "Clear the top to reach what is under it.",
-		"sub": "The flower is wild - it matches any tile you like.",
+		"sub": "Tiles stack in layers. The flower on top is still wild.",
 		"board": "C",
 	},
 	{
@@ -157,6 +162,7 @@ func _deal(which: String) -> void:
 	match which:
 		"A": layout = TutorialBoards.A_MATCH
 		"B": layout = TutorialBoards.B_BLOCKED
+		"W": layout = TutorialBoards.W_WILD
 		"C": layout = TutorialBoards.C_LAYERS
 		_:
 			_board.clear_board()

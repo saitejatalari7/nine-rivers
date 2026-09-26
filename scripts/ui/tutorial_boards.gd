@@ -1,7 +1,7 @@
 class_name TutorialBoards
 extends RefCounted
 
-## The three boards the onboarding teaches on, written out tile by tile.
+## The four boards the onboarding teaches on, written out tile by tile.
 ##
 ## They are hand-authored rather than dealt, because each one has to demonstrate
 ## exactly one rule and nothing else. A generated board cannot promise that: the
@@ -38,6 +38,18 @@ const B_BLOCKED: Array = [
 	{"x": 4, "y": 2, "z": 0, "suit": "bam", "rank": 2, "set_id": 2, "size": 2},
 ]
 
+const W_WILD: Array = [
+	# Two tiles with no partner and two wilds, the season hidden under the
+	# flower. No pair exists without a wild, and the wilds cannot pair with each
+	# other because only one is free at a time - so the only way through is to
+	# spend each one on a tile unlike it. Distinct set_ids keep the strand ripple
+	# from firing and turning a lone tile wild behind the player's back.
+	{"x": 0, "y": 0, "z": 0, "suit": "char", "rank": 7, "set_id": 1, "size": 2},
+	{"x": 4, "y": 0, "z": 0, "suit": "season", "rank": 1, "set_id": 2, "size": 2},
+	{"x": 4, "y": 0, "z": 1, "suit": "flower", "rank": 1, "set_id": 3, "size": 2},
+	{"x": 8, "y": 0, "z": 0, "suit": "bam", "rank": 9, "set_id": 4, "size": 2},
+]
+
 const C_LAYERS: Array = [
 	# Ten tiles on two layers. The pair on top is a flower and a character:
 	# a flower matches anything, which is the one rule that cannot be worked
@@ -58,4 +70,4 @@ const C_LAYERS: Array = [
 
 
 static func all() -> Array:
-	return [A_MATCH, B_BLOCKED, C_LAYERS]
+	return [A_MATCH, B_BLOCKED, W_WILD, C_LAYERS]
