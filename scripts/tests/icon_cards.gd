@@ -10,7 +10,6 @@ extends Node2D
 
 const TileViewScene = preload("res://scenes/tile.tscn")
 const RiverTile = preload("res://scripts/core/river_tile.gd")
-const TileLighting = preload("res://scripts/ui/tile_lighting.gd")
 
 ## Drawn in the project's 1080-wide design space and resampled down. The window
 ## renders smaller than the design resolution, so cropping 512 raw pixels took
@@ -26,7 +25,6 @@ var _ripples: Array = []
 
 func _ready() -> void:
 	await get_tree().process_frame
-	TileLighting.attach(self)
 	await _variant("icon_a_bird", [["bam", 1]], [0.0], 8.0)
 	await _variant("icon_b_fan", [["dot", 9], ["bam", 1], ["dot", 1]], [-14.0, 0.0, 14.0], 5.2)
 	await _variant("icon_c_nine", [["dot", 9]], [-8.0], 8.0)

@@ -26,7 +26,6 @@ extends Node
 
 const TileViewScene = preload("res://scenes/tile.tscn")
 const RiverTile = preload("res://scripts/core/river_tile.gd")
-const TileLighting = preload("res://scripts/ui/tile_lighting.gd")
 
 const THEMES: Array[String] = [
 	"classic_jade", "theme_imperial_gold", "theme_obsidian_ink", "theme_cherry_blossom",
@@ -127,10 +126,8 @@ func _render(theme: String, free: bool, probe: Dictionary, skip_art: bool) -> Im
 	vp.transparent_bg = false
 	vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	add_child(vp)
-	# Without this the harness measured an unlit tile while the game shipped a
-	# lit one, so every number was for a face darker than the real thing - and
-	# sweeping the light settings changed nothing, which is what gave it away.
-	TileLighting.attach(vp)
+	# No board lights: the game has never had them (they failed to attach at
+	# startup), so a lit harness measured a look no player saw.
 
 	TileView.debug_skip_artwork = skip_art
 	var view = TileViewScene.instantiate()

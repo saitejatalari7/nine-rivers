@@ -5,7 +5,6 @@ extends Node
 
 const TileViewScene = preload("res://scenes/tile.tscn")
 const RiverTile = preload("res://scripts/core/river_tile.gd")
-const TileLighting = preload("res://scripts/ui/tile_lighting.gd")
 
 const THEMES: Array[String] = [
 	"classic_jade", "theme_imperial_gold", "theme_obsidian_ink", "theme_cherry_blossom",
@@ -64,7 +63,6 @@ func _render(theme: String, free: bool, probe: Dictionary, tw: int, th: int) -> 
 	vp.transparent_bg = false
 	vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	add_child(vp)
-	TileLighting.attach(vp)
 	var holder := Control.new()
 	holder.scale = Vector2(SCALE, SCALE)
 	vp.add_child(holder)

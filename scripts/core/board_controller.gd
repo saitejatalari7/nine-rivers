@@ -20,7 +20,6 @@ const TileShatterDustScene = preload("res://scenes/effects/tile_shatter_dust.tsc
 const FloatingChip = preload("res://scripts/ui/floating_chip.gd")
 const FloatingChipScene = preload("res://scenes/effects/floating_chip.tscn")
 const StageModifiers = preload("res://scripts/core/stage_modifiers.gd")
-const TileLighting = preload("res://scripts/ui/tile_lighting.gd")
 
 ## A wild tile pays a small bonus. Was 5 River Jade before the currencies
 ## merged; three jade were worth one pearl.
@@ -48,12 +47,6 @@ func invalidate_legal_sets() -> void:
 	_legal_sets_dirty = true
 
 func _ready() -> void:
-	# Onto the parent, not this node. clear_board() frees every child of the
-	# board, so lights parented here died on the first deal and the bevel
-	# lighting never ran in the game at all; they were also children 0 and 1,
-	# which broke the child-order assumption that drives mouse picking.
-	var light_host: Node = get_parent() if get_parent() != null else self
-	TileLighting.attach(light_host)
 	if is_instance_valid(MonetizationManager) and MonetizationManager.has_signal("theme_equipped"):
 		MonetizationManager.theme_equipped.connect(_on_theme_equipped)
 
@@ -70,7 +63,7 @@ func load_stage(layout_name: String, rng: RandomNumberGenerator = null) -> void:
 	live_tiles = tiles
 	selected_tiles.clear()
 	history.clear()
-	
+
 	_seat_tiles(true)
 
 ## Builds a view for every tile in live_tiles and settles the board around them.
@@ -96,7 +89,7 @@ func _seat_tiles(animate: bool) -> void:
 			return a.y < b.y
 		return a.x < b.x
 	)
-		
+
 	# Instantiate tile visual nodes. A restored board has already-matched tiles
 	# in the list, for the geometry and for the bounds above; they get no view.
 	for t in live_tiles:
@@ -104,11 +97,11 @@ func _seat_tiles(animate: bool) -> void:
 			continue
 		var view: TileView = TileViewScene.instantiate()
 		add_child(view)
-		
+
 		var px: float = (t.x * 0.5) * TW + t.z * LAYER_OFF_X
 		var py: float = (t.y * 0.5) * TH + (max_z - t.z) * LAYER_OFF_Y
 		var target_pos := Vector2(px, py)
-		
+
 		if animate:
 			# Cascading staggered deal animation (0.35s total wave)
 			var delay: float = clampf((t.z * 0.06) + (t.y * 0.012) + (t.x * 0.006), 0.0, 0.38)
@@ -125,7 +118,7 @@ func _seat_tiles(animate: bool) -> void:
 			view.position = target_pos
 
 		view.z_index = t.z * 100 + t.y * 2 + (1 if t.x % 2 == 1 else 0)
-		
+
 		view.tile_clicked.connect(_on_tile_clicked)
 		view.tile_long_pressed.connect(_on_tile_long_pressed)
 		view.tree_exiting.connect(func():
@@ -133,9 +126,9 @@ func _seat_tiles(animate: bool) -> void:
 				tile_views.erase(t)
 		)
 		tile_views[t] = view
-		
+
 	board_bounds = Rect2(0, 0, (max_x * 0.5) * TW + TW + max_z * LAYER_OFF_X, (max_y * 0.5) * TH + TH + max_z * LAYER_OFF_Y)
-	
+
 	update_all_tiles_status()
 	move_completed.emit(live_tiles.size(), get_legal_sets().size())
 
@@ -311,7 +304,7 @@ func _handle_magnetic_tap(pos: Vector2) -> void:
 	var best_dist: float = 18.0 # 18px magnetic capture radius
 	var best_view: TileView = null
 	var best_z: int = -1
-	
+
 	for t in active:
 		if not is_tile_free_grid(t, grid):
 			continue
@@ -322,13 +315,13 @@ func _handle_magnetic_tap(pos: Vector2) -> void:
 		var dx: float = maxf(0.0, maxf(rect.position.x - pos.x, pos.x - rect.end.x))
 		var dy: float = maxf(0.0, maxf(rect.position.y - pos.y, pos.y - rect.end.y))
 		var dist: float = sqrt(dx * dx + dy * dy)
-		
+
 		if dist <= best_dist:
 			if dist < best_dist or t.z > best_z:
 				best_dist = dist
 				best_view = v
 				best_z = t.z
-				
+
 	if best_view:
 		_on_tile_clicked(best_view)
 
@@ -347,7 +340,7 @@ func _on_tile_clicked(view: TileView) -> void:
 		view.play_wrong_shake()
 		return
 	clear_all_hints()
-		
+
 	var active := get_active_tiles()
 	var grid := get_spatial_grid(active)
 	var reason := get_tile_blocked_reason(t, grid)
@@ -360,15 +353,15 @@ func _on_tile_clicked(view: TileView) -> void:
 		else:
 			toast_requested.emit("Blocked on both left and right sides!")
 		return
-		
-		
+
+
 	# Deselect if clicked again
 	if selected_tiles.has(t):
 		selected_tiles.erase(t)
 		view.set_selected(false)
 		AudioManager.play_tile_clack(1.1, view.position + Vector2(TW * 0.5, TH * 0.5), t.z, t.suit)
 		return
-		
+
 	# Compatibility check with current selection
 	if not selected_tiles.is_empty():
 		var first: RiverTile = selected_tiles[0]
@@ -384,18 +377,18 @@ func _on_tile_clicked(view: TileView) -> void:
 			selected_tiles = [t]
 			view.set_selected(true)
 			return
-			
+
 	selected_tiles.append(t)
 	view.set_selected(true)
 	var tile_at: Vector2 = view.position + Vector2(TW * 0.5, TH * 0.5)
 	AudioManager.play_tile_clack(1.2, tile_at, t.z, t.suit)
 	AudioManager.play_tile_pick(tile_at, t.z)
-	
+
 	# Check if set is complete
 	var required_size: int = 2
 	for s in selected_tiles:
 		required_size = maxi(required_size, s.size)
-		
+
 	if selected_tiles.size() >= required_size:
 		_resolve_matched_set(selected_tiles.duplicate())
 		selected_tiles.clear()
@@ -445,13 +438,13 @@ func _resolve_matched_set(group: Array[RiverTile]) -> void:
 				dust.setup(v.get_accent_color(), is_triple, t.suit, t.is_glass)
 			v.play_clear_animation()
 		tile_views.erase(t)
-			
+
 	# Strand-to-Wild ripple resolution
 	var ripples: Array[Dictionary] = []
 	var set_ids := {}
 	for t in group:
 		set_ids[t.set_id] = true
-		
+
 	for sid in set_ids.keys():
 		for other in live_tiles:
 			if other.set_id == sid and not other.is_removed and not other.is_open and not other.is_wild_suit():
@@ -462,14 +455,14 @@ func _resolve_matched_set(group: Array[RiverTile]) -> void:
 				if is_instance_valid(ov):
 					ov.play_strand_ripple()
 					ov.queue_redraw()
-					
+
 	# Save for Undo
 	history.append({
 		"group": group.duplicate(),
 		"ripples": ripples,
 		"gm_snap": gm_snap
 	})
-	
+
 	# Register the match in GameManager.
 	# Position first: register_match plays the chime, so it needs the centre of
 	# the group that was just cleared.
@@ -478,7 +471,7 @@ func _resolve_matched_set(group: Array[RiverTile]) -> void:
 		match_at = last_view_pos + Vector2(TW * 0.5, TH * 0.5)
 	var pts: int = GameManager.register_match(suit_name, is_triple,
 		is_glass_match, match_at, last_z)
-	
+
 	if has_last_pos:
 		var match_center := match_at
 		tile_matched.emit(match_center)
@@ -486,14 +479,14 @@ func _resolve_matched_set(group: Array[RiverTile]) -> void:
 		chip.position = last_view_pos + Vector2(TW * 0.5, TH * 0.3)
 		add_child(chip)
 		chip.setup("+" + str(pts), is_triple or GameManager.flow_level >= 5 or is_glass_match)
-		
+
 	if is_glass_match:
 		toast_requested.emit("Crystal Glass Shattered! (+500 pts)")
-		
+
 	if not ripples.is_empty():
 		AudioManager.play_wild_strand()
 		toast_requested.emit("%d orphaned tile now Wild!" % ripples.size())
-		
+
 	# Wild tiles pay a small Jade bonus.
 	var has_wild: bool = false
 	for t in group:
@@ -505,20 +498,20 @@ func _resolve_matched_set(group: Array[RiverTile]) -> void:
 		toast_requested.emit("+%d ◈ Spirit Pearls" % WILD_TILE_PEARLS)
 
 	stage_match_count += 1
-		
+
 	# Camera punch on Flow Overdrive
 	if GameManager.is_overdrive_active():
 		var cam = get_viewport().get_camera_2d()
 		if cam and cam.has_method("punch_camera"):
 			cam.punch_camera(Vector2(randf_range(-5.0, 5.0), randf_range(3.0, 6.0)))
-		
+
 	invalidate_legal_sets()
 	update_all_tiles_status()
-	
+
 	var remaining := get_active_tiles()
 	var legal_moves := get_legal_sets().size()
 	move_completed.emit(remaining.size(), legal_moves)
-	
+
 	if remaining.is_empty():
 		board_cleared.emit()
 	elif legal_moves == 0:
@@ -527,14 +520,14 @@ func _resolve_matched_set(group: Array[RiverTile]) -> void:
 func get_legal_sets() -> Array[Array]:
 	if not _legal_sets_dirty:
 		return _cached_legal_sets
-		
+
 	var active := get_active_tiles()
 	var grid := get_spatial_grid(active)
 	var free_list: Array[RiverTile] = []
 	for t in active:
 		if is_tile_free_grid(t, grid):
 			free_list.append(t)
-			
+
 	var wilds: Array[RiverTile] = []
 	var normal: Array[RiverTile] = []
 	for t in free_list:
@@ -542,14 +535,14 @@ func get_legal_sets() -> Array[Array]:
 			wilds.append(t)
 		else:
 			normal.append(t)
-			
+
 	var by_key := {}
 	for t in normal:
 		var k := t.get_match_key()
 		if not by_key.has(k):
 			by_key[k] = []
 		by_key[k].append(t)
-		
+
 	var legal_sets: Array[Array] = []
 	for k in by_key.keys():
 		var list: Array = by_key[k]
@@ -558,12 +551,12 @@ func get_legal_sets() -> Array[Array]:
 		for t in list:
 			if t.size == 2: s2.append(t)
 			else: s3.append(t)
-			
+
 		# Pairs of size 2
 		for i in range(s2.size()):
 			for j in range(i + 1, s2.size()):
 				legal_sets.append([s2[i], s2[j]])
-				
+
 		# Triples from full list (must contain at least one size 3 tile)
 		if list.size() >= 3:
 			for i in range(list.size()):
@@ -571,7 +564,7 @@ func get_legal_sets() -> Array[Array]:
 					for k_idx in range(j + 1, list.size()):
 						if list[i].size == 3 or list[j].size == 3 or list[k_idx].size == 3:
 							legal_sets.append([list[i], list[j], list[k_idx]])
-					
+
 		# Triples completed by 1 wild tile
 		if not wilds.is_empty() and list.size() >= 2:
 			for i in range(list.size()):
@@ -580,25 +573,25 @@ func get_legal_sets() -> Array[Array]:
 					if list[i].size == 3 or list[j].size == 3:
 						for w in wilds:
 							legal_sets.append([list[i], list[j], w])
-						
+
 		# Triples completed by 2 wild tiles
 		if wilds.size() >= 2 and not s3.is_empty():
 			for t in s3:
 				for w1_idx in range(wilds.size()):
 					for w2_idx in range(w1_idx + 1, wilds.size()):
 						legal_sets.append([t, wilds[w1_idx], wilds[w2_idx]])
-			
+
 	# Wild pairs: C(wilds.size(), 2)
 	for i in range(wilds.size()):
 		for j in range(i + 1, wilds.size()):
 			legal_sets.append([wilds[i], wilds[j]])
-			
+
 	# Wild + Normal pair (where normal tile is size 2)
 	for w in wilds:
 		for t in normal:
 			if t.size == 2:
 				legal_sets.append([w, t])
-		
+
 	_cached_legal_sets = legal_sets
 	_legal_sets_dirty = false
 	return _cached_legal_sets
@@ -650,10 +643,10 @@ func undo_last_move() -> bool:
 	var group: Array = last["group"]
 	var ripples: Array = last["ripples"]
 	var gm_snap: Dictionary = last.get("gm_snap", {})
-	
+
 	if not gm_snap.is_empty():
 		GameManager.restore_state(gm_snap)
-	
+
 	for t in group:
 		t.is_removed = false
 		var v = tile_views.get(t)
@@ -671,7 +664,7 @@ func undo_last_move() -> bool:
 					tile_views.erase(t)
 			)
 			tile_views[t] = v
-			
+
 			# Swoop-in undo animation
 			v.scale = Vector2(0.5, 0.5)
 			v.modulate.a = 0.0
@@ -682,7 +675,7 @@ func undo_last_move() -> bool:
 			v.modulate.a = 1.0
 			v.scale = Vector2.ONE
 			v.mouse_filter = Control.MOUSE_FILTER_STOP
-			
+
 	for r in ripples:
 		var rt: RiverTile = r["tile"]
 		rt.is_open = r["open"]
@@ -690,7 +683,7 @@ func undo_last_move() -> bool:
 		var rv = tile_views.get(rt)
 		if is_instance_valid(rv):
 			rv.queue_redraw()
-			
+
 	selected_tiles.clear()
 	invalidate_legal_sets()
 	_reorder_tile_children()

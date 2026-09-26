@@ -2,6 +2,12 @@ extends RefCounted
 
 ## The two 2D lights that make the tile bevel visible.
 ##
+## NOT USED BY THE GAME. The board never attached these lights (add_child ran
+## while the scene was still being built and failed), every look was tuned
+## without them, and a side-by-side in September 2026 showed they only dimmed
+## the faces slightly. Kept for the light_tune and title_cards harnesses;
+## tile_view still reads specular() for the normal-mapped body texture.
+##
 ## The bevel used to be painted into the body PNG and was, in practice, absent:
 ## a soft gradient about two source pixels wide, which at the ~74px a tile
 ## occupies on a phone is under one pixel. Lighting a normal map instead gives

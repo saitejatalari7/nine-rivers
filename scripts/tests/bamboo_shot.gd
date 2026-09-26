@@ -4,12 +4,10 @@ extends Node2D
 
 const TileViewScene = preload("res://scenes/tile.tscn")
 const RiverTile = preload("res://scripts/core/river_tile.gd")
-const TileLighting = preload("res://scripts/ui/tile_lighting.gd")
 
 func _ready() -> void:
 	RenderingServer.set_default_clear_color(Color("#0d2a21"))
 	await get_tree().process_frame
-	TileLighting.attach(self)
 	for i in range(9):
 		var holder := Node2D.new()
 		holder.scale = Vector2(5, 5)

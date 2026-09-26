@@ -5,7 +5,6 @@ extends Node
 
 const TileViewScene = preload("res://scenes/tile.tscn")
 const RiverTile = preload("res://scripts/core/river_tile.gd")
-const TileLighting = preload("res://scripts/ui/tile_lighting.gd")
 
 const THEMES: Array[String] = [
 	"classic_jade", "theme_imperial_gold", "theme_obsidian_ink",
@@ -20,7 +19,6 @@ var _faces: Array[Dictionary] = []
 
 func _ready() -> void:
 	await get_tree().process_frame
-	TileLighting.attach(self)
 	for r in range(1, 10):
 		_faces.append({"suit": "char", "rank": r})
 	for r in range(1, 10):
