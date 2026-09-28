@@ -316,7 +316,7 @@ func show_main_menu() -> void:
 	_set_card_backing(false)
 
 	_add_title("NINE RIVERS")
-	_add_subtitle("Zen Roguelite Mahjong Solitaire")
+	_add_subtitle("Calm Mahjong Solitaire")
 
 	var cur_lvl: int = int(SaveManager.prog.get("level", 1))
 	var streak: int = int(SaveManager.prog.get("daily_streak", 0))
