@@ -23,6 +23,7 @@ func _ready() -> void:
 	SaveManager.prog["tutorial_completed"] = true
 	SaveManager.prog["level"] = 18
 	SaveManager.economy["pearls"] = 1240
+	MonetizationManager.pearls_updated.emit(1240)
 	SaveManager.prog["daily_streak"] = 6
 	SaveManager.economy["unlocked_themes"] = [
 		"classic_jade", "theme_imperial_gold", "theme_obsidian_ink",
