@@ -218,6 +218,8 @@ static func get_theme_back_base(theme_id: String = "") -> Color:
 			return Color("#0d0f12") # Basalt black back
 		"theme_cherry_blossom":
 			return Color("#421d28") # Dark plum rosewood back
+		"theme_indigo":
+			return Color("#141a3a") # Deep navy back
 		_:
 			return COL_DEEP # Biscuit warm ceramic underside (#b79f74) from nine-rivers.html
 
@@ -232,6 +234,8 @@ static func get_theme_back_edge(theme_id: String = "") -> Color:
 			return Color("#2d3748")
 		"theme_cherry_blossom":
 			return Color("#693040")
+		"theme_indigo":
+			return Color("#2a3570")
 		_:
 			return Color("#a48c62")
 
@@ -556,14 +560,9 @@ const SELECT_Z_BOOST: int = 400
 ## The lift, the scale and the shadow are what sell selection now, so the ring
 ## can go back to being a rim rather than a frame.
 const SELECT_BORDER_W: int = 4
-## Gold everywhere except on the gold tiles, where a gold ring vanished into
-## the face and only the lift showed the tile was picked up.
-const SELECT_RING_OVERRIDE: Dictionary = {
-	"theme_imperial_gold": Color("#111111"),
-}
-
+## The gold set draws its own halo instead of this ring (_draw_gold_halo).
 func selection_ring_color() -> Color:
-	return SELECT_RING_OVERRIDE.get(get_effective_theme(), COL_GOLD)
+	return COL_GOLD
 const SELECT_SCALE: float = 1.08
 
 func set_selected(sel: bool) -> void:
@@ -897,7 +896,11 @@ func _draw() -> void:
 		draw_circle(crystal_pt, 1.5, Color.WHITE, true, -1.0, true)
 
 	# 6. Selection, Reveal & Hint Overlays (matching HTML .tile.sel / .tile.hint)
-	if is_selected:
+	if is_selected and get_effective_theme() == "theme_imperial_gold":
+		_draw_gold_halo(face_rect, 1.0)
+	elif is_revealed and get_effective_theme() == "theme_imperial_gold":
+		_draw_gold_halo(face_rect, 0.55)
+	elif is_selected:
 		var sel_sb := StyleBoxFlat.new()
 		sel_sb.draw_center = false
 		sel_sb.border_color = selection_ring_color()
@@ -1276,3 +1279,27 @@ func _draw_side_wall(ci: CanvasItem, body: Rect2, theme_id: String) -> void:
 			sb.anti_aliasing = true
 			_side_box_cache[key] = sb
 		ci.draw_style_box(sb, Rect2(body.position + SIDE_STEP * float(i), body.size))
+
+
+## Selection on the gold set. A flat ring there either vanished (gold on gold)
+## or looked cheap (black), so the gold set gets a soft warm glow instead: a
+## thin pale-gold rim and a blurred halo from StyleBoxFlat's own shadow, which
+## is smooth where stacked rings showed steps. `strength` 1.0 for selected,
+## lower for the revealed state so the two stay distinguishable.
+static var _halo_cache: Dictionary = {}
+
+func _draw_gold_halo(face: Rect2, strength: float) -> void:
+	var sb: StyleBoxFlat = _halo_cache.get(strength)
+	if sb == null:
+		sb = StyleBoxFlat.new()
+		sb.draw_center = false
+		sb.border_color = Color("#fff2b8", 0.9 * strength)
+		sb.set_border_width_all(2 if strength >= 1.0 else 1)
+		sb.set_corner_radius_all(8)
+		sb.anti_aliasing = true
+		sb.shadow_color = Color(1.0, 0.86, 0.50, 0.40 * strength)
+		sb.shadow_size = int(round(7.0 * strength))
+		_halo_cache[strength] = sb
+	draw_style_box(sb, face)
+	if strength >= 1.0:
+		draw_rect(face, Color(1, 1, 1, 0.06), true)
