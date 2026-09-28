@@ -1,6 +1,11 @@
 extends Node
 
-## The ASCII layouts must deal exactly the boards the hardcoded builders did.
+## The ASCII layouts must deal exactly the boards the hardcoded builders did,
+## except where the ASCII was deliberately narrowed afterwards: every layout is
+## capped at ten columns so tiles are big enough to tap on a phone, and the
+## legacy builders still produce the old, wider shapes.
+
+const NARROWED: Array[String] = ["turtle", "citadel", "keep"]
 
 const BoardGenerator = preload("res://scripts/core/board_generator.gd")
 const LayoutData = preload("res://scripts/core/layout_data.gd")
@@ -8,6 +13,9 @@ const LayoutData = preload("res://scripts/core/layout_data.gd")
 func _ready() -> void:
 	var fails := 0
 	for name in BoardGenerator.LADDER:
+		if name in NARROWED:
+			print("  SKIP  %-12s narrowed to 10 columns on purpose" % name)
+			continue
 		if not LayoutData.LAYOUTS.has(name):
 			print("  FAIL  %s has no ASCII layout" % name)
 			fails += 1

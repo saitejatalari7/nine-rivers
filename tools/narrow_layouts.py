@@ -35,7 +35,7 @@ block_re = re.compile(r'"""(?P<block>.*?)"""', re.S)
 report, dropped_total, layouts = [], 0, 0
 
 
-CAP = 12
+CAP = int(next((a.split("=")[1] for a in sys.argv if a.startswith("--cap=")), "12"))
 
 
 def trim_block(block, width, left, right):
