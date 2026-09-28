@@ -199,7 +199,11 @@ func _play_random_ambient_phrase() -> void:
 	var base_time: float = 0.0
 	for i in range(motif.size()):
 		var freq: float = float(motif[i])
-		var duration: float = 2.2 + randf() * 0.6
+		# One length per pitch, so the synthesised note is cached and reused.
+		# A random length made every note a cache miss: ~110k samples built in
+		# script per note, several per phrase, for as long as the game ran -
+		# which is what made the phone hot.
+		var duration: float = 2.5
 		var vol: float = 0.18 + randf() * 0.08
 		get_tree().create_timer(base_time).timeout.connect(func():
 			if SettingsManager.music_enabled and ambient_player.playing:
@@ -905,8 +909,9 @@ func _play_guzheng_string(freq: float, duration: float, volume: float,
 		wav = _guzheng_cache[key]
 	else:
 		wav = _synthesize_guzheng_wav(freq, duration)
-		# Keep cache bounded to 64 notes
-		if _guzheng_cache.size() > 64:
+		# Bounded, but large enough for every pitch and length the game uses;
+		# clearing it at 64 threw away the whole set and rebuilt it.
+		if _guzheng_cache.size() > 200:
 			_guzheng_cache.clear()
 		_guzheng_cache[key] = wav
 
@@ -985,6 +990,8 @@ const ITD_SECONDS: float = 0.00045
 const SHADOW_MIN: float = 0.18
 
 var drift_players: Array[AudioStreamPlayer] = []
+const DRIFT_VARIANTS: int = 3
+var _drift_pool: Dictionary = {}
 var _drift_timer: float = 0.0
 var _drift_rng := RandomNumberGenerator.new()
 
@@ -1019,15 +1026,28 @@ func _play_drift_event() -> void:
 	# recorded soundscape carries air and water now, so only drops and notes.
 	var kind: int = 0 if _drift_rng.randf() < 0.5 else 2
 	var ltr: bool = _drift_rng.randf() < 0.5
-	var mono: PackedFloat32Array
-	match kind:
-		0:
-			mono = _mono_drop()
-		1:
-			mono = _mono_air()
-		_:
-			mono = _mono_note()
-	free_player.stream = _binaural_render(mono, ltr)
+	# A few variants of each are rendered once and then reused with a pitch
+	# nudge. Rendering a fresh binaural event every 7-16 s kept the CPU busy
+	# for the whole session.
+	var key: String = "%d_%s" % [kind, ltr]
+	var pool: Array = _drift_pool.get(key, [])
+	var stream: AudioStreamWAV
+	if pool.size() < DRIFT_VARIANTS:
+		var mono: PackedFloat32Array
+		match kind:
+			0:
+				mono = _mono_drop()
+			1:
+				mono = _mono_air()
+			_:
+				mono = _mono_note()
+		stream = _binaural_render(mono, ltr)
+		pool.append(stream)
+		_drift_pool[key] = pool
+	else:
+		stream = pool[_drift_rng.randi() % pool.size()]
+	free_player.stream = stream
+	free_player.pitch_scale = _drift_rng.randf_range(0.94, 1.06)
 	free_player.play()
 
 ## Places a mono signal on a head. Three cues, in order of how much they matter

@@ -95,6 +95,17 @@ const BOOT_MAX_SECONDS: float = 4.0
 var _booting: bool = false
 var _boot_bar: ColorRect = null
 
+## The screen refreshes at up to 120 Hz on current phones, and with no cap the
+## game redrew the whole animated pond that often even on a still menu. 60 is
+## plenty for play; menus are slow water and read the same at 30.
+const FPS_PLAY: int = 60
+const FPS_MENU: int = 30
+
+func _process(_delta: float) -> void:
+	var want: int = FPS_MENU if (modal.visible and not board.visible) else FPS_PLAY
+	if Engine.max_fps != want:
+		Engine.max_fps = want
+
 func _show_intro_splash() -> void:
 	splash_screen.visible = true
 	$SplashScreen/SplashTexture.modulate.a = 1.0

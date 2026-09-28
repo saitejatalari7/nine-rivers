@@ -8,8 +8,8 @@ const LayoutData = preload("res://scripts/core/layout_data.gd")
 
 const TW: float = 64.0
 const TH: float = 84.0
-const LAYER_OFF_X: float = 8.0
-const LAYER_OFF_Y: float = 10.0
+const LAYER_OFF_X: float = 11.0
+const LAYER_OFF_Y: float = 14.0
 const DESIGN_W: float = 1080.0
 const DESIGN_H: float = 1920.0
 const PX_PER_DP: float = 3.0

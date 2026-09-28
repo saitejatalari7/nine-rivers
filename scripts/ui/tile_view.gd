@@ -16,6 +16,12 @@ const TileLighting = preload("res://scripts/ui/tile_lighting.gd")
 const TILE_W: float = 64.0
 const TILE_H: float = 84.0
 const DEPTH_3D: float = 4.0 # Physical 3D bottom extrusion matching HTML (4px)
+## The tile's front wall, drawn straight down from the body - the face a
+## viewer below the stack sees. Straight down, not down-left: a left lean would
+## poke over the left neighbour in the same row. The body art is face-on
+## with only a thin lip, so without this every tile read as a flat card.
+const SIDE_DEPTH: int = 6
+const SIDE_STEP := Vector2(0.0, 1.0)
 
 # Luxury Ceramic & Imperial Enamel Palette (exact match to nine-rivers.html)
 const COL_IVORY := Color("#fdf8ec")         # Milk-ivory ceramic face (--cream)
@@ -521,6 +527,7 @@ func setup(data: RiverTile, free_status: bool) -> void:
 	tile_data = data
 	is_free = free_status
 	is_dissolving = false
+	set_process(data != null and data.is_open)
 	_update_blocked_fade()
 	_redraw_all()
 
@@ -679,12 +686,17 @@ func play_clear_animation() -> void:
 	tween.chain().tween_callback(queue_free)
 
 func play_strand_ripple() -> void:
+	set_process(true) # the tile has just turned wild and starts pulsing
 	var tween := create_tween()
 	tween.tween_property(self, "scale", Vector2(1.18, 1.18), 0.14).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tween.tween_property(self, "scale", Vector2(1.0, 1.0), 0.16).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
 
+## Only runs while there is something to animate or time: a pulsing wild, or a
+## press that might become a long-press. A full board is ~144 tiles, and every
+## one of them ticking every frame while idle is wasted work on a phone.
 func _process(delta: float) -> void:
-	if tile_data and tile_data.is_open:
+	var pulsing: bool = tile_data != null and tile_data.is_open
+	if pulsing:
 		anim_wild_pulse += delta * 4.8
 		_redraw_all()
 
@@ -692,6 +704,9 @@ func _process(delta: float) -> void:
 		if (Time.get_ticks_msec() / 1000.0) - press_start_time >= long_press_threshold:
 			long_press_fired = true
 			tile_long_pressed.emit(self)
+
+	if not pulsing and not (is_pressing and not long_press_fired):
+		set_process(false)
 
 func _gui_input(event: InputEvent) -> void:
 	if is_dissolving:
@@ -701,6 +716,7 @@ func _gui_input(event: InputEvent) -> void:
 		if mb.button_index == MOUSE_BUTTON_LEFT:
 			if mb.pressed:
 				is_pressing = true
+				set_process(true)
 				long_press_fired = false
 				press_start_time = Time.get_ticks_msec() / 1000.0
 				press_start_pos = mb.position
@@ -776,6 +792,9 @@ func _draw_body(ci: CanvasItem) -> void:
 	var face_rect := Rect2(offset_x, offset_y, TILE_W, TILE_H - DEPTH_3D)
 	var cur_th: String = get_effective_theme()
 	var body_tex: Texture2D = get_body_texture(cur_th) if USE_RENDERED_BODY else null
+
+	if not is_dissolving:
+		_draw_side_wall(ci, Rect2(offset_x, offset_y, TILE_W, TILE_H), cur_th)
 
 	if body_tex != null:
 		# The rendered sprite is a COMPLETE tile body seen face-on, so it
@@ -1235,3 +1254,25 @@ func draw_canonical_bamboos(face_r: Rect2, n: int) -> void:
 
 		var cy: float = face_r.position.y + p[1] * scale_y
 		draw_line(Vector2(x + 1.2, cy), Vector2(x + w - 1.2, cy), cream_line_col, 2.4 * scale_x, true)
+
+
+static var _side_box_cache: Dictionary = {}
+
+## A stack of rounded slabs stepping away from the body, darkest at the back,
+## so the side reads as a solid wall rather than a drop shadow.
+func _draw_side_wall(ci: CanvasItem, body: Rect2, theme_id: String) -> void:
+	var base: Color = get_theme_back_edge(theme_id)
+	if not (is_free or is_revealed):
+		base = base.darkened(0.25)
+	for i in range(SIDE_DEPTH, 0, -1):
+		var shade: float = 0.45 * float(i) / float(SIDE_DEPTH)
+		var col: Color = base.darkened(shade)
+		var key: String = col.to_html()
+		var sb: StyleBoxFlat = _side_box_cache.get(key)
+		if sb == null:
+			sb = StyleBoxFlat.new()
+			sb.bg_color = col
+			sb.set_corner_radius_all(8)
+			sb.anti_aliasing = true
+			_side_box_cache[key] = sb
+		ci.draw_style_box(sb, Rect2(body.position + SIDE_STEP * float(i), body.size))

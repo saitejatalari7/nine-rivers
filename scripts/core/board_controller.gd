@@ -27,8 +27,10 @@ const WILD_TILE_PEARLS: int = 2
 
 const TW: float = 64.0
 const TH: float = 84.0
-const LAYER_OFF_X: float = 8.0
-const LAYER_OFF_Y: float = 10.0
+## How far each layer steps up and to the right. Raised from 8 x 10 so a stack
+## reads as a stack at phone size rather than as a slightly misprinted tile.
+const LAYER_OFF_X: float = 11.0
+const LAYER_OFF_Y: float = 14.0
 
 var live_tiles: Array[RiverTile] = []
 var tile_views: Dictionary = {} # RiverTile -> TileView
