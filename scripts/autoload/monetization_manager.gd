@@ -128,6 +128,8 @@ const PRODUCTS: Dictionary = {
 const FREE_BACKGROUND_THEMES: Array[String] = ["emerald_pond", "moonlit_river", "autumn_stream"]
 
 const MAX_DAILY_REWARDED_ADS: int = 4
+## The only rewarded placement the UI offers: a video chosen in the Shop.
+const SHOP_VIDEO_PEARLS: int = 20
 
 # The Zen Ad Model Frequency Capping Rules:
 # 1. Zero ads during onboarding (Levels 1 to 3)
@@ -900,6 +902,11 @@ func _consume_rewarded_charge() -> void:
 
 func _grant_reward(placement: String, on_reward: Callable = Callable()) -> void:
 	match placement:
+		"shop_pearls":
+			add_pearls(SHOP_VIDEO_PEARLS)
+			rewarded_ad_rewarded.emit(placement, "pearls", SHOP_VIDEO_PEARLS)
+			if on_reward.is_valid():
+				on_reward.call("pearls", SHOP_VIDEO_PEARLS)
 		"props_refill":
 			GameManager.hints += 1
 			GameManager.shuffles += 1

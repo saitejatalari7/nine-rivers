@@ -186,6 +186,7 @@ const LIGHT_SCREENS: Array[String] = ["main"]
 func _set_current_screen(value: String) -> void:
 	_current_screen = value
 	_sync_background_load()
+	_sync_reward_bubble()
 	# Screens build synchronously after this, so a one-frame wait measures them.
 	_fit_scroll()
 
@@ -288,6 +289,7 @@ func _kill_transitions() -> void:
 func show_modal() -> void:
 	_kill_transitions()
 	visible = true
+	_sync_reward_bubble()
 	_sync_background_load()
 	_fit_scroll()
 	card_panel.scale = Vector2(0.92, 0.92)
@@ -298,6 +300,8 @@ func show_modal() -> void:
 
 func hide_modal() -> void:
 	_kill_transitions()
+	if _reward_bubble != null:
+		_reward_bubble.visible = false
 	_hide_tween = create_tween()
 	_hide_tween.tween_property(card_panel, "modulate:a", 0.0, 0.12)
 	_hide_tween.tween_callback(func():
@@ -691,6 +695,30 @@ func show_game_over(reason: String) -> void:
 ## Four rows, one currency. It was five rows across two currencies, which is
 ## why nobody could tell the Treasury from the Blessings - the split was by what
 ## each screen took, not by what the player wanted.
+## The rewarded-video offer lives on the Shop screen and nowhere else.
+const RewardBubble = preload("res://scripts/ui/reward_bubble.gd")
+var _reward_bubble: Control = null
+
+func _sync_reward_bubble() -> void:
+	var want: bool = visible and _current_screen == "bazaar" 		and MonetizationManager.can_offer_rewarded_ad()
+	if want and _reward_bubble == null:
+		_reward_bubble = RewardBubble.new()
+		add_child(_reward_bubble)
+		var insets: Vector2 = UITheme.get_safe_insets(get_viewport())
+		_reward_bubble.position = Vector2(
+			get_viewport().get_visible_rect().size.x - _reward_bubble.size.x - 36.0,
+			get_viewport().get_visible_rect().size.y - _reward_bubble.size.y - 120.0 - insets.y)
+		_reward_bubble.watch_pressed.connect(_on_watch_reward)
+	if _reward_bubble != null:
+		_reward_bubble.visible = want
+
+func _on_watch_reward() -> void:
+	MonetizationManager.show_rewarded_ad("shop_pearls", func(_kind, _amount):
+		AudioManager.play_win()
+		if _current_screen == "bazaar":
+			show_bazaar_modal())
+	_sync_reward_bubble()
+
 func show_bazaar_modal() -> void:
 	_current_screen = "bazaar"
 	_clear_content()
