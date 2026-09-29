@@ -21,34 +21,47 @@ func _ready() -> void:
 	zoom = Vector2(default_zoom, default_zoom)
 
 func frame_board(bounds: Rect2, viewport_size: Vector2) -> void:
+	# The tile walls hang below the board's own bounds; frame what is drawn.
+	bounds.size.y += TileView.SIDE_DEPTH
 	board_bounds = bounds
 	if bounds.size.x <= 0 or bounds.size.y <= 0:
 		return
-		
+
 	# Derived from the HUD, not guessed: TopBar now ends at 208 and PropsBar
 	# starts 219 from the bottom, and both move again by the safe-area insets.
 	# The old fixed 190/230 predate that and put the board under both bars.
+	#
+	# Measured again after the HUD went to 75%: the props bar now starts 165
+	# from the bottom, not 195. The fit also used to take 35px a side, 40px
+	# more vertically and then a further 5% off the result - about a tenth of
+	# the tile size given away to empty screen. Tile size is the priority, so
+	# the board now fills to a 16px gutter (the menus' own) with a small
+	# buffer for the tile walls, which hang below the bounds.
 	const TOP_BAR_END: float = 208.0
-	const PROPS_BAR_H: float = 195.0
+	const PROPS_BAR_H: float = 165.0
+	const SIDE_GUTTER: float = 16.0
+	const WALL_BUFFER: float = 8.0
 	var insets: Vector2 = UITheme.get_safe_insets(get_viewport())
 	var top_hud_h: float = insets.x + TOP_BAR_END
 	var bot_props_h: float = insets.y + PROPS_BAR_H
-	var padding := Vector2(70.0, top_hud_h + bot_props_h + 40.0)
+	var padding := Vector2(SIDE_GUTTER * 2.0, top_hud_h + bot_props_h + WALL_BUFFER)
 	var avail := viewport_size - padding
 	var fit_x: float = avail.x / bounds.size.x
 	var fit_y: float = avail.y / bounds.size.y
-	# Fit board comfortably within the viewport while filling the screen
-	var fit_scale: float = clampf(minf(fit_x, fit_y) * 0.95, 0.70, 3.5)
-	
+	var fit_scale: float = clampf(minf(fit_x, fit_y), 0.70, 3.5)
+
 	default_zoom = fit_scale
 	min_zoom = fit_scale * 0.75
 	max_zoom = fit_scale * 2.8
-	
+
 	# Center the board in the actual playable area between the Top HUD and Bottom Props deck
 	var center := bounds.position + bounds.size * 0.5
+	# The free band is centred (top - bottom) / 2 below the screen centre, so the
+	# camera looks that far ABOVE the board centre. This was +=, which moved the
+	# board up under the top bar; the old wide margins hid it.
 	var vertical_ui_bias: float = (top_hud_h - bot_props_h) * 0.5 / fit_scale
-	center.y += vertical_ui_bias
-	
+	center.y -= vertical_ui_bias
+
 	var tween := create_tween().set_parallel(true)
 	tween.tween_property(self, "position", center, 0.35).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	tween.tween_property(self, "zoom", Vector2(fit_scale, fit_scale), 0.35).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
