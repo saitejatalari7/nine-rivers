@@ -16,7 +16,7 @@ func _ready() -> void:
 	await get_tree().process_frame
 	main.get_node("SplashScreen").visible = false
 	SaveManager.prog["tutorial_completed"] = true
-	SaveManager.economy["unlocked_themes"] = ["classic_jade", "theme_obsidian_ink", "theme_indigo"]
+	SaveManager.economy["unlocked_themes"] = ["classic_jade", "theme_obsidian_ink", "theme_indigo", "theme_imperial_gold"]
 	await get_tree().create_timer(1.2).timeout
 	main.get_node("Modal").hide_modal()
 	var board = main.get_node("Board")
@@ -27,7 +27,7 @@ func _ready() -> void:
 			plain = lv
 			break
 
-	for theme in ["theme_obsidian_ink", "theme_indigo", "classic_jade"]:
+	for theme in ["theme_obsidian_ink", "theme_indigo", "theme_imperial_gold", "classic_jade"]:
 		MonetizationManager.equip_theme(theme)
 		main._start_calm_mode(plain)
 		await get_tree().create_timer(1.2).timeout

@@ -43,7 +43,7 @@ const FLOOR: float = 3.0
 ## reads the blocked tiles to plan what to free - so they get their own floor
 ## rather than none. Obsidian sits at 2.28 here; this stops it going further.
 const DARK_BLOCKED_FLOOR: float = 2.0
-const DARK_THEMES: Array[String] = ["theme_obsidian_ink", "theme_indigo"]
+const DARK_THEMES: Array[String] = ["theme_obsidian_ink", "theme_indigo", "theme_imperial_gold"]
 const COMFORTABLE: float = 4.5
 ## Writes each probed tile to disk so the numbers can be checked against eyes.
 const DUMP_TILES: bool = false

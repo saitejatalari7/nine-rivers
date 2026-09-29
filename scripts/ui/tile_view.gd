@@ -75,7 +75,11 @@ static var debug_skip_artwork: bool = false
 ## face down toward the ink and costs the contrast that made the ink readable.
 ## Imperial Gold went to 2.63 against a 3.0 floor at the shared 0.86.
 const BLOCKED_TINT: Dictionary = {
-	"theme_imperial_gold": Color(0.90, 0.89, 0.85, 1.0),
+	# Dulled, with grey symbols (GREY_BLOCKED_ART). At 0.90 a blocked gold tile
+	# looked just like a free one and testers tried to tap whole runs of them;
+	# at 0.64 the symbols fell to 1.5:1 and neighbours merged. 0.80 keeps the
+	# symbols at the dark-set floor (2.0) and the seams at 2.5.
+	"theme_imperial_gold": Color(0.80, 0.78, 0.72, 1.0),
 	"theme_indigo": Color(0.72, 0.74, 0.80, 1.0),
 }
 const BLOCKED_TINT_DEFAULT := Color(0.86, 0.86, 0.84, 1.0)
@@ -112,8 +116,12 @@ static func _grey_material() -> ShaderMaterial:
 		_grey_mat.shader = BlockedGreyShader
 	return _grey_mat
 
+## Sets whose blocked tiles grey their symbols: the dark sets (where the body
+## cannot get darker) and gold (where dimming the body alone was not enough).
+const GREY_BLOCKED_ART: Array[String] = ["theme_obsidian_ink", "theme_indigo", "theme_imperial_gold"]
+
 func _update_blocked_fade() -> void:
-	var grey: bool = EDGE_LIGHT.has(get_effective_theme()) and not (is_free or is_revealed or is_dissolving)
+	var grey: bool = GREY_BLOCKED_ART.has(get_effective_theme()) and not (is_free or is_revealed or is_dissolving)
 	if _unlit_mat == null:
 		_unlit_mat = material
 	# The artwork only. Greying the body as well greyed its light edge, and two
