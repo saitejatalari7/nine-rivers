@@ -415,6 +415,7 @@ func _start_run_mode() -> void:
 		zen_background.set_level(1)
 
 	StageModifiers.set_modifier_for_stage(1, 1)
+	GameManager.apply_stage_time(BoardGenerator.get_layout_positions(layout_name).size(), false)
 
 	board.load_stage(layout_name)
 	camera.frame_board(board.board_bounds, get_viewport_rect().size)
@@ -514,6 +515,8 @@ func _next_stage() -> void:
 		StageModifiers.set_modifier_for_stage(mod_mode, GameManager.current_stage_no)
 		if StageModifiers.active_modifier != StageModifiers.Modifier.NONE:
 			hud.show_toast("%s: %s" % [StageModifiers.get_modifier_name(), StageModifiers.get_modifier_desc()])
+		if GameManager.current_mode == GameManager.GameMode.RUN:
+			GameManager.apply_stage_time(BoardGenerator.get_layout_positions(layout_name).size(), true)
 
 		board.load_stage(layout_name)
 		camera.frame_board(board.board_bounds, get_viewport_rect().size)

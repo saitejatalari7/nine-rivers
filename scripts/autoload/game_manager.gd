@@ -74,7 +74,7 @@ func start_calm(level: int) -> void:
 	hints = 3
 	shuffles = 3
 	is_timer_active = false
-	
+
 	props_updated.emit(undos, hints, shuffles)
 	score_updated.emit(score, 0)
 	flow_updated.emit(0, "", false)
@@ -99,12 +99,45 @@ func start_timed_run() -> void:
 	time_gain_rate = 1.5
 	penalty_seconds = 3.0
 	is_timer_active = true
-	
+
 	props_updated.emit(undos, hints, shuffles)
 	score_updated.emit(score, 0)
 	flow_updated.emit(0, "", false)
 	time_updated.emit(time_left, max_time)
 	on_stage_started()
+
+## Timed mode used to start at 100 s and carry only the leftovers into
+## stages two and three, which are bigger and add Fog and Rush - by stage
+## three almost nobody could finish. Every stage now gets its own clock from
+## its size: about four seconds a pair, a little more per pair as the board
+## grows (finding a match gets harder), twenty seconds to take the board in,
+## and extra for the modifiers. Fog hides blocked faces (+15%); Rush drains
+## 1.5x, so it gets +35% - still a squeeze, no longer a wall.
+const STAGE_BASE_SECONDS: float = 20.0
+const SECONDS_PER_PAIR: float = 4.0
+const FOG_TIME_MULT: float = 1.15
+const RUSH_TIME_MULT: float = 1.35
+## Time left over carries into the next stage as a bonus, capped at half that
+## stage's own allotment, so a quick player is rewarded without banking an
+## unlimited cushion.
+const CARRY_CAP: float = 0.5
+
+static func stage_time_for(tiles: int, fog: bool, rush: bool) -> float:
+	var pairs: float = float(tiles) * 0.5
+	var t: float = STAGE_BASE_SECONDS + pairs * SECONDS_PER_PAIR * (1.0 + float(tiles) / 400.0)
+	if fog:
+		t *= FOG_TIME_MULT
+	if rush:
+		t *= RUSH_TIME_MULT
+	return roundf(t)
+
+func apply_stage_time(tiles: int, carry_over: bool) -> void:
+	var allot: float = stage_time_for(tiles, StageModifiers.is_fog_active(), StageModifiers.is_rush_active())
+	var carry: float = minf(maxf(0.0, time_left), allot * CARRY_CAP) if carry_over else 0.0
+	time_left = allot + carry
+	max_time = time_left
+	time_updated.emit(time_left, max_time)
+
 
 ## The daily was a fixed 40-tile board when 120s was chosen; it now deals
 ## 100-144, which quietly cut the time per match by more than half. Called once
@@ -120,7 +153,7 @@ func start_daily_tide() -> void:
 	# Seed based on current UTC year/month/day
 	var dt := Time.get_date_dict_from_system(true)
 	daily_seed = dt["year"] * 10000 + dt["month"] * 100 + dt["day"]
-	
+
 	current_level = 1
 	current_stage_no = 1
 	score = 0
@@ -135,7 +168,7 @@ func start_daily_tide() -> void:
 	time_left = 120.0
 	max_time = time_left
 	is_timer_active = true
-	
+
 	props_updated.emit(undos, hints, shuffles)
 	score_updated.emit(score, 0)
 	flow_updated.emit(0, "", false)
@@ -181,7 +214,7 @@ func restore_state(snap: Dictionary) -> void:
 	time_left = snap.get("time_left", time_left)
 	misplays = snap.get("misplays", misplays)
 	is_first_match_of_stage = snap.get("is_first_match_of_stage", is_first_match_of_stage)
-	
+
 	var is_overdrive: bool = is_overdrive_active()
 	flow_updated.emit(flow_level, flow_suit, is_overdrive)
 	score_updated.emit(score, 0)
@@ -202,7 +235,7 @@ func register_match(suit: String, is_triple: bool,
 			can_chain = true
 		elif suit == flow_suit:
 			can_chain = true
-		
+
 		if can_chain:
 			flow_level = mini(9, flow_level + 1)
 			if not is_wild_suit and flow_suit.is_empty():
@@ -210,11 +243,11 @@ func register_match(suit: String, is_triple: bool,
 		else:
 			flow_level = 1
 			flow_suit = "" if is_wild_suit else suit
-	
+
 	best_flow = maxi(best_flow, flow_level)
 	var is_overdrive: bool = is_overdrive_active()
 	flow_updated.emit(flow_level, flow_suit, is_overdrive)
-	
+
 	# 2. Score calculation
 	var base: int = 250 if is_triple else 100
 	var flow_mult: int = mini(6, maxi(1, flow_level))
@@ -227,14 +260,14 @@ func register_match(suit: String, is_triple: bool,
 		pts += 500
 	score += pts
 	score_updated.emit(score, pts)
-	
+
 	# 3. Time return. Gated on the clock actually running: a match must not add
 	# time to a countdown that is not counting down.
 	if is_timer_active:
 		var bonus: float = time_gain_rate * (1.6 if is_triple else 1.0)
 		time_left = minf(max_time, time_left + bonus)
 		time_updated.emit(time_left, max_time)
-	
+
 	AudioManager.play_tile_match(flow_level, is_triple, is_glass, at, z)
 	if flow_level >= 5:
 		AudioManager.play_combo_high()
@@ -247,10 +280,10 @@ func register_misplay() -> void:
 		flow_suit = ""
 	var is_overdrive: bool = is_overdrive_active()
 	flow_updated.emit(flow_level, flow_suit, is_overdrive)
-	
+
 	if current_mode != GameMode.CALM:
 		time_left = maxf(0.0, time_left - penalty_seconds)
 		time_updated.emit(time_left, max_time)
-	
+
 	AudioManager.play_misplay()
 
