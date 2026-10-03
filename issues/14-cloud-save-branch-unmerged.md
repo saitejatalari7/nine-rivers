@@ -1,6 +1,6 @@
 # 14 — feat/cloud-save-pgs is unmerged
 
-**Status:** PENDING — not scheduled
+**Status:** PENDING — code merged; needs the Play Games Services project ID
 **Raised:** 2026-09-21
 **Last reviewed:** 2026-09-23
 **Resolved:** —
@@ -24,3 +24,11 @@ independently fixed on main in `49070b6`, so that part will conflict.
 
 Also note that PGS is Android-only and would need replacing for iOS — see
 `audit/ios_testing_report.html`.
+
+## Update — 2026-10-03
+
+The cloud-save code from feat/cloud-save-pgs is merged into main
+(CloudSaveManager autoload, Play Games plugin, opt-in toggle in Settings).
+It cannot work until Play Games Services is set up in Play Console and the
+real game ID replaces the placeholder "000000000000" in export_presets.cfg.
+Then: show the sign-in prompt once, after onboarding.

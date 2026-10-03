@@ -1,9 +1,9 @@
 # 04 — Ads never show at all
 
-**Status:** PENDING — not scheduled
+**Status:** RESOLVED — 2026-10-03
 **Raised:** 2026-09-21
 **Last reviewed:** 2026-09-23
-**Resolved:** —
+**Resolved:** 2026-10-03
 
 **Blocks release: no** — revenue is zero either way. But zero is the current state.
 
@@ -81,3 +81,14 @@ Everything in the original report. No ad SDK ships, the bundled plugin exposes a
 different API from the one the code calls, and there are no ad unit IDs, no
 `initialize()` call, and no AdMob App ID in the manifest. That work needs an
 AdMob account and a device.
+
+## Resolution — 2026-10-03
+
+Poing godot-admob v5.1.0 (MIT) installed with its matching Android binaries
+and wired through scripts/ads/admob_ads.gd: UMP consent first, SDK init,
+then one interstitial and one rewarded ad preloaded. Two device crashes were
+fixed on the way (ads loaded before init finished; loaders freed while still
+connected). The first live interstitial was seen on device at stage 12.
+Rewarded videos are offered only from the Shop bubble (+20 pearls, 4 a day).
+The EEA/UK consent message is published in AdMob. Play declarations (Ads,
+Advertising ID, Data safety) are answered as "contains ads".

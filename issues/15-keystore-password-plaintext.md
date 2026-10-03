@@ -1,9 +1,9 @@
 # 15 — Keystore password stored in plaintext
 
-**Status:** PENDING — needs the owner, tooling is ready
+**Status:** RESOLVED — 2026-10-03
 **Raised:** 2026-09-21
 **Last reviewed:** 2026-09-25
-**Resolved:** —
+**Resolved:** 2026-10-03
 
 **Blocks release: no. Hygiene — but the expensive kind.**
 
@@ -54,3 +54,10 @@ the shipping binary:
   not version controlled — a fresh clone will not have them.
 
 Files: `export_presets.cfg` (gitignored), `tools/build_android.sh`
+
+## Resolution — 2026-10-03
+
+The owner moved the password to %USERPROFILE%\.nineriversndroid_release.env
+and backed up the keystore. Both password fields in export_presets.cfg are
+empty; tools/build_android.sh signs from the env file, and every build since
+(4-10) is signed with the release key.
