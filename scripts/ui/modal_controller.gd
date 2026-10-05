@@ -828,6 +828,31 @@ func show_theme_unlocked(theme_key: String) -> void:
 	show_modal()
 
 
+## Offered once, right after the tutorial: progress lives on the phone unless
+## the player chooses to back it up to their Google Play Games account.
+var _cloud_offer_done: Callable = Callable()
+
+func show_cloud_offer(on_done: Callable) -> void:
+	_cloud_offer_done = on_done
+	_current_screen = "cloud_offer"
+	_clear_content()
+	_add_header("Keep your progress safe", "Optional")
+	_add_hairline()
+	_add_description("Back up your stages, stars and pearls to your Google Play Games account, so they come back on a new phone or after a reinstall. You can change this any time in Settings.")
+	_add_separator()
+	_add_tile_row(GLYPH_JADE, "Turn on Cloud Save", "Signs in with Google Play Games", "", func():
+		CloudSaveManager.set_cloud_enabled(true)
+		hide_modal()
+		on_done.call()
+	, true)
+	_add_toggle_row("Not now", "›", func():
+		CloudSaveManager.mark_prompted()
+		hide_modal()
+		on_done.call()
+	, UITheme.IVORY_MUTED)
+	show_modal()
+
+
 ## Shown once, after the stage that wore a premium set. Skip carries on to the
 ## clear screen; Shop drops it and opens the set's page.
 func show_premium_offer(theme_key: String) -> void:
@@ -1097,8 +1122,12 @@ func show_settings_menu() -> void:
 			show_settings_menu()
 	, on_col if SettingsManager.high_contrast_borders else off_col)
 
-	# NOTE: the Cloud Save toggle lives on feat/cloud-save-pgs, where the
-	# CloudSaveManager autoload exists. Referencing it here would not parse.
+	if CloudSaveManager.is_available():
+		var cloud_on: bool = CloudSaveManager.is_cloud_enabled()
+		_add_toggle_row("Cloud Save (Google Play)", "On" if cloud_on else "Off", func():
+			CloudSaveManager.set_cloud_enabled(not CloudSaveManager.is_cloud_enabled())
+			show_settings_menu()
+		, on_col if cloud_on else off_col)
 
 	_add_separator()
 	_add_toggle_row("Replay Tutorial", "›", func():
@@ -1172,6 +1201,11 @@ func handle_back_pressed() -> void:
 			show_bazaar_modal()
 		"tile_detail":
 			show_tile_catalog_modal()
+		"cloud_offer":
+			CloudSaveManager.mark_prompted()
+			hide_modal()
+			if _cloud_offer_done.is_valid():
+				_cloud_offer_done.call()
 		"premium_offer":
 			hide_modal()
 			next_stage_requested.emit()

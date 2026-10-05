@@ -255,6 +255,11 @@ func mark_prompted() -> void:
 	SaveManager.settings["cloud_save_prompted"] = true
 	SaveManager.request_save()
 
+## Public form of _is_supported, for the UI: offers of cloud save only make
+## sense where Play Games exists.
+func is_available() -> bool:
+	return _is_supported()
+
 ## Lets the Settings screen and the decline prompt offer a manual retry.
 func sign_in_manually() -> void:
 	if not _is_supported():

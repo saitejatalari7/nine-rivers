@@ -733,6 +733,12 @@ func _start_onboarding() -> void:
 
 func _on_onboarding_finished() -> void:
 	_onboarding_active = false
+	if CloudSaveManager.is_available() and not CloudSaveManager.has_been_prompted():
+		modal.show_cloud_offer(_after_onboarding)
+		return
+	_after_onboarding()
+
+func _after_onboarding() -> void:
 	hud.visible = true
 	# The stage the player is actually up to, dealt fresh. For a first-timer
 	# that is stage 1; for someone replaying the lesson from Settings at stage
