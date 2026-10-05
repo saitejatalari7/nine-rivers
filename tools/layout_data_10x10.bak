@@ -1,0 +1,2683 @@
+class_name LayoutData
+extends RefCounted
+
+## Board shapes as ASCII art, one string per stacked layer.
+##
+## '.' is empty, anything else is a tile. Row r, column c maps to the board's
+## half-unit grid as x = c * 2, y = r * 2. "extras" places tiles on half-unit
+## offsets that a character grid cannot express (the turtle's flanking tiles).
+##
+## Tile size on screen is bound by COLUMN COUNT, not tile count - see
+## scripts/tests/board_metrics.gd. Roughly: 6 columns gives 51dp, 8 gives 39dp,
+## 15 gives 21dp. Portrait layouts should stay at or under 9 columns and buy
+## their capacity with rows and layers instead.
+
+const LAYOUTS: Dictionary = {
+	"pagoda": {
+		"display": "River Pagoda",
+		"layers": [
+			"""
+XXXXXXXXX
+XXXXXXXXX
+XXXXXXXXX
+XXXXXXXXX
+XXXXXXXXX
+XXXXXXXXX
+XXXXXXXXX
+XXXXXXXXX
+""",
+			"""
+.........
+.XXXXXXX.
+.XXXXXXX.
+.XXXXXXX.
+.XXXXXXX.
+.XXXXXXX.
+.XXXXXXX.
+""",
+			"""
+.........
+.........
+..XXXXX..
+..XXXXX..
+..XXXXX..
+..XXXXX..
+""",
+			"""
+.........
+.........
+.........
+...XXX...
+...XXX...
+""",
+			"""
+.........
+.........
+.........
+...XX....
+...XX....
+""",
+		],
+	},
+	"quick": {
+		"display": "Courtyard",
+		"layers": [
+			"""
+XXXXXX
+XXXXXX
+XXXXXX
+XXXXXX
+""",
+			"""
+.....
+.XXXX
+.XXXX
+""",
+			"""
+....
+..XX
+..XX
+""",
+		],
+	},
+	"gate": {
+		"display": "Gate House",
+		"layers": [
+			"""
+XXXXXXXX
+XXXXXXXX
+XXXXXXXX
+XXXXXXXX
+""",
+			"""
+......
+..XXXX
+..XXXX
+""",
+		],
+	},
+	"steps": {
+		"display": "River Steps",
+		"layers": [
+			"""
+XXXXXXXXXX
+XXXXXXXXXX
+XXXXXXXXXX
+XXXXXXXXXX
+""",
+			"""
+.........
+.XXXXXXXX
+.XXXXXXXX
+""",
+			"""
+.......
+...XXXX
+""",
+		],
+	},
+	"garden": {
+		"display": "Garden Walk",
+		"layers": [
+			"""
+XXXXXXXX
+XXXXXXXX
+XXXXXXXX
+XXXXXXXX
+XXXXXXXX
+XXXXXXXX
+""",
+			"""
+.......
+.XXXXXX
+.XXXXXX
+.XXXXXX
+""",
+			"""
+.....
+...XX
+...XX
+...XX
+""",
+		],
+	},
+	"lotus": {
+		"display": "Lotus Pagoda",
+		"layers": [
+			"""
+XXXXXXXX
+XXXXXXXX
+XXXXXXXX
+XXXXXXXX
+XXXXXXXX
+XXXXXXXX
+""",
+			"""
+......
+..XXXX
+..XXXX
+..XXXX
+..XXXX
+""",
+			"""
+.....
+.....
+...XX
+...XX
+""",
+		],
+	},
+	"bridges": {
+		"display": "Twin Bridges",
+		"layers": [
+			"""
+XXX...XXX
+XXX...XXX
+XXXXXXXXX
+XXXXXXXXX
+XXX...XXX
+XXX...XXX
+""",
+			"""
+.........
+XXX...XXX
+XXXXXXXXX
+XXXXXXXXX
+XXX...XXX
+""",
+			"""
+........
+........
+.X.....X
+.X.....X
+""",
+		],
+	},
+	"keep": {
+		"display": "Stone Keep",
+		"layers": [
+			"""
+XXXXXXXXXX
+XXXXXXXXXX
+XXXXXXXXXX
+XXXXXXXXXX
+XXXXXXXXXX
+""",
+			"""
+..........
+.XXXXXXXX.
+.XXXXXXXX.
+.XXXXXXXX.
+""",
+			"""
+..........
+..........
+...XXXX...
+""",
+		],
+	},
+	"waterfall": {
+		"display": "Jade Cascade",
+		"layers": [
+			"""
+XXXXXXXXXX
+XXXXXXXXXX
+XXXXXXXXXX
+XXXXXXXXXX
+XXXXXXXXXX
+""",
+			"""
+..XXXXXX
+..XXXXXX
+..XXXXXX
+..XXXXXX
+""",
+			"""
+...XXXX
+...XXXX
+...XXXX
+""",
+			"""
+....XX
+....XX
+""",
+		],
+	},
+	"dragon_gate": {
+		"display": "Dragon Gate",
+		"layers": [
+			"""
+XXXXXXXXXX
+XXXXXXXXXX
+XXXXXXXXXX
+XXXXXXXXXX
+XXXXXXXXXX
+XXXXXXXXXX
+""",
+			"""
+.........
+.XXXXXXXX
+.XXXXXXXX
+.XXXXXXXX
+.XXXXXXXX
+""",
+			"""
+.......
+.......
+...XXXX
+...XXXX
+""",
+		],
+	},
+	"citadel": {
+		"display": "Citadel",
+		"layers": [
+			"""
+XXXXXXXXXX
+XXXXXXXXXX
+XXXXXXXXXX
+XXXXXXXXXX
+XXXXXXXXXX
+XXXXXXXXXX
+""",
+			"""
+..........
+.XXXXXXXX.
+.XXXXXXXX.
+.XXXXXXXX.
+.XXXXXXXX.
+""",
+			"""
+..........
+..........
+...XXXX...
+...XXXX...
+""",
+			"""
+..........
+..........
+....XX....
+""",
+		],
+	},
+	"turtle": {
+		"display": "Nine Rivers",
+		"layers": [
+			"""
+XXXXXXXXXX
+..XXXXXXXX
+.XXXXXXXXX
+XXXXXXXXXX
+XXXXXXXXXX
+.XXXXXXXXX
+..XXXXXXXX
+XXXXXXXXXX
+""",
+			"""
+..........
+..XXXXXX..
+..XXXXXX..
+..XXXXXX..
+..XXXXXX..
+..XXXXXX..
+..XXXXXX..
+""",
+			"""
+..........
+..........
+...XXXX...
+...XXXX...
+...XXXX...
+...XXXX...
+""",
+			"""
+..........
+..........
+..........
+....XX....
+....X.....
+""",
+			"""
+..........
+""",
+		],
+		"extras": [[9, 7, 4]],
+	},
+	"coin": {
+		"display": "Cash Coin",
+		"layers": [
+			"""
+..XXXXX..
+.XXXXXXX.
+XXX...XXX
+XXX...XXX
+XXX...XXX
+.XXXXXXX.
+..XXXXX..
+""",
+		],
+	},
+	"fan": {
+		"display": "Folding Fan",
+		"layers": [
+			"""
+XXXXXXXXXX
+XXXXXXXXXX
+.XXXXXXXXX
+..XXXXXXX.
+...XXXXX..
+....XXX...
+""",
+		],
+	},
+	"lantern": {
+		"display": "Paper Lantern",
+		"layers": [
+			"""
+...X...
+.XXXXX.
+XXXXXXX
+XXXXXXX
+XXXXXXX
+.XXXXX.
+...X...
+..XXX..
+""",
+			"""
+.......
+.......
+..XXX..
+..XXX..
+""",
+		],
+	},
+	"bamboo": {
+		"display": "Bamboo Stalk",
+		"layers": [
+			"""
+...XXX...
+...XXX...
+XX.XXX.XX
+.XXXXXXX.
+...XXX...
+...XXX...
+XX.XXX.XX
+.XXXXXXX.
+...XXX...
+...XXX...
+""",
+		],
+	},
+	"crescent": {
+		"display": "Crescent Moon",
+		"layers": [
+			"""
+...XXX..
+..XXXX..
+.XXXX...
+XXXX....
+XXXX....
+XXXX....
+.XXXX...
+..XXXX..
+...XXX..
+""",
+		],
+	},
+	"plum": {
+		"display": "Plum Blossom",
+		"layers": [
+			"""
+.XX...XX.
+XXXX.XXXX
+XXXXXXXXX
+XXXX.XXXX
+.XX...XX.
+""",
+			"""
+.........
+.........
+....X....
+""",
+		],
+	},
+	"ingot": {
+		"display": "Gold Ingot",
+		"layers": [
+			"""
+XX......XX
+XXXXXXXXXX
+.XXXXXXXX.
+..XXXXXX..
+""",
+			"""
+..........
+...XXXX...
+...XXXX...
+""",
+		],
+	},
+	"brush": {
+		"display": "Ink Brush",
+		"layers": [
+			"""
+..XX..
+..XX..
+..XX..
+..XX..
+.XXXX.
+XXXXXX
+XXXXXX
+.XXXX.
+..XX..
+..XX..
+""",
+		],
+	},
+	"cup": {
+		"display": "Tea Bowl",
+		"layers": [
+			"""
+XXXXXXXXX
+XXXXXXXXX
+.XXXXXXX.
+..XXXXX..
+...XXX...
+..XXXXX..
+""",
+		],
+	},
+	"kite": {
+		"display": "Paper Kite",
+		"layers": [
+			"""
+....X....
+...XXX...
+..XXXXX..
+.XXXXXXX.
+..XXXXX..
+...XXX...
+....X....
+...XX....
+....XX...
+...X.....
+""",
+		],
+	},
+	"bell": {
+		"display": "Temple Bell",
+		"layers": [
+			"""
+....X....
+...XXX...
+..XXXXX..
+.XXXXXXX.
+.XXXXXXX.
+XXXXXXXXX
+XXXXXXXXX
+...XXX...
+""",
+		],
+	},
+	"gourd": {
+		"display": "Calabash",
+		"layers": [
+			"""
+..XXX..
+.XXXXX.
+.XXXXX.
+..XXX..
+.XXXXX.
+XXXXXXX
+XXXXXXX
+.XXXXX.
+""",
+		],
+	},
+	"sampan": {
+		"display": "Sampan",
+		"layers": [
+			"""
+....XX...
+...XXX...
+..XXXX...
+.XXXXX...
+...XX....
+XXXXXXXXX
+.XXXXXXX.
+""",
+		],
+	},
+	"moon_gate": {
+		"display": "Moon Gate",
+		"layers": [
+			"""
+..XXXXX..
+.XX...XX.
+XX.....XX
+XX.....XX
+XX.....XX
+XX.....XX
+XXXXXXXXX
+""",
+		],
+	},
+	"peaks": {
+		"display": "Three Peaks",
+		"layers": [
+			"""
+....X.....
+...XXX..X.
+..XXXXXXXX
+.XXXXXXXXX
+XXXXXXXXXX
+""",
+		],
+	},
+	"cloud": {
+		"display": "Drifting Cloud",
+		"layers": [
+			"""
+.XX..XX...
+XXXXXXX...
+XXXXXXXXX.
+.XXXXXXXXX
+..XX...XXX
+........XX
+""",
+			"""
+..........
+..XXX.....
+..XXX.....
+""",
+		],
+	},
+	"pavilion": {
+		"display": "Water Pavilion",
+		"layers": [
+			"""
+....XXX...
+..XXXXXXX.
+XXXXXXXXXX
+...X...X..
+...X...X..
+..XXXXXX..
+""",
+		],
+	},
+	"stone_arch": {
+		"display": "Stone Arch",
+		"layers": [
+			"""
+...XXXXX..
+.XXXXXXXXX
+XXXXXXXXXX
+XXX.....XX
+XX.......X
+XX.......X
+""",
+			"""
+..........
+....XXX...
+""",
+		],
+	},
+	"umbrella": {
+		"display": "Oiled Umbrella",
+		"layers": [
+			"""
+....XXX...
+..XXXXXXX.
+.XXXXXXXXX
+XXXXXXXXXX
+X.X.XXX.X.
+.....X....
+.....X....
+.....X....
+....XX....
+""",
+		],
+	},
+	"butterfly": {
+		"display": "Jade Butterfly",
+		"layers": [
+			"""
+XXX..X..XX
+XXXXXXXXXX
+XXXXXXXXXX
+.XXXXXXXXX
+..XXXXXXX.
+.XXX.X.XXX
+.XXX.X.XXX
+..XX.X.XX.
+""",
+			"""
+..........
+.....X....
+.....X....
+.....X....
+..........
+""",
+		],
+	},
+	"crane": {
+		"display": "White Crane",
+		"layers": [
+			"""
+.......XX.
+......XX..
+.....XX...
+....XX....
+.XXXXX....
+XXXXXXX...
+XXXXXXX...
+.XXXXX....
+..XX.X....
+..X..X....
+""",
+			"""
+..........
+..........
+..........
+..........
+..........
+.XXXXX....
+.XXXX.....
+""",
+		],
+	},
+	"tortoise": {
+		"display": "Stone Tortoise",
+		"layers": [
+			"""
+....XXX...
+XX.XXXXX.X
+XXXXXXXXXX
+.XXXXXXXXX
+.XXXXXXXXX
+XXXXXXXXXX
+XX.XXXXX.X
+....XXX...
+""",
+		],
+	},
+	"junk": {
+		"display": "River Junk",
+		"layers": [
+			"""
+....X.....
+....XX....
+...XXXX...
+..XXXXXX..
+.XXXXXXXX.
+....XX....
+XXXXXXXXXX
+XXXXXXXXXX
+.XXXXXXXXX
+""",
+		],
+	},
+	"koi": {
+		"display": "Koi Carp",
+		"layers": [
+			"""
+XX.....XX.
+XXX.XXXXXX
+XXXXXXXXXX
+XXXXXXXXXX
+XXX.XXXXXX
+XX.....XX.
+""",
+			"""
+..........
+..........
+.....XXXX.
+.....XXXX.
+""",
+		],
+	},
+	"lotus_bloom": {
+		"display": "Lotus Bloom",
+		"layers": [
+			"""
+..X.....X.
+.XX..X..XX
+.XXX.X.XXX
+..XXXXXXX.
+.XXXXXXXXX
+XXXXXXXXXX
+.XXXXXXXXX
+...XXXXX..
+....XX....
+""",
+		],
+	},
+	"pine": {
+		"display": "Ancient Pine",
+		"layers": [
+			"""
+.....X....
+....XXX...
+...XXXXX..
+..XXXXXXX.
+....XXX...
+...XXXXX..
+..XXXXXXX.
+.XXXXXXXXX
+....XX....
+....XX....
+""",
+			"""
+..........
+..........
+....XXX...
+....XXX...
+..........
+....XXX...
+....XXX...
+....XX....
+""",
+		],
+	},
+	"ox": {
+		"display": "Water Ox",
+		"layers": [
+			"""
+........X.
+........XX
+XXXXXXXXXX
+XXXXXXXXXX
+XXXXXXXXX.
+XX.....XX.
+XX.....XX.
+XX.....XX.
+""",
+			"""
+..........
+..........
+..XXXXXXX.
+..XXXXXXX.
+""",
+		],
+	},
+	"rabbit": {
+		"display": "Moon Rabbit",
+		"layers": [
+			"""
+..X.X....
+..X.X....
+..XXX....
+.XXXXX...
+XXXXXXX..
+XXXXXXXX.
+XXXXXXXX.
+XX..XXX..
+""",
+			"""
+.........
+.........
+.........
+.........
+.........
+.XXXXXX..
+.XXXXXX..
+""",
+		],
+	},
+	"bat": {
+		"display": "Fortune Bat",
+		"layers": [
+			"""
+XX.......X
+XXXX.X.XXX
+XXXXXXXXXX
+.XXXXXXXXX
+..XX.X.XX.
+...X...X..
+""",
+			"""
+..........
+..........
+...XXXXX..
+...XXXX...
+""",
+		],
+	},
+	"peony": {
+		"display": "Peony",
+		"layers": [
+			"""
+...XX.XX..
+.XXXXXXXXX
+XXXXXXXXXX
+XXXXXXXXXX
+.XXXXXXXXX
+...XXXXX..
+....XX....
+...XXXXX..
+""",
+		],
+	},
+	"lanterns": {
+		"display": "Twin Lanterns",
+		"layers": [
+			"""
+.....X....
+XXXXXXXXXX
+.XX.....XX
+XXXX...XXX
+XXXX...XXX
+XXXX...XXX
+XXXX...XXX
+.XX.....XX
+.XX.....XX
+""",
+			"""
+..........
+..........
+..........
+.XX.....XX
+.XX.....XX
+.XX.....XX
+.XX.....X.
+""",
+		],
+	},
+	"waterwheel": {
+		"display": "Water Wheel",
+		"layers": [
+			"""
+...XXXXX..
+.XX.....XX
+XX...X...X
+X..XXXXX..
+X..XXXXX..
+X..XXXXX..
+XX...X...X
+.XX.....XX
+...XXXXX..
+""",
+			"""
+..........
+..........
+..........
+....XXX...
+....XXX...
+....XX....
+""",
+		],
+	},
+	"vase": {
+		"display": "Porcelain Vase",
+		"layers": [
+			"""
+...XXX...
+..XXXXX..
+.XXXXXXX.
+XXXXXXXXX
+XXXXXXXXX
+XXXXXXXXX
+.XXXXXXX.
+..XXXXX..
+...XXX...
+..XXXXX..
+""",
+		],
+	},
+	"willow": {
+		"display": "Weeping Willow",
+		"layers": [
+			"""
+...XXXXX..
+..XXXXXXX.
+XXXXXXXXXX
+X.X.X.X.X.
+X.X.X.X.X.
+X.X.X.X.X.
+.....X....
+.....X....
+...XXXXX..
+""",
+			"""
+..........
+...XXXXX..
+...XXXXX..
+""",
+		],
+	},
+	"teahouse": {
+		"display": "Tea House",
+		"layers": [
+			"""
+.....X....
+....XXX...
+..XXXXXXX.
+XXXXXXXXXX
+.XXXXXXXXX
+.X.XXXXX.X
+.XXXXXXXXX
+.XXX...XXX
+.XXXXXXXX.
+""",
+		],
+	},
+	"heron": {
+		"display": "Grey Heron",
+		"layers": [
+			"""
+XXX.......
+X.XX......
+...X......
+...X......
+...X......
+..XXXXXX..
+.XXXXXXXX.
+..XXXXXX..
+....X.X...
+....X.X...
+""",
+			"""
+..........
+..........
+..........
+..........
+..........
+...XXXX...
+...XXXX...
+...XXX....
+""",
+		],
+	},
+	"dragon": {
+		"display": "River Dragon",
+		"layers": [
+			"""
+......XXXX
+......XX.X
+.XXXXXXXX.
+XXXXXXX...
+XXX.......
+XXXXXXX...
+..XXXXXXXX
+.......XXX
+......XXXX
+.....XXXX.
+""",
+			"""
+.......XXX
+..........
+..XXXX....
+..XXXX....
+..........
+...XXX....
+...X......
+""",
+		],
+	},
+	"phoenix": {
+		"display": "Vermilion Phoenix",
+		"layers": [
+			"""
+....XXX...
+.....X....
+..XXXXXXX.
+.XXXXXXXXX
+XXXXXXXXXX
+.XXXXXXXXX
+..XXXXXXX.
+...X.X.X..
+..X..X..X.
+.X...X...X
+""",
+			"""
+..........
+..........
+....XXX...
+....XXX...
+....XXX...
+....XXX...
+....XXX...
+""",
+		],
+	},
+	"temple": {
+		"display": "Mountain Temple",
+		"layers": [
+			"""
+....XXX...
+..XXXXXXX.
+XXXXXXXXXX
+...XXXXX..
+.XXXXXXXXX
+XXXXXXXXXX
+.XXXXXXXXX
+.X.XXXXX.X
+.XXXXXXXXX
+.XXX...XX.
+""",
+		],
+	},
+	"tiger": {
+		"display": "Mountain Tiger",
+		"layers": [
+			"""
+........X.
+.......XXX
+XX.....XXX
+XXXXXXXXXX
+XXXXXXXXXX
+XXXXXXXXXX
+XX.XX.XX.X
+XX.XX.XX.X
+XX.XX.XX.X
+""",
+			"""
+..........
+..........
+..........
+.XXXXXXXXX
+.XXXXXXXXX
+""",
+		],
+	},
+	"horse": {
+		"display": "War Horse",
+		"layers": [
+			"""
+.........X
+........XX
+........XX
+.......XXX
+XXXXXXXXXX
+XXXXXXXXXX
+XXXXXXXXX.
+XX....XX..
+XX....XX..
+XX....XX..
+""",
+			"""
+..........
+..........
+..........
+..........
+.XXXXXXXX.
+.XXXXXXXX.
+.XXXXXXX..
+""",
+		],
+	},
+	"rooster": {
+		"display": "Golden Rooster",
+		"layers": [
+			"""
+......XX..
+.....XXXXX
+......XXX.
+XX....XXX.
+XXX..XXXX.
+XXXXXXXXX.
+.XXXXXXXX.
+.XXXXXXX..
+..XXXXX...
+...XX.X...
+""",
+			"""
+..........
+..........
+..........
+..........
+..........
+...XXXX...
+...XXXX...
+...XXXX...
+...XXXX...
+""",
+		],
+	},
+	"crab": {
+		"display": "River Crab",
+		"layers": [
+			"""
+XX.......X
+XXX.....XX
+.XX.....XX
+..XXXXXXX.
+.XXXXXXXXX
+XXXXXXXXXX
+.XXXXXXXXX
+X.X.....X.
+X.X.....X.
+""",
+			"""
+..........
+..........
+..........
+...XXXXX..
+...XXXXX..
+...XXXXX..
+...XXXX...
+""",
+		],
+	},
+	"chrysanthemum": {
+		"display": "Chrysanthemum",
+		"layers": [
+			"""
+..X.X.X.X.
+.XXXXXXXXX
+X.XXXXXXX.
+XXXXXXXXXX
+XXXXXXXXXX
+XXXXXXXXXX
+X.XXXXXXX.
+.XXXXXXXXX
+..X.X.X.X.
+""",
+			"""
+..........
+..........
+..........
+...XXXXX..
+...XXXXX..
+...XXXX...
+""",
+		],
+	},
+	"drum_tower": {
+		"display": "Drum Tower",
+		"layers": [
+			"""
+XXXXXXXXXX
+.XXXXXXXXX
+..XXXXXXX.
+..X.XXX.X.
+..XXXXXXX.
+XXXXXXXXXX
+.XXXXXXXXX
+.XXX...XXX
+.XXX...XXX
+.XXXXXXXXX
+""",
+		],
+	},
+	"great_wall": {
+		"display": "The Long Wall",
+		"layers": [
+			"""
+XXX.....XX
+XXX.....XX
+XXXX...XXX
+X.X.X.X.X.
+XXXXXXXXXX
+XXXXXXXXXX
+XXXXXXXXXX
+XXX.XXX.XX
+""",
+			"""
+..........
+..........
+..........
+..........
+..XXXXXX..
+..XXXXXX..
+..XXXXXX..
+""",
+		],
+	},
+	"watchtower": {
+		"display": "Watchtower",
+		"layers": [
+			"""
+.XXXXXXX.
+XXXXXXXXX
+..XX.XX..
+..XXXXX..
+.XXXXXXX.
+XXXXXXXXX
+..XX.XX..
+..XXXXX..
+.XXXXXXX.
+XXXXXXXXX
+""",
+			"""
+.........
+.........
+.........
+...XXX...
+...XXX...
+.........
+.........
+...XXX...
+...XXX...
+""",
+		],
+	},
+	"eagle": {
+		"display": "Sea Eagle",
+		"layers": [
+			"""
+XX.......X
+XXX..X..XX
+XXXX.X.XXX
+XXXXXXXXXX
+XXXXXXXXXX
+.XXXXXXXXX
+..XXXXXXX.
+...XXXXX..
+....XXX...
+...XX.XX..
+""",
+			"""
+..........
+..........
+..........
+....XXX...
+....XXX...
+....XXX...
+....XXX...
+....XXX...
+....XX....
+""",
+		],
+	},
+	"elephant": {
+		"display": "Great Elephant",
+		"layers": [
+			"""
+....XXXXXX
+..XXXXXXXX
+XXXXXXXXX.
+XXXXXXXXX.
+XXXXXXXXXX
+XXXXXXXXX.
+XX.XX.XX..
+XX.XX.XX..
+""",
+			"""
+..........
+..........
+.XXXXXXX..
+.XXXXXXX..
+.XXXXXXX..
+""",
+		],
+	},
+	"peacock": {
+		"display": "Peacock",
+		"layers": [
+			"""
+X.X.X.X.X.
+.XXXXXXXXX
+XXXXXXXXXX
+XXXX.X.XXX
+..XX.X.XX.
+....XXX...
+.....X....
+.....X....
+...XXXXX..
+...XXXXX..
+""",
+			"""
+..........
+..XXXXXXX.
+..XXXXXXX.
+...XXXXX..
+..........
+..........
+..........
+..........
+....XXX...
+....XX....
+""",
+		],
+	},
+	"moon_bridge": {
+		"display": "Moon Bridge",
+		"layers": [
+			"""
+..XXXXXXX.
+XXXXXXXXXX
+XX.......X
+X.........
+XX.......X
+XXXXXXXXXX
+..XXXXXXX.
+""",
+			"""
+...XXXXX..
+...XXXXX..
+..........
+..........
+..........
+...XXXXX..
+...XXXXX..
+""",
+			"""
+....XXX...
+....XXX...
+..........
+..........
+..........
+....XXX...
+....XX....
+""",
+		],
+	},
+	"pipa": {
+		"display": "Pipa Lute",
+		"layers": [
+			"""
+...XX....
+...XX....
+...XX....
+...XX....
+..XXXX...
+.XXXXXX..
+XXXXXXXX.
+XXXXXXXX.
+XXXXXXXX.
+.XXXXXX..
+""",
+			"""
+.........
+.........
+.........
+.........
+.........
+.........
+.XXXXXX..
+.XXXXXX..
+.XXXXXX..
+""",
+			"""
+.........
+.........
+.........
+.........
+.........
+.........
+..XXXX...
+..XXXX...
+..XXXX...
+""",
+		],
+	},
+	"ding": {
+		"display": "Bronze Ding",
+		"layers": [
+			"""
+....XXX...
+.X.XXXXX.X
+XXXXXXXXXX
+.XXXXXXXXX
+.XXXXXXXXX
+..XXXXXXX.
+...XXXXX..
+..XX...XX.
+..XX...XX.
+""",
+			"""
+..........
+..........
+..........
+...XXXXX..
+...XXXXX..
+...XXXX...
+""",
+		],
+	},
+	"guardian_lion": {
+		"display": "Guardian Lion",
+		"layers": [
+			"""
+..XXXXXXX.
+.XXXXXXXXX
+XXX.XXX.XX
+XXXXXXXXXX
+.XXXXXXXXX
+..XXXXXXX.
+.XXXXXXXXX
+XXXXXXXXXX
+XXXXXXXXXX
+XX.XXXXX.X
+""",
+			"""
+..........
+..........
+..........
+..........
+..........
+..........
+..........
+...XXXXX..
+...XXXX...
+..........
+""",
+		],
+	},
+	"great_dragon": {
+		"display": "Great Dragon",
+		"layers": [
+			"""
+.....XXXXX
+.....XX.XX
+...XXXXXXX
+XXXXXXXXX.
+XXXX......
+XXXXXXXXX.
+..XXXXXXXX
+......XXXX
+....XXXXXX
+XXXXXXXXX.
+""",
+			"""
+..........
+..........
+...XXXX...
+...XXXX...
+..........
+...XXXX...
+...XXXX...
+..........
+.....XX...
+..XXX.....
+""",
+		],
+	},
+	"phoenix_rise": {
+		"display": "Phoenix Rising",
+		"layers": [
+			"""
+XX.......X
+XXX..X..XX
+XXXXXXXXXX
+XXXXXXXXXX
+.XXXXXXXXX
+..XXXXXXX.
+...XXXXX..
+..X.XXX.X.
+.X..XXX..X
+X...XXX...
+""",
+			"""
+..........
+..........
+...XXXXX..
+...XXXXX..
+...XXXXX..
+...XXXXX..
+""",
+			"""
+..........
+..........
+....XXX...
+....X.....
+""",
+		],
+	},
+	"grand_temple": {
+		"display": "Grand Temple",
+		"layers": [
+			"""
+....XXX...
+..XXXXXXX.
+XXXXXXXXXX
+...XXXXX..
+.XXXXXXXXX
+XXXXXXXXXX
+..XXXXXXX.
+.XXXXXXXXX
+XXXXXXXXXX
+XX.XXXXX.X
+""",
+			"""
+..........
+..........
+..........
+..........
+..........
+..........
+..........
+..XXXXXXX.
+..XXXXX...
+""",
+		],
+	},
+	"treasure_ship": {
+		"display": "Treasure Ship",
+		"layers": [
+			"""
+.X...X...X
+.XX..XX..X
+XXX.XXX.XX
+XXXXXXXXXX
+.....X....
+XXXXXXXXXX
+XXXXXXXXXX
+XXXXXXXXXX
+.XXXXXXXXX
+..XXXXXXX.
+""",
+			"""
+..........
+..........
+..........
+..........
+..........
+..XXXXXXX.
+..XXXXXXX.
+..XXXXXXX.
+""",
+		],
+	},
+	"pagoda_nine": {
+		"display": "Nine-Storey Pagoda",
+		"layers": [
+			"""
+...XXXXX..
+..XXXXXXX.
+...XXXXX..
+.XXXXXXXXX
+..XXXXXXX.
+XXXXXXXXXX
+.XXXXXXXXX
+XXXXXXXXXX
+.XXXXXXXXX
+XXXXXXXXXX
+""",
+			"""
+..........
+..........
+..........
+..........
+....XXX...
+..........
+....XXX...
+..........
+....XXX...
+..........
+""",
+		],
+	},
+	"zodiac_wheel": {
+		"display": "Zodiac Wheel",
+		"layers": [
+			"""
+.XX.XXX.XX
+X.........
+X.........
+...XXXXX..
+X..XXXXX..
+X..XXXXX..
+X..XXXXX..
+...XXXXX..
+X.........
+X.........
+""",
+			"""
+..X..X..X.
+..........
+X.........
+..........
+....XXX...
+X...XXX...
+....XXX...
+..........
+X.........
+..........
+""",
+		],
+	},
+	"coiled_snake": {
+		"display": "Coiled Serpent",
+		"layers": [
+			"""
+.XXXXXXXXX
+XX.......X
+XX.XXXXX.X
+XX.X...X.X
+XX.X.X.X.X
+XX.X.XXX.X
+XX.X.....X
+XX.XXXXXXX
+XX........
+XXXXXXXXXX
+""",
+			"""
+..........
+.X........
+.X........
+.X........
+.X........
+.X........
+.X........
+.X........
+.X........
+...XXXXX..
+""",
+		],
+	},
+	"bell_tower": {
+		"display": "Bell Tower",
+		"layers": [
+			"""
+.XXXXXXXXX
+XXXXXXXXXX
+.X.......X
+.X.XXXXX.X
+.X.XXXXX.X
+.X.XXXXX.X
+.X..XXX..X
+.XXXXXXXXX
+XXXXXXXXXX
+.XXX...XXX
+""",
+			"""
+..........
+..........
+..........
+....XXX...
+....XXX...
+....XXX...
+....X.....
+""",
+		],
+	},
+	"grand_butterfly": {
+		"display": "Grand Butterfly",
+		"layers": [
+			"""
+XXXX...XXX
+XXXXXXXXXX
+XXXXXXXXXX
+.XXXXXXXXX
+..XXXXXXX.
+.XXXXXXXXX
+XXXXXXXXXX
+XXXX.X.XXX
+.XXX.X.XXX
+..XX.X.XX.
+""",
+			"""
+..........
+.XXX.X.XXX
+.XXX.X.XXX
+.....X....
+.....X....
+.....X....
+.....X....
+""",
+		],
+	},
+	"cloud_palace": {
+		"display": "Cloud Palace",
+		"layers": [
+			"""
+XXXXXXXXXX
+.X.XXXXX.X
+.XXXXXXXXX
+.XX.XXX.XX
+.XXXXXXXXX
+XXXXXXXXXX
+..........
+..XX...XX.
+.XXXXXXXXX
+XXXXXXXXXX
+""",
+			"""
+..........
+..........
+..........
+..........
+..........
+..........
+..........
+..........
+...XXXXX..
+...XXXX...
+""",
+		],
+	},
+	"stag": {
+		"display": "Sika Stag",
+		"layers": [
+			"""
+.XX.....XX
+..XX...XX.
+...XXXXX..
+...XXXXX..
+...XXXXX..
+..XXXXXXX.
+.XXXXXXXXX
+XXXXXXXXXX
+XXXXXXXXXX
+XXXXXXXXXX
+""",
+			"""
+..........
+..........
+..........
+..........
+..........
+..........
+..XXXXXXX.
+..XXXXXXX.
+..XXXXXXX.
+..XXXXXX..
+""",
+		],
+	},
+	"lotus_throne": {
+		"display": "Lotus Throne",
+		"layers": [
+			"""
+...XXXXX..
+..XXXXXXX.
+...XXXXX..
+..XXXXXXX.
+.XXXXXXXXX
+XXXXXXXXXX
+X.XXXXXXX.
+.XXXXXXXXX
+..XXXXXXX.
+...XXXXX..
+""",
+			"""
+..........
+..........
+..........
+..........
+...XXXXX..
+...XXXXX..
+...XXXXX..
+...XXXXX..
+""",
+		],
+	},
+	"monkey": {
+		"display": "Monkey King",
+		"layers": [
+			"""
+..X.XXX.X.
+..XXXXXXX.
+...X.X.X..
+...XXXXX..
+.XXXXXXXXX
+XXXXXXXXXX
+XXXXXXXXXX
+.XXXXXXXXX
+..XXXXXXX.
+..XX...XX.
+""",
+			"""
+..........
+..........
+..........
+..........
+...XXXXX..
+...XXXXX..
+...XXXXX..
+...XXXX...
+""",
+		],
+	},
+	"peach": {
+		"display": "Longevity Peach",
+		"layers": [
+			"""
+....X.XXX.
+..XXXXXXX.
+.XXXXXXXXX
+XXXXXXXXXX
+XXXXXXXXXX
+XXXXXXXXXX
+XXXXXXXXXX
+.XXXXXXXXX
+..XXXXXXX.
+...XXXXX..
+""",
+			"""
+..........
+..........
+..........
+...XXXXX..
+...XXXXX..
+...XXXXX..
+...XXXX...
+""",
+		],
+	},
+	"carp_leap": {
+		"display": "Leaping Carp",
+		"layers": [
+			"""
+...XXXXX..
+...XXXXX..
+..XXXXXXX.
+.XXXXXXXXX
+X.XXXXXXX.
+X.XXXXXXX.
+.XXXXXXXXX
+..XXXXXXX.
+..XXX.XXX.
+...XX.XX..
+""",
+			"""
+..........
+..........
+..........
+...XXXXX..
+...XXXXX..
+...XXXXX..
+...XXXXX..
+...XXXX...
+""",
+		],
+	},
+	"crane_flight": {
+		"display": "Crane in Flight",
+		"layers": [
+			"""
+....XXX...
+XX.XXXXX.X
+XXXXXXXXXX
+XXXXXXXXXX
+.XXXXXXXXX
+..XXXXXXX.
+...XXXXX..
+...XXXXX..
+....X.X...
+....X.X...
+""",
+			"""
+..........
+..........
+...XXXXX..
+...XXXXX..
+...XXXXX..
+...XXXXX..
+""",
+			"""
+..........
+..........
+....XXX...
+....XXX...
+....XXX...
+....XX....
+""",
+		],
+	},
+	"ram": {
+		"display": "Mountain Ram",
+		"layers": [
+			"""
+X..X...X..
+X..XXXXX..
+.XXXXXXXXX
+...XXXXX..
+..XXXXXXX.
+.XXXXXXXXX
+XXXXXXXXXX
+XXXXXXXXXX
+XXXXXXXXXX
+XX.XX.XX.X
+""",
+			"""
+..........
+..........
+..........
+..........
+..........
+..........
+..XXXXXXX.
+..XXXXX...
+""",
+		],
+	},
+	"grand_pagoda": {
+		"display": "Grand Pagoda",
+		"layers": [
+			"""
+...XXXXX..
+..XXXXXXX.
+.XXXXXXXXX
+XXXXXXXXXX
+.XXXXXXXXX
+XXXXXXXXXX
+.XXXXXXXXX
+XXXXXXXXXX
+.XXXXXXXXX
+XXXXXXXXXX
+""",
+			"""
+..........
+..........
+..........
+..........
+...XXXXX..
+...XXXXX..
+...XXXXX..
+...XXXXX..
+...XXXXX..
+...XXXXX..
+""",
+			"""
+..........
+..........
+..........
+..........
+..........
+..........
+..........
+..........
+.....X....
+.....X....
+""",
+		],
+	},
+	"imperial_palace": {
+		"display": "Imperial Palace",
+		"layers": [
+			"""
+....XXX...
+..XXXXXXX.
+XXXXXXXXXX
+.XXXXXXXXX
+XXXXXXXXXX
+.X.XXXXX.X
+.XXXXXXXXX
+XXXXXXXXXX
+.XXXXXXXXX
+.XXX...XXX
+""",
+			"""
+..........
+..........
+...XXXXX..
+...XXXXX..
+...XXXXX..
+..........
+..XXXXXXX.
+..XXXXXXX.
+..XXXXXXX.
+..........
+""",
+			"""
+..........
+..........
+..........
+..........
+..........
+..........
+..........
+....XXX...
+....XXX...
+""",
+		],
+	},
+	"celestial_phoenix": {
+		"display": "Celestial Phoenix",
+		"layers": [
+			"""
+...XXXXX..
+....XXX...
+XX.XXXXX.X
+XXXXXXXXXX
+XXXXXXXXXX
+.XXXXXXXXX
+..XXXXXXX.
+..X.XXX.X.
+.X..XXX..X
+X...XXX...
+""",
+			"""
+..........
+..........
+..........
+..XXXXXXX.
+..XXXXXXX.
+..XXXXXXX.
+..XXXXXXX.
+....XXX...
+....XXX...
+....XXX...
+""",
+			"""
+..........
+..........
+..........
+...XXXXX..
+...XXXXX..
+...XXXXX..
+...XXXXX..
+.....X....
+.....X....
+.....X....
+""",
+			"""
+..........
+..........
+..........
+..........
+..........
+..........
+""",
+		],
+	},
+	"mount_kunlun": {
+		"display": "Mount Kunlun",
+		"layers": [
+			"""
+..X..X..X.
+..X.XXX.X.
+.XXXXXXXXX
+XXXXXXXXXX
+XXXXXXXXXX
+XXXX.X.XXX
+XXX.XXX.XX
+XXXXXXXXXX
+XX.XXXXX.X
+XXXXXXXXXX
+""",
+			"""
+..........
+..........
+...XXXXX..
+...XXXXX..
+...XXXXX..
+..........
+..........
+..XXXXXXX.
+..........
+..XXXXXXX.
+""",
+			"""
+..........
+..........
+..........
+....XXX...
+....XXX...
+..........
+..........
+..........
+..........
+..........
+""",
+		],
+	},
+	"dragon_boat": {
+		"display": "Dragon Boat",
+		"layers": [
+			"""
+....XXX...
+...XXXXX..
+...X.X.X..
+...XXXXX..
+..XXXXXXX.
+.XXXXXXXXX
+XXXXXXXXXX
+XX.XXXXX.X
+XXXXXXXXXX
+XX.XXXXX.X
+""",
+			"""
+..........
+..........
+..........
+..........
+...XXXXX..
+...XXXXX..
+...XXXXX..
+...XXXXX..
+...XXXXX..
+...XXXXX..
+""",
+			"""
+..........
+..........
+..........
+..........
+....XXX...
+....XXX...
+....XXX...
+....XXX...
+....XXX...
+....XXX...
+""",
+			"""
+..........
+..........
+..........
+..........
+..........
+..........
+.....X....
+.....X....
+..........
+..........
+""",
+		],
+	},
+	"heavenly_crane": {
+		"display": "Heavenly Crane",
+		"layers": [
+			"""
+....XXX...
+....XXX...
+XX.XXXXX.X
+XXXXXXXXXX
+XXXXXXXXXX
+XXXXXXXXXX
+.XXXXXXXXX
+..XXXXXXX.
+...XXXXX..
+....X.X...
+""",
+			"""
+..........
+..........
+..........
+..XXXXXXX.
+..XXXXXXX.
+..XXXXXXX.
+..XXXXXXX.
+..XXXXXXX.
+....XXX...
+""",
+			"""
+..........
+..........
+..........
+...XXXXX..
+...XXXXX..
+...XXXXX..
+...XXXXX..
+...XXXXX..
+.....X....
+""",
+			"""
+..........
+..........
+..........
+..........
+.....X....
+..........
+""",
+		],
+	},
+	"great_tiger": {
+		"display": "Great Tiger",
+		"layers": [
+			"""
+.......XXX
+XX.....XXX
+XXX....XXX
+XXXXXXXXXX
+XXXXXXXXXX
+XXXXXXXXXX
+XXXXXXXXXX
+XXXXXXXXXX
+XX.XX.XX.X
+XX.XX.XX.X
+""",
+			"""
+..........
+..........
+..........
+.XXXXXXXXX
+.XXXXXXXXX
+.XXXXXXXXX
+.XXXXXXXXX
+""",
+			"""
+..........
+..........
+..........
+..........
+...XXXXX..
+...XXXXX..
+""",
+		],
+	},
+	"jade_throne": {
+		"display": "Jade Throne",
+		"layers": [
+			"""
+.XXXXXXXXX
+..XXXXXXX.
+.X...X...X
+.X.XXXXX.X
+.X.XXXXX.X
+.XXXXXXXXX
+XXXXXXXXXX
+XXXXXXXXXX
+XX.XXXXX.X
+XX.XXXXX.X
+""",
+			"""
+..........
+..........
+..........
+..........
+..........
+..........
+...XXXXX..
+...XXXXX..
+...XXXXX..
+...XXXXX..
+""",
+			"""
+..........
+..........
+..........
+..........
+..........
+..........
+....XXX...
+....XXX...
+....XXX...
+....XXX...
+""",
+		],
+	},
+	"thousand_lotus": {
+		"display": "Thousand Lotus",
+		"layers": [
+			"""
+.XX..X..XX
+.XXX.X.XXX
+XXXXXXXXXX
+XXXXXXXXXX
+XXXXXXXXXX
+.XXXXXXXXX
+..XXXXXXX.
+...XXXXX..
+..XXXXXXX.
+.XXXXXXXXX
+""",
+			"""
+..........
+..........
+..XXXXXXX.
+..XXXXXXX.
+..XXXXXXX.
+..XXXXXXX.
+..XXXXXXX.
+""",
+			"""
+..........
+..........
+....XXX...
+....XXX...
+....XXX...
+....XXX...
+....XX....
+""",
+		],
+	},
+	"great_koi": {
+		"display": "Great Koi",
+		"layers": [
+			"""
+...XX...XX
+XX.XXXXXXX
+XXX.XXXXXX
+XXXXXXXXXX
+XXXXXXXXXX
+XXXXXXXXXX
+XXXXXXXXXX
+XXX.XXXXXX
+XX.XXXXXXX
+...XX...XX
+""",
+			"""
+..........
+..........
+....XXXXXX
+....XXXXXX
+....XXXXXX
+....XXXXXX
+....XXXXXX
+....XXXXXX
+""",
+			"""
+..........
+..........
+..........
+.....XXXX.
+.....XXXX.
+.....XXXX.
+.....XXXX.
+""",
+		],
+	},
+	"lantern_festival": {
+		"display": "Lantern Festival",
+		"layers": [
+			"""
+.X...X...X
+XXX.XXX.XX
+XXX.XXX.XX
+XXX.XXX.XX
+XXX.XXX.XX
+.X...X...X
+XXXXXXXXXX
+.X...X...X
+XXX.XXX.XX
+XXX.XXX.XX
+""",
+			"""
+..........
+..........
+XXX.XXX.XX
+XXX.XXX.XX
+..........
+..........
+..........
+..........
+..........
+XXX.XXX.XX
+""",
+			"""
+..........
+..........
+.X...X...X
+.X...X...X
+..........
+..........
+..........
+..........
+..........
+.X...X...X
+""",
+			"""
+..........
+..........
+..........
+..........
+""",
+		],
+	},
+	"cloud_gate": {
+		"display": "Cloud Gate",
+		"layers": [
+			"""
+.XXXXXXXXX
+XXXXXXXXXX
+XXXXXXXXXX
+XX.......X
+XX.XXXXX.X
+XX.XXXXX.X
+XX.XXXXX.X
+XX.......X
+XXXXXXXXXX
+XXXXXXXXXX
+""",
+			"""
+..........
+..XXXXXXX.
+..XXXXXXX.
+..........
+..........
+..........
+..........
+..........
+..XXXXXXX.
+..XXXXXXX.
+""",
+			"""
+..........
+....XXX...
+....XXX...
+..........
+..........
+..........
+..........
+..........
+....XXX...
+....XXX...
+""",
+			"""
+..........
+..........
+..........
+..........
+..........
+..........
+..........
+..........
+.....X....
+..........
+""",
+		],
+	},
+	"great_crab": {
+		"display": "Great Crab",
+		"layers": [
+			"""
+XXXX...XXX
+.XXX.X.XXX
+..XXXXXXX.
+.XXXXXXXXX
+XXXXXXXXXX
+XXXXXXXXXX
+.XXXXXXXXX
+X.XX...XX.
+X.XX...XX.
+X.X.....X.
+""",
+			"""
+..........
+..........
+..........
+..XXXXXXX.
+..XXXXXXX.
+..XXXXXXX.
+..XXXXXXX.
+""",
+			"""
+..........
+..........
+..........
+...XXXXX..
+...XXXXX..
+...XXXXX..
+...XXXXX..
+""",
+		],
+	},
+	"sea_dragon": {
+		"display": "Sea Dragon",
+		"layers": [
+			"""
+....XXXXXX
+....XX.XX.
+..XXXXXXX.
+XXXXXXXX..
+XXXX......
+XXXXXXXX..
+...XXXXXXX
+.......XXX
+....XXXXXX
+XXXXXXXXX.
+""",
+			"""
+.....XXXX.
+..........
+...XXXX...
+..XXXX....
+..........
+..XXXX....
+....XXXX..
+..........
+.....XXXX.
+..XXXX....
+""",
+			"""
+..........
+..........
+....XX....
+...XX.....
+..........
+...XX.....
+.....XX...
+..........
+..........
+...XX.....
+""",
+		],
+	},
+	"great_fan": {
+		"display": "Great Fan",
+		"layers": [
+			"""
+XXXXXXXXXX
+XXXXXXXXXX
+.XXXXXXXXX
+.XXXXXXXXX
+..XXXXXXX.
+..XXXXXXX.
+...XXXXX..
+...XXXXX..
+....XXX...
+....XXX...
+""",
+			"""
+..XXXXXXX.
+..XXXXXXX.
+..XXXXXXX.
+..XXXXXXX.
+""",
+			"""
+....XXX...
+....XXX...
+....XXX...
+....X.....
+""",
+		],
+	},
+	"celestial_horse": {
+		"display": "Celestial Horse",
+		"layers": [
+			"""
+........XX
+........XX
+......XXX.
+XXXXXXXXXX
+XXXXXXXXXX
+XXXXXXXXXX
+XXXXXXXXX.
+XX...XX...
+XX...XX...
+XX...XX...
+""",
+			"""
+..........
+..........
+..........
+.XXXXXXXX.
+.XXXXXXXX.
+.XXXXXXXX.
+.XXXXXXXX.
+""",
+			"""
+..........
+..........
+..........
+..XXXXXX..
+..XXXXXX..
+..XXXXXX..
+""",
+			"""
+..........
+..........
+..........
+...XXXX...
+...XXXX...
+...XX.....
+""",
+		],
+	},
+	"lotus_pond": {
+		"display": "Lotus Pond",
+		"layers": [
+			"""
+.XXXXXXXXX
+.XXXXXXXXX
+..XXX..XXX
+.....X....
+..X..X..X.
+.XXX.X.XXX
+XXXXXXXXXX
+.XXXXXXXXX
+..XXXXXXX.
+.XXXXXXXXX
+""",
+			"""
+..........
+..........
+..........
+..........
+..........
+..........
+...XXXXX..
+...XXXXX..
+...XXXXX..
+...XXXXX..
+""",
+			"""
+..........
+..........
+..........
+..........
+..........
+..........
+....XXX...
+....XXX...
+....XXX...
+....XXX...
+""",
+		],
+	},
+	"great_bell": {
+		"display": "Great Bell",
+		"layers": [
+			"""
+....XXX...
+...XXXXX..
+..XXXXXXX.
+.XXXXXXXXX
+.XXXXXXXXX
+XXXXXXXXXX
+XXXXXXXXXX
+XXXXXXXXXX
+XXXXXXXXXX
+XXXXXXXXXX
+""",
+			"""
+..........
+..........
+..........
+...XXXXX..
+...XXXXX..
+...XXXXX..
+...XXXXX..
+...XXXXX..
+...XXXXX..
+...XXXXX..
+""",
+			"""
+..........
+..........
+..........
+..........
+..........
+....XXX...
+....XXX...
+....XXX...
+....XXX...
+....XX....
+""",
+		],
+	},
+}

@@ -31,12 +31,12 @@ func _ready() -> void:
 	main._start_run_mode()
 	await get_tree().create_timer(0.6).timeout
 	var s1: float = GameManager.max_time
-	_check("stage 1 opens with its own allotment", absf(s1 - GameManager.stage_time_for(36, false, false)) < 1.0, "%.0f" % s1)
+	_check("stage 1 opens with its own allotment", absf(s1 - GameManager.stage_time_for(BG.get_layout_positions(BG.LADDER[0]).size(), false, false)) < 1.0, "%.0f" % s1)
 
 	GameManager.time_left = 500.0
 	main._next_stage()
 	await get_tree().create_timer(0.6).timeout
-	var allot2: float = GameManager.stage_time_for(40, StageModifiers.is_fog_active(), StageModifiers.is_rush_active())
+	var allot2: float = GameManager.stage_time_for(BG.get_layout_positions(BG.LADDER[1]).size(), StageModifiers.is_fog_active(), StageModifiers.is_rush_active())
 	_check("carry-over is capped at half the new allotment", absf(GameManager.time_left - allot2 * 1.5) < 1.0,
 		"%.0f vs %.0f" % [GameManager.time_left, allot2 * 1.5])
 	_check("and the bar opens full", GameManager.max_time - GameManager.time_left < 1.5, "%.1f short" % (GameManager.max_time - GameManager.time_left))
@@ -44,7 +44,7 @@ func _ready() -> void:
 	GameManager.time_left = 3.0
 	main._next_stage()
 	await get_tree().create_timer(0.6).timeout
-	var allot3: float = GameManager.stage_time_for(60, StageModifiers.is_fog_active(), StageModifiers.is_rush_active())
+	var allot3: float = GameManager.stage_time_for(BG.get_layout_positions(BG.LADDER[2]).size(), StageModifiers.is_fog_active(), StageModifiers.is_rush_active())
 	_check("a nearly spent clock still gets the full new stage", GameManager.time_left >= allot3, "%.0f" % GameManager.time_left)
 
 	print("Failures: %d" % _fails)
