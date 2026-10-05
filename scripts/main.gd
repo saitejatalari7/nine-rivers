@@ -447,10 +447,11 @@ static func daily_layout_for_seed(seed_value: int) -> String:
 	return pool[h % pool.size()]
 
 func _start_daily_mode() -> void:
-	if SaveManager.daily_done_today():
+	if SaveManager.daily_closed_today():
 		hud.show_toast("Today's puzzle is done - %s." % SaveManager.time_until_reset())
 		_return_home()
 		return
+	_daily_charged = false
 	board.visible = true
 	hud.visible = true
 	GameManager.start_daily_tide()
@@ -474,6 +475,15 @@ func _start_daily_mode() -> void:
 	_offer_daily_theme_sample()
 
 func _restart_current_stage() -> void:
+	# A restart in a capped mode is a new attempt, not a free one. It used to
+	# redeal the board without counting, so the three-a-day limits could be
+	# played around indefinitely from the pause menu.
+	if GameManager.current_mode == GameManager.GameMode.RUN:
+		_start_run_mode()
+		return
+	if GameManager.current_mode == GameManager.GameMode.DAILY:
+		_start_daily_mode()
+		return
 	board.visible = true
 	hud.visible = true
 	var rng: RandomNumberGenerator = null
@@ -573,10 +583,17 @@ func _on_board_move_completed(remaining: int, legal_moves: int) -> void:
 ## by load_stage as well, so charging there would have spent the run at the
 ## moment the board was dealt - the very thing this exists to stop.
 func _charge_rapids_run() -> void:
+	if GameManager.current_mode == GameManager.GameMode.DAILY and not _daily_charged:
+		_daily_charged = true
+		SaveManager.record_daily_attempt()
+		return
 	if _rapids_charged or GameManager.current_mode != GameManager.GameMode.RUN:
 		return
 	_rapids_charged = true
 	SaveManager.record_rapids_start()
+
+## The daily's equivalent of _rapids_charged: one try counted per attempt.
+var _daily_charged: bool = false
 
 ## Held while the unlock offer is up, so the clear screen can follow it rather
 ## than being skipped by it.
@@ -660,6 +677,7 @@ func _capture_session() -> void:
 		"time_left": GameManager.time_left,
 		"max_time": GameManager.max_time,
 		"rapids_charged": _rapids_charged,
+		"daily_charged": _daily_charged,
 	}
 	SaveManager.save_game()
 
@@ -699,6 +717,7 @@ func _resume_session() -> bool:
 	# A run that was left before its first match has not been charged yet, and
 	# resuming must not charge it either - the first match still will.
 	_rapids_charged = bool(s.get("rapids_charged", true))
+	_daily_charged = bool(s.get("daily_charged", true))
 
 	var hud_no: int = GameManager.current_level if mode == 0 else GameManager.current_stage_no
 	hud.setup_hud(GameManager.current_mode, hud_no)

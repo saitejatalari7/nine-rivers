@@ -378,11 +378,12 @@ func show_main_menu() -> void:
 			start_run_requested.emit()
 	, runs_left > 0)
 
-	var daily_done: bool = SaveManager.daily_done_today()
+	var daily_done: bool = SaveManager.daily_closed_today()
+	var tries: int = SaveManager.daily_attempts_left()
 	_add_tile_row(Color("#28527a"), "Daily Puzzle",
-		"One board a day" if not daily_done else SaveManager.time_until_reset(),
-		"Ready" if not daily_done else "Done", func():
-			if SaveManager.daily_done_today():
+		"One board, three tries" if not daily_done else SaveManager.time_until_reset(),
+		("%d left" % tries) if not daily_done else "Done", func():
+			if SaveManager.daily_closed_today():
 				return
 			hide_modal()
 			start_daily_requested.emit()

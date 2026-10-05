@@ -19,6 +19,8 @@ var prog: Dictionary = {
 	"daily_streak": 0,
 	"rapids_runs_today": 0,
 	"last_rapids_date": "",
+	"daily_attempts_today": 0,
+	"last_daily_attempt_date": "",
 	"last_daily_date": "",
 	"streak_shields": 1,
 	"tutorial_completed": false
@@ -418,6 +420,7 @@ func _sanitize_session(raw: Variant) -> Dictionary:
 		# a free run; one that has genuinely not been charged yet loses nothing,
 		# because it is charged at the first match either way.
 		"rapids_charged": bool(d.get("rapids_charged", true)),
+		"daily_charged": bool(d.get("daily_charged", true)),
 	}
 
 func store_session(data: Dictionary) -> void:
@@ -450,6 +453,8 @@ func _sanitize_prog(raw: Variant) -> Dictionary:
 	if d.has("daily_streak"): out["daily_streak"] = _vint(d["daily_streak"], 0, 0)
 	if d.has("rapids_runs_today"): out["rapids_runs_today"] = _vint(d["rapids_runs_today"], 0, 0, RAPIDS_RUNS_PER_DAY)
 	if d.has("last_rapids_date"): out["last_rapids_date"] = _vstr(d["last_rapids_date"], "")
+	if d.has("daily_attempts_today"): out["daily_attempts_today"] = _vint(d["daily_attempts_today"], 0, 0, DAILY_ATTEMPTS_PER_DAY)
+	if d.has("last_daily_attempt_date"): out["last_daily_attempt_date"] = _vstr(d["last_daily_attempt_date"], "")
 	if d.has("streak_shields"): out["streak_shields"] = _vint(d["streak_shields"], 0, 0, 99)
 	if d.has("last_daily_date"): out["last_daily_date"] = _vstr(d["last_daily_date"], "")
 	if d.has("tutorial_completed"): out["tutorial_completed"] = _vbool(d["tutorial_completed"], false)
@@ -705,6 +710,8 @@ func record_level_clear(lvl: int, score: int, stars_earned: int) -> void:
 ## somewhere to go when these are spent; without that the cap would just be a
 ## locked door.
 const RAPIDS_RUNS_PER_DAY: int = 3
+## The daily puzzle allows three tries; a clear ends it for the day either way.
+const DAILY_ATTEMPTS_PER_DAY: int = 3
 
 func _today_utc() -> String:
 	var dt := Time.get_date_dict_from_system(true)
@@ -750,6 +757,34 @@ func record_rapids_start() -> bool:
 	return true
 
 
+func _roll_daily_attempts_day() -> void:
+	var today := _today_utc()
+	var last := str(prog.get("last_daily_attempt_date", ""))
+	if last == today:
+		return
+	if last.is_empty() or today > last:
+		prog["last_daily_attempt_date"] = today
+		prog["daily_attempts_today"] = 0
+
+
+func daily_attempts_left() -> int:
+	_roll_daily_attempts_day()
+	return maxi(0, DAILY_ATTEMPTS_PER_DAY - int(prog.get("daily_attempts_today", 0)))
+
+
+func record_daily_attempt() -> bool:
+	if daily_attempts_left() <= 0:
+		return false
+	prog["daily_attempts_today"] = int(prog.get("daily_attempts_today", 0)) + 1
+	request_save()
+	return true
+
+
+## No daily left today: cleared, or all three tries used.
+func daily_closed_today() -> bool:
+	return daily_done_today() or daily_attempts_left() <= 0
+
+
 ## The daily is one board a day. record_daily_play() already refuses to count a
 ## second clear, but nothing stopped the board being dealt again.
 func daily_done_today() -> bool:
@@ -761,10 +796,10 @@ func record_daily_play() -> bool:
 	var today_str := "%04d-%02d-%02d" % [dt["year"], dt["month"], dt["day"]]
 	if prog.get("last_daily_date", "") == today_str:
 		return false
-		
+
 	var yesterday_dt := Time.get_date_dict_from_unix_time(Time.get_unix_time_from_system() - 86400)
 	var yesterday_str := "%04d-%02d-%02d" % [yesterday_dt["year"], yesterday_dt["month"], yesterday_dt["day"]]
-	
+
 	if prog.get("last_daily_date", "") == yesterday_str:
 		prog["daily_streak"] = int(prog.get("daily_streak", 0)) + 1
 	else:
@@ -773,7 +808,7 @@ func record_daily_play() -> bool:
 			prog["daily_streak"] = int(prog.get("daily_streak", 0)) + 1
 		else:
 			prog["daily_streak"] = 1
-			
+
 	prog["last_daily_date"] = today_str
 	save_game()
 	return true
