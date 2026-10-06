@@ -394,13 +394,14 @@ func _start_calm_mode(level: int) -> void:
 ## the mode, looking at it and backing out used to spend a run, so three looks
 ## cost a whole day of them.
 var _rapids_charged: bool = false
+const RUN_STAGES: int = 3
 
 func _start_run_mode() -> void:
 	# The menu hides the row when the runs are spent, but the signal can also
 	# arrive from a stale screen, so the cap is checked where the run actually
 	# starts rather than only where it is offered.
 	if SaveManager.rapids_runs_left() <= 0:
-		hud.show_toast("No timed runs left today - %s." % SaveManager.time_until_reset())
+		hud.show_toast("No Timed Mode games left today - %s." % SaveManager.time_until_reset())
 		_return_home()
 		return
 	_rapids_charged = false
@@ -448,7 +449,7 @@ static func daily_layout_for_seed(seed_value: int) -> String:
 
 func _start_daily_mode() -> void:
 	if SaveManager.daily_closed_today():
-		hud.show_toast("Today's puzzle is done - %s." % SaveManager.time_until_reset())
+		hud.show_toast("No Daily Puzzle games left today - %s." % SaveManager.time_until_reset())
 		_return_home()
 		return
 	_daily_charged = false
@@ -644,7 +645,13 @@ func _on_board_cleared() -> void:
 		# Straight into the next board. There used to be a relic draft here; it
 		# was the thing testers understood least and it is gone, so a cleared
 		# stage now just leads to the next one.
-		hud.show_toast("Stage %d cleared" % GameManager.current_stage_no)
+		# A Timed Mode game is three stages. Clearing the third wins it; it used
+		# to roll on to R4, R5... until the clock ran out.
+		if GameManager.current_stage_no >= RUN_STAGES:
+			AudioManager.play_win()
+			modal.show_run_won(GameManager.score, GameManager.best_flow)
+			return
+		hud.show_toast("Stage %d of %d cleared" % [GameManager.current_stage_no, RUN_STAGES])
 		await get_tree().create_timer(1.1).timeout
 		_next_stage()
 

@@ -48,17 +48,17 @@ var _last_warn_second: int = -1
 func _ready() -> void:
 	_init_dynamic_hud_elements()
 	_apply_luxury_theme()
-	
+
 	$TopBar/BtnMenu.pressed.connect(func(): menu_clicked.emit())
 	btn_undo.pressed.connect(func(): undo_clicked.emit())
 	btn_hint.pressed.connect(func(): hint_clicked.emit())
 	btn_shuffle.pressed.connect(func(): shuffle_clicked.emit())
-	
+
 	GameManager.score_updated.connect(_on_score_updated)
 	GameManager.flow_updated.connect(_on_flow_updated)
 	GameManager.time_updated.connect(_on_time_updated)
 	GameManager.props_updated.connect(_on_props_updated)
-	
+
 	flow_banner.modulate.a = 0.0
 	toast_panel.modulate.a = 0.0
 
@@ -73,7 +73,7 @@ func _ready() -> void:
 
 func _init_dynamic_hud_elements() -> void:
 	# 1. Relics Bar for Timed Run Mode
-	
+
 	# 3. Spirit Pearls Counter Pill in TopBar
 	btn_pearls = Button.new()
 	btn_pearls.name = "BtnPearls"
@@ -85,7 +85,7 @@ func _init_dynamic_hud_elements() -> void:
 	SaveManager.pearls_changed.connect(_on_pearls_changed)
 	$TopBar.add_child(btn_pearls)
 	$TopBar.move_child(btn_pearls, 1) # Positioned between Menu and Readout
-	
+
 	MonetizationManager.pearls_updated.connect(func(bal):
 		if is_instance_valid(btn_pearls):
 			btn_pearls.text = "◈ %d" % bal
@@ -95,14 +95,14 @@ func _apply_luxury_theme() -> void:
 	# 1. Top Readout Lacquer Panel
 	var sb_readout := UITheme.create_panel_box(Color("#071914"), UITheme.GOLD_MUTED, 1, 18, 0.45)
 	readout_panel.add_theme_stylebox_override("panel", sb_readout)
-	
+
 	# 2. Menu Talisman Button
 	UITheme.style_circular_button($TopBar/BtnMenu, UITheme.GOLD_CORE)
 	# Two bars as nodes, not a glyph: this button is the pause control, and every
 	# pause codepoint is either missing or coloured emoji on some Android fonts.
 	for bar in $TopBar/BtnMenu/Glyph.get_children():
 		(bar as ColorRect).color = UITheme.GOLD_CORE
-	
+
 	# 3. Action Props Buttons (Undo, Hint, Shuffle)
 	UITheme.style_button(btn_undo, false, 18)
 	UITheme.style_button(btn_hint, false, 18)
@@ -110,7 +110,7 @@ func _apply_luxury_theme() -> void:
 	btn_undo.add_theme_font_size_override("font_size", HUD_FS)
 	btn_hint.add_theme_font_size_override("font_size", HUD_FS)
 	btn_shuffle.add_theme_font_size_override("font_size", HUD_FS)
-	
+
 	# 4. Timer Bar Styling
 	var sb_timer_bg := StyleBoxFlat.new()
 	sb_timer_bg.bg_color = Color("#061611")
@@ -119,21 +119,21 @@ func _apply_luxury_theme() -> void:
 	sb_timer_bg.set_corner_radius_all(6)
 	sb_timer_bg.anti_aliasing = true
 	time_bar.add_theme_stylebox_override("background", sb_timer_bg)
-	
+
 	var sb_timer_fill := StyleBoxFlat.new()
 	sb_timer_fill.bg_color = UITheme.GOLD_CORE
 	sb_timer_fill.set_corner_radius_all(6)
 	sb_timer_fill.anti_aliasing = true
 	time_bar.add_theme_stylebox_override("fill", sb_timer_fill)
-	
+
 	# 5. Flow Banner Styling
 	var sb_flow := UITheme.create_panel_box(Color("#1a1506"), UITheme.GOLD_CORE, 2, 18, 0.5)
 	flow_banner.add_theme_stylebox_override("panel", sb_flow)
-	
+
 	# 6. Toast Styling
 	var sb_toast := UITheme.create_panel_box(Color("#081d17"), UITheme.GOLD_CORE, 2, 16, 0.5)
 	toast_panel.add_theme_stylebox_override("panel", sb_toast)
-	
+
 	# 7. Bundled Font Typography
 	UITheme.style_label(lbl_level, "ui", 48, UITheme.GOLD_BRIGHT, UITheme.W_SEMIBOLD)
 	UITheme.style_label(lbl_score, "ui", 48, UITheme.IVORY_BASE, UITheme.W_SEMIBOLD)
@@ -142,7 +142,7 @@ func _apply_luxury_theme() -> void:
 	UITheme.style_label(lbl_clock, "ui", UITheme.FS_BODY, UITheme.IVORY_BASE)
 	UITheme.style_label(lbl_flow, "ui", UITheme.FS_BODY, UITheme.GOLD_BRIGHT)
 	UITheme.style_label(lbl_toast, "ui", UITheme.FS_BODY, UITheme.IVORY_BASE)
-	
+
 	for stat_lbl in [
 		$TopBar/Readout/StatsBox/LevelBox/Lbl,
 		$TopBar/Readout/StatsBox/ScoreBox/Lbl,
@@ -152,7 +152,7 @@ func _apply_luxury_theme() -> void:
 		if is_instance_valid(stat_lbl):
 			UITheme.style_label(stat_lbl, "ui", UITheme.FS_CAPTION, Color(0.65, 0.80, 0.73, 1),
 				UITheme.W_MEDIUM, 2)
-	
+
 
 ## Previously applied insets, so re-applying is idempotent. The old version
 ## did `position.y += inset` once in _ready(); running it a second time would
@@ -187,7 +187,7 @@ func setup_hud(mode: GameManager.GameMode, level_no: int) -> void:
 			lbl_level.text = "L" + str(level_no)
 			timer_container.visible = false
 		GameManager.GameMode.RUN:
-			lbl_level.text = "R" + str(level_no)
+			lbl_level.text = "%d/3" % level_no
 			timer_container.visible = true
 		GameManager.GameMode.DAILY:
 			lbl_level.text = "DAILY"
@@ -217,7 +217,7 @@ func _on_flow_updated(flow: int, suit_name: String, is_overdrive: bool) -> void:
 		var t := create_tween()
 		t.tween_property(flow_banner, "modulate:a", 0.0, 0.15)
 		return
-		
+
 	var suit_display := ""
 	match suit_name:
 		"dot": suit_display = "Circles"
@@ -226,14 +226,14 @@ func _on_flow_updated(flow: int, suit_name: String, is_overdrive: bool) -> void:
 		"wind": suit_display = "Winds"
 		"dragon": suit_display = "Dragons"
 		_: suit_display = "Wilds"
-		
+
 	if is_overdrive:
 		lbl_flow.text = "FLOW OVERDRIVE ×%d · %s" % [flow, suit_display]
 		lbl_flow.add_theme_color_override("font_color", UITheme.GOLD_BRIGHT)
 	else:
 		lbl_flow.text = "Flow ×%d · %s" % [flow, suit_display]
 		lbl_flow.add_theme_color_override("font_color", UITheme.GOLD_CORE)
-		
+
 	# Fades itself out rather than sitting over the board for as long as the
 	# flow lasts. It is mouse_filter IGNORE now so it no longer eats taps, but
 	# a panel parked on the top rows is still in the way of reading them.
@@ -260,7 +260,7 @@ func _on_time_updated(time_left: float, max_time: float) -> void:
 		lbl_clock.add_theme_color_override("font_color", Color(1.0, 0.35, 0.35))
 	else:
 		lbl_clock.remove_theme_color_override("font_color")
-		
+
 	if time_left <= 15.0 and time_left > 0.0:
 		var current_sec := int(ceil(time_left))
 		if current_sec != _last_warn_second:

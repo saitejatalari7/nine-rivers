@@ -370,7 +370,7 @@ func show_main_menu() -> void:
 	# that is refused a moment later.
 	var runs_left: int = SaveManager.rapids_runs_left()
 	_add_tile_row(UITheme.RED_CINNABAR, "Timed Mode",
-		"Three runs a day" if runs_left > 0 else SaveManager.time_until_reset(),
+		"3 games a day" if runs_left > 0 else SaveManager.time_until_reset(),
 		"%d left" % runs_left if runs_left > 0 else "Spent", func():
 			if SaveManager.rapids_runs_left() <= 0:
 				return
@@ -381,7 +381,7 @@ func show_main_menu() -> void:
 	var daily_done: bool = SaveManager.daily_closed_today()
 	var tries: int = SaveManager.daily_attempts_left()
 	_add_tile_row(Color("#28527a"), "Daily Puzzle",
-		"One board, three tries" if not daily_done else SaveManager.time_until_reset(),
+		"3 games a day" if not daily_done else SaveManager.time_until_reset(),
 		("%d left" % tries) if not daily_done else "Done", func():
 			if SaveManager.daily_closed_today():
 				return
@@ -667,6 +667,26 @@ func show_deadlock(level: int, tiles_left: int) -> void:
 	, UITheme.IVORY_MUTED)
 	show_modal()
 
+
+## A Timed Mode game won: all three stages cleared before the clock ran out.
+func show_run_won(score: int, best_flow: int) -> void:
+	_current_screen = "run_won"
+	_clear_content()
+	_add_header("Timed Mode Won", "All 3 stages cleared")
+	_add_hairline()
+	_add_sheet_row("Final Score", str(score), UITheme.GOLD_CORE)
+	_add_sheet_row("Best Combo", "×%d" % best_flow)
+	_add_sheet_row("Games Left Today", str(SaveManager.rapids_runs_left()))
+	_add_separator()
+	if SaveManager.rapids_runs_left() > 0:
+		_add_tile_row(GLYPH_JADE, "Play Again", "Start a new Timed Mode game", "", func():
+			hide_modal()
+			start_run_requested.emit()
+		, true)
+	_add_toggle_row("Main Menu", "›", func():
+		return_home_requested.emit()
+	, UITheme.IVORY_MUTED)
+	show_modal()
 
 func show_game_over(reason: String) -> void:
 	_current_screen = "game_over"
@@ -1222,7 +1242,7 @@ func handle_back_pressed() -> void:
 		"pause":
 			hide_modal()
 			resume_game_requested.emit()
-		"level_clear", "daily_clear", "game_over", "theme_unlocked", "deadlock":
+		"level_clear", "daily_clear", "game_over", "run_won", "theme_unlocked", "deadlock":
 			# No hide_modal(): _return_home() puts the main menu up in its place,
 			# and hiding first would race the fade against it.
 			return_home_requested.emit()
