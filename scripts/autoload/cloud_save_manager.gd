@@ -69,7 +69,9 @@ func _is_supported() -> bool:
 func _connect_to_play_games() -> void:
 	state = State.CONNECTING
 
-	if GodotPlayGameServices.initialize() != GodotPlayGameServices.PlayGamesPluginError.OK:
+	# initialize() reports an error when called a second time, and the
+	# leaderboard may have called it first.
+	if GodotPlayGameServices.android_plugin == null and GodotPlayGameServices.initialize() != GodotPlayGameServices.PlayGamesPluginError.OK:
 		_fail("Google Play Games is not available on this device.")
 		return
 

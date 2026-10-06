@@ -389,6 +389,10 @@ func show_main_menu() -> void:
 			start_daily_requested.emit()
 	, not daily_done)
 
+	if LeaderboardManager.is_available():
+		_add_tile_row(GLYPH_INK, "Leaderboard", "Today's Daily Puzzle, worldwide",
+			"", func(): LeaderboardManager.open_daily())
+
 	_add_tile_row(Color("#9e6d19"), "Shop", "Tiles, backgrounds, pearls",
 		"%d ◈" % pearls, func(): show_bazaar_modal())
 
@@ -634,6 +638,10 @@ func show_daily_clear(score: int, best_flow: int, streak: int, blessing: int = 0
 		_add_toggle_row("Keep the %s tiles" % theme_display_name(sampled),
 			"%s ◈" % _thousands(MonetizationManager.get_pearl_cost(sampled)), func():
 				show_tile_detail_modal(captured_sample)
+		)
+	if LeaderboardManager.is_available():
+		_add_toggle_row("See Leaderboard", "›", func():
+			LeaderboardManager.open_daily()
 		)
 	_add_toggle_row("Main Menu", "›", func():
 		return_home_requested.emit()

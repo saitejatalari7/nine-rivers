@@ -33,6 +33,7 @@ GameManager="*res://scripts/autoload/game_manager.gd"
 MonetizationManager="*res://scripts/autoload/monetization_manager.gd"
 GodotPlayGameServices="*uid://r4l1qjx3vraf"
 CloudSaveManager="*res://scripts/autoload/cloud_save_manager.gd"
+LeaderboardManager="*res://scripts/autoload/leaderboard_manager.gd"
 
 [display]
 

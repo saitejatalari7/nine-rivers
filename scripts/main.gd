@@ -639,6 +639,7 @@ func _on_board_cleared() -> void:
 		var blessing: int = DAILY_BLESSING_PEARLS if first_today else 0
 		if blessing > 0:
 			SaveManager.add_pearls(blessing)
+		LeaderboardManager.submit_daily(GameManager.score)
 		modal.show_daily_clear(GameManager.score, GameManager.best_flow,
 			int(SaveManager.prog.get("daily_streak", 1)), blessing, sampled_theme)
 	else:
