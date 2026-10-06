@@ -35,6 +35,17 @@ cap, cached audio); Shop-only rewarded video; recorded ambience per background.
   be replayed without limit from the pause menu's Restart Board. Restart now
   counts as a new attempt; the Daily Puzzle allows three tries a day.
 
+### Build 12 (1.0.1) - 2026-10-06
+
+- **A Timed Mode game is three stages.** It rolled on to stage 4, 5... until
+  the clock ran out; clearing the third stage now wins the game. Menu wording
+  is "3 games a day" for both Timed Mode and the Daily Puzzle.
+- **Worldwide Daily Puzzle leaderboard** on Google Play Games. Only the daily
+  is ranked, because everyone plays the same board that day.
+- **Tiles never under the timer.** The board is framed between the top panel,
+  the timer strip and the bottom buttons, measured on screen. The bottom
+  buttons are one slim row at the bottom edge, giving the space to the tiles.
+
 ## Tester feedback received
 
 | Date | From | Feedback | Action | Build |
@@ -44,6 +55,8 @@ cap, cached audio); Shop-only rewarded video; recorded ambience per background.
 | 2026-09-28 | Developer | Phone gets hot after 10 minutes | Frame cap, audio caching | 10 |
 | 2026-10-05 | Developer | Tiles still small on phone | 8-column boards | 11 |
 | 2026-10-05 | Developer | Played more than three daily games | Caps enforced | 11 |
+| 2026-10-06 | Developer | Timed Mode reached stage 4 | Game ends after stage 3 | 12 |
+| 2026-10-06 | Developer | Timer bar over the top tiles; bottom buttons bulky | Board framed below timer; slim bar | 12 |
 
 ## Pre-launch report
 
