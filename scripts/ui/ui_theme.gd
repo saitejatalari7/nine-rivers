@@ -338,16 +338,16 @@ static func style_circular_button(
 const SAFE_TOP_FLOOR: float = 72.0      # 24dp at the 1080-wide design scale
 const SAFE_BOTTOM_FLOOR: float = 144.0  # 48dp - the gesture pill
 
-static func get_safe_insets(viewport: Viewport) -> Vector2:
+static func get_safe_insets(viewport: Viewport, bottom_floor: float = SAFE_BOTTOM_FLOOR) -> Vector2:
 	if viewport == null:
-		return Vector2(SAFE_TOP_FLOOR, SAFE_BOTTOM_FLOOR)
+		return Vector2(SAFE_TOP_FLOOR, bottom_floor)
 	var vp_size: Vector2 = viewport.get_visible_rect().size
 	if not OS.has_feature("mobile"):
 		return Vector2.ZERO
 	var screen_size := DisplayServer.screen_get_size()
 	var safe := DisplayServer.get_display_safe_area()
 	var top := SAFE_TOP_FLOOR
-	var bottom := SAFE_BOTTOM_FLOOR
+	var bottom := bottom_floor
 	if screen_size.y > 0 and safe.size.y > 0 and vp_size.y > 0:
 		# The viewport is a scaled copy of the screen; convert device pixels
 		# into design pixels before using them as offsets.

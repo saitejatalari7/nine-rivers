@@ -28,6 +28,7 @@ const LADDER: Array[String] = BoardGenerator.LADDER
 const DAILY_BLESSING_PEARLS: int = 50
 
 func _ready() -> void:
+	camera.hud = hud
 	# Instantiate Tutorial Controller
 	tutorial = TutorialController.new()
 	tutorial.name = "TutorialController"

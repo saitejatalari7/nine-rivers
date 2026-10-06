@@ -26,6 +26,14 @@ var btn_pearls: Button
 ## looking at - and at full size they framed it rather than sat beside it.
 const HUD_SCALE: float = 0.75
 const HUD_FS: int = int(UITheme.FS_BODY * HUD_SCALE)
+## The props bar sits just above the gesture handle. The theme's 48dp bottom
+## floor is for menus; here it left the bar floating with 220px of dead
+## screen below it.
+const PROPS_H: float = 84.0
+const PROPS_GAP: float = 20.0
+const PROPS_BOTTOM_FLOOR: float = 48.0
+## Space kept clear between the HUD and the nearest tile.
+const BAND_GAP: float = 12.0
 
 @onready var timer_container: Control = $TimerWrap
 @onready var time_bar: ProgressBar = $TimerWrap/Bar
@@ -160,17 +168,29 @@ func _apply_luxury_theme() -> void:
 var _applied_insets: Vector2 = Vector2.ZERO
 
 func _apply_safe_area() -> void:
+	var bottom: float = UITheme.get_safe_insets(get_viewport(), PROPS_BOTTOM_FLOOR).y
+	$PropsBar.offset_bottom = -(bottom + PROPS_GAP)
+	$PropsBar.offset_top = $PropsBar.offset_bottom - PROPS_H
 	var insets: Vector2 = UITheme.get_safe_insets(get_viewport())
 	if insets.is_equal_approx(_applied_insets):
 		return
 	var delta := insets - _applied_insets
 	_applied_insets = insets
 	$TopBar.position.y += delta.x
-	$PropsBar.position.y -= delta.y
 	for n in ["TimerWrap", "FlowBanner"]:
 		var c := get_node_or_null(n)
 		if c is Control:
 			(c as Control).position.y += delta.x
+
+## The strip of screen the board may use: from below the top bar (and the
+## timer, when a mode shows one) to above the props bar. Measured from the
+## laid-out controls, so it stays right whatever the insets or the HUD do.
+func play_band() -> Vector2:
+	var top: float = $TopBar.get_global_rect().end.y
+	if timer_container.visible:
+		top = maxf(top, timer_container.get_global_rect().end.y)
+	var bottom: float = $PropsBar.get_global_rect().position.y
+	return Vector2(top + BAND_GAP, bottom - BAND_GAP)
 
 func _process(delta: float) -> void:
 	if display_score != target_score:
@@ -270,11 +290,11 @@ func _on_time_updated(time_left: float, max_time: float) -> void:
 		_last_warn_second = -1
 
 func _on_props_updated(u: int, h: int, s: int) -> void:
-	btn_undo.text = "Undo\n(%d)" % u if u > 0 else "Undo\n(+)"
+	btn_undo.text = "Undo  %d" % u if u > 0 else "Undo  +"
 	btn_undo.modulate.a = 0.65 if u <= 0 else 1.0
-	btn_hint.text = "Hint\n(%d)" % h if h > 0 else "Hint\n(+)"
+	btn_hint.text = "Hint  %d" % h if h > 0 else "Hint  +"
 	btn_hint.modulate.a = 0.65 if h <= 0 else 1.0
-	btn_shuffle.text = "Shuffle\n(%d)" % s if s > 0 else "Shuffle\n(+)"
+	btn_shuffle.text = "Shuffle  %d" % s if s > 0 else "Shuffle  +"
 	btn_shuffle.modulate.a = 0.65 if s <= 0 else 1.0
 
 func show_toast(msg: String) -> void:

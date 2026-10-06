@@ -29,23 +29,41 @@ func _ready() -> void:
 			seen[layout] = true
 			main._start_calm_mode(lv)
 			await get_tree().create_timer(0.5).timeout
-			var cam: Camera2D = main.get_node("Camera2D")
-			worst_scale = minf(worst_scale, cam.zoom.x)
-			var xf: Transform2D = get_viewport().get_canvas_transform()
-			var board = main.get_node("Board")
-			var r: Rect2 = Rect2()
-			var first := true
-			for t in board.get_active_tiles():
-				var v = board.tile_views.get(t)
-				if v == null:
-					continue
-				var gr: Rect2 = xf * Rect2(v.global_position, Vector2(64, 84 + 6))
-				r = gr if first else r.merge(gr)
-				first = false
-			var ok: bool = r.position.x >= 0 and r.end.x <= vp.x and r.position.y >= top - 1 and r.end.y <= bottom + 1
-			if not ok:
-				_fails += 1
-				print("  FAIL %s %-18s x %.0f..%.0f  y %.0f..%.0f  (bars %.0f..%.0f)" % [size, layout, r.position.x, r.end.x, r.position.y, r.end.y, top, bottom])
+			worst_scale = minf(worst_scale, main.get_node("Camera2D").zoom.x)
+			_check(main, size, layout, top, bottom)
 		print("%s: %d layouts, smallest zoom %.2f" % [size, seen.size(), worst_scale])
+		# Timed Mode and the Daily Puzzle show a timer strip under the top bar.
+		var timer_end: float = main.get_node("HUD/TimerWrap").get_global_rect().end.y
+		for i in 6:
+			if i % 2 == 0:
+				SaveManager.prog["daily_attempts_today"] = 0
+				main._start_daily_mode()
+			else:
+				SaveManager.prog["rapids_runs_today"] = 0
+				main._start_run_mode()
+			await get_tree().create_timer(0.6).timeout
+			_check(main, size, "daily" if i % 2 == 0 else "timed", timer_end, bottom)
+		if size.y > 1000:
+			await RenderingServer.frame_post_draw
+			get_viewport().get_texture().get_image().save_png(OS.get_environment("FIT_SHOT") if OS.get_environment("FIT_SHOT") != "" else "user://fit_daily.png")
 	print("Failures: %d" % _fails)
 	get_tree().quit(1 if _fails > 0 else 0)
+
+
+func _check(main, size: Vector2i, layout: String, top: float, bottom: float) -> void:
+	var vp: Vector2 = get_viewport().get_visible_rect().size
+	var xf: Transform2D = get_viewport().get_canvas_transform()
+	var board = main.get_node("Board")
+	var r: Rect2 = Rect2()
+	var first := true
+	for t in board.get_active_tiles():
+		var v = board.tile_views.get(t)
+		if v == null:
+			continue
+		var gr: Rect2 = xf * Rect2(v.global_position, Vector2(64, 84 + 6))
+		r = gr if first else r.merge(gr)
+		first = false
+	var ok: bool = r.position.x >= 0 and r.end.x <= vp.x and r.position.y >= top - 1 and r.end.y <= bottom + 1
+	if not ok:
+		_fails += 1
+		print("  FAIL %s %-18s x %.0f..%.0f  y %.0f..%.0f  (bars %.0f..%.0f)" % [size, layout, r.position.x, r.end.x, r.position.y, r.end.y, top, bottom])

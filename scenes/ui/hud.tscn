@@ -169,37 +169,39 @@ vertical_alignment = 1
 
 [node name="PropsBar" type="HBoxContainer" parent="."]
 mouse_filter = 2
-anchors_preset = 7
-anchor_left = 0.5
+anchors_preset = 12
 anchor_top = 1.0
-anchor_right = 0.5
+anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = -450.0
-offset_top = -165.0
-offset_right = 450.0
-offset_bottom = -75.0
+offset_left = 24.0
+offset_top = -104.0
+offset_right = -24.0
+offset_bottom = -20.0
 grow_horizontal = 2
 grow_vertical = 0
-theme_override_constants/separation = 21
+theme_override_constants/separation = 12
 alignment = 1
 
 [node name="BtnUndo" type="Button" parent="PropsBar"]
-custom_minimum_size = Vector2(180, 90)
+custom_minimum_size = Vector2(0, 84)
 layout_mode = 2
+size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 29
-text = "Undo\n(3)"
+text = "Undo  3"
 
 [node name="BtnHint" type="Button" parent="PropsBar"]
-custom_minimum_size = Vector2(180, 90)
+custom_minimum_size = Vector2(0, 84)
 layout_mode = 2
+size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 29
-text = "Hint\n(3)"
+text = "Hint  3"
 
 [node name="BtnShuffle" type="Button" parent="PropsBar"]
-custom_minimum_size = Vector2(180, 90)
+custom_minimum_size = Vector2(0, 84)
 layout_mode = 2
+size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 29
-text = "Shuffle\n(3)"
+text = "Shuffle  3"
 
 [node name="Toast" type="PanelContainer" parent="."]
 anchors_preset = 8

@@ -16,6 +16,8 @@ var last_tap_time: float = 0.0
 const UITheme = preload("res://scripts/ui/ui_theme.gd")
 
 var board_bounds := Rect2()
+var hud: Node
+var _fit_center := Vector2.ZERO
 
 func _ready() -> void:
 	zoom = Vector2(default_zoom, default_zoom)
@@ -27,23 +29,24 @@ func frame_board(bounds: Rect2, viewport_size: Vector2) -> void:
 	if bounds.size.x <= 0 or bounds.size.y <= 0:
 		return
 
-	# Derived from the HUD, not guessed: TopBar now ends at 208 and PropsBar
-	# starts 219 from the bottom, and both move again by the safe-area insets.
-	# The old fixed 190/230 predate that and put the board under both bars.
-	#
-	# Measured again after the HUD went to 75%: the props bar now starts 165
-	# from the bottom, not 195. The fit also used to take 35px a side, 40px
-	# more vertically and then a further 5% off the result - about a tenth of
-	# the tile size given away to empty screen. Tile size is the priority, so
-	# the board now fills to a 16px gutter (the menus' own) with a small
-	# buffer for the tile walls, which hang below the bounds.
+	# The free band comes from the HUD's own laid-out controls (play_band), so
+	# the timer strip is reserved in the modes that show it and nothing has to
+	# be kept in step by hand. The constants are the fallback for a camera with
+	# no HUD, as in some harnesses.
 	const TOP_BAR_END: float = 208.0
 	const PROPS_BAR_H: float = 165.0
 	const SIDE_GUTTER: float = 16.0
 	const WALL_BUFFER: float = 8.0
-	var insets: Vector2 = UITheme.get_safe_insets(get_viewport())
-	var top_hud_h: float = insets.x + TOP_BAR_END
-	var bot_props_h: float = insets.y + PROPS_BAR_H
+	var top_hud_h: float
+	var bot_props_h: float
+	if hud != null and hud.has_method("play_band"):
+		var band: Vector2 = hud.play_band()
+		top_hud_h = band.x
+		bot_props_h = viewport_size.y - band.y
+	else:
+		var insets: Vector2 = UITheme.get_safe_insets(get_viewport())
+		top_hud_h = insets.x + TOP_BAR_END
+		bot_props_h = insets.y + PROPS_BAR_H
 	var padding := Vector2(SIDE_GUTTER * 2.0, top_hud_h + bot_props_h + WALL_BUFFER)
 	var avail := viewport_size - padding
 	var fit_x: float = avail.x / bounds.size.x
@@ -61,6 +64,7 @@ func frame_board(bounds: Rect2, viewport_size: Vector2) -> void:
 	# board up under the top bar; the old wide margins hid it.
 	var vertical_ui_bias: float = (top_hud_h - bot_props_h) * 0.5 / fit_scale
 	center.y -= vertical_ui_bias
+	_fit_center = center
 
 	var tween := create_tween().set_parallel(true)
 	tween.tween_property(self, "position", center, 0.35).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
@@ -118,7 +122,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		_clamp_position()
 
 func reset_to_fit() -> void:
-	var center := board_bounds.position + board_bounds.size * 0.5
+	var center := _fit_center
 	var tween := create_tween().set_parallel(true)
 	tween.tween_property(self, "position", center, 0.25).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	tween.tween_property(self, "zoom", Vector2(default_zoom, default_zoom), 0.25).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
