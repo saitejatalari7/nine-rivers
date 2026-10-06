@@ -30,8 +30,7 @@ func is_available() -> bool:
 func _connect() -> void:
 	# initialize() reports an error when called a second time, and Cloud Save
 	# may have called it first.
-	if GodotPlayGameServices.android_plugin == null \
-			and GodotPlayGameServices.initialize() != GodotPlayGameServices.PlayGamesPluginError.OK:
+	if GodotPlayGameServices.android_plugin == null and GodotPlayGameServices.initialize() != GodotPlayGameServices.PlayGamesPluginError.OK:
 		return
 	_sign_in = PlayGamesSignInClient.new()
 	_sign_in.name = "LeaderboardSignIn"
