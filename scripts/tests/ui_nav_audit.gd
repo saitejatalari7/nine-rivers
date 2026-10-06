@@ -136,6 +136,7 @@ func _reset() -> void:
 	# own test.
 	SaveManager.prog["last_daily_date"] = ""
 	SaveManager.prog["rapids_runs_today"] = 0
+	SaveManager.prog["daily_attempts_today"] = 0
 	SaveManager.prog["last_rapids_date"] = ""
 	main._return_home()
 	await _settle()
@@ -183,6 +184,7 @@ func _apply_pre(mode: String) -> void:
 		"run":
 			main._start_run_mode()
 		"daily":
+			SaveManager.prog["daily_attempts_today"] = 0
 			main._start_daily_mode()
 	if not mode.is_empty():
 		# The buttons that start a mode also close the menu; calling the start
