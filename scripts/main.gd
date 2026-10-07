@@ -42,7 +42,6 @@ func _ready() -> void:
 	hud.pearls_clicked.connect(func(): modal.show_bazaar_modal())
 
 	# Wire Board signals
-	board.move_completed.connect(_on_board_move_completed)
 	board.tile_matched.connect(_on_tile_matched_ripple)
 	board.tile_matched.connect(func(_p): _charge_rapids_run())
 	board.board_cleared.connect(_on_board_cleared)
@@ -574,9 +573,6 @@ func _on_shuffle_clicked() -> void:
 	# column, for instance, where the lower can never be uncovered. The player
 	# did nothing wrong and should not pay for it.
 	hud.show_toast("This board cannot be untangled. Restart the stage from the menu.")
-
-func _on_board_move_completed(remaining: int, legal_moves: int) -> void:
-	hud.update_board_stats(remaining, legal_moves)
 
 
 ## Spends one of the three daily runs, once, on the first match of the run.

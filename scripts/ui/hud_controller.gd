@@ -18,14 +18,14 @@ var btn_pearls: Button
 @onready var readout_panel: PanelContainer = $TopBar/Readout
 @onready var lbl_level: Label = $TopBar/Readout/StatsBox/LevelBox/ValLevel
 @onready var lbl_score: Label = $TopBar/Readout/StatsBox/ScoreBox/ValScore
-@onready var lbl_tiles: Label = $TopBar/Readout/StatsBox/TilesBox/ValTiles
-@onready var lbl_sets: Label = $TopBar/Readout/StatsBox/SetsBox/ValSets
 
 ## The readout and the props bar were both taken to three quarters of their old
 ## size. They are reference, not action - the board is what the player is
 ## looking at - and at full size they framed it rather than sat beside it.
 const HUD_SCALE: float = 0.75
 const HUD_FS: int = int(UITheme.FS_BODY * HUD_SCALE)
+## Top bar height: pause, pearls and the stage/score readout share it.
+const TOP_H: float = 104.0
 ## The props bar sits just above the gesture handle. The theme's 48dp bottom
 ## floor is for menus; here it left the bar floating with 220px of dead
 ## screen below it.
@@ -85,7 +85,7 @@ func _init_dynamic_hud_elements() -> void:
 	# 3. Spirit Pearls Counter Pill in TopBar
 	btn_pearls = Button.new()
 	btn_pearls.name = "BtnPearls"
-	btn_pearls.custom_minimum_size = Vector2(147, UITheme.TOUCH_MIN * 0.75)
+	btn_pearls.custom_minimum_size = Vector2(147, TOP_H)
 	btn_pearls.text = "◈ %d" % MonetizationManager.get_pearls()
 	UITheme.style_button(btn_pearls, true, 16)
 	btn_pearls.add_theme_font_size_override("font_size", HUD_FS)
@@ -102,6 +102,8 @@ func _init_dynamic_hud_elements() -> void:
 func _apply_luxury_theme() -> void:
 	# 1. Top Readout Lacquer Panel
 	var sb_readout := UITheme.create_panel_box(Color("#071914"), UITheme.GOLD_MUTED, 1, 18, 0.45)
+	sb_readout.content_margin_left = 20
+	sb_readout.content_margin_right = 20
 	readout_panel.add_theme_stylebox_override("panel", sb_readout)
 
 	# 2. Menu Talisman Button
@@ -143,22 +145,18 @@ func _apply_luxury_theme() -> void:
 	toast_panel.add_theme_stylebox_override("panel", sb_toast)
 
 	# 7. Bundled Font Typography
-	UITheme.style_label(lbl_level, "ui", 48, UITheme.GOLD_BRIGHT, UITheme.W_SEMIBOLD)
-	UITheme.style_label(lbl_score, "ui", 48, UITheme.IVORY_BASE, UITheme.W_SEMIBOLD)
-	UITheme.style_label(lbl_tiles, "ui", 48, UITheme.IVORY_BASE, UITheme.W_SEMIBOLD)
-	UITheme.style_label(lbl_sets, "ui", 48, UITheme.IVORY_BASE, UITheme.W_SEMIBOLD)
+	UITheme.style_label(lbl_level, "ui", 40, UITheme.GOLD_BRIGHT, UITheme.W_SEMIBOLD)
+	UITheme.style_label(lbl_score, "ui", 40, UITheme.IVORY_BASE, UITheme.W_SEMIBOLD)
 	UITheme.style_label(lbl_clock, "ui", UITheme.FS_BODY, UITheme.IVORY_BASE)
 	UITheme.style_label(lbl_flow, "ui", UITheme.FS_BODY, UITheme.GOLD_BRIGHT)
 	UITheme.style_label(lbl_toast, "ui", UITheme.FS_BODY, UITheme.IVORY_BASE)
 
 	for stat_lbl in [
 		$TopBar/Readout/StatsBox/LevelBox/Lbl,
-		$TopBar/Readout/StatsBox/ScoreBox/Lbl,
-		$TopBar/Readout/StatsBox/TilesBox/Lbl,
-		$TopBar/Readout/StatsBox/SetsBox/Lbl
+		$TopBar/Readout/StatsBox/ScoreBox/Lbl
 	]:
 		if is_instance_valid(stat_lbl):
-			UITheme.style_label(stat_lbl, "ui", UITheme.FS_CAPTION, Color(0.65, 0.80, 0.73, 1),
+			UITheme.style_label(stat_lbl, "ui", 26, Color(0.65, 0.80, 0.73, 1),
 				UITheme.W_MEDIUM, 2)
 
 
@@ -212,16 +210,6 @@ func setup_hud(mode: GameManager.GameMode, level_no: int) -> void:
 		GameManager.GameMode.DAILY:
 			lbl_level.text = "DAILY"
 			timer_container.visible = true
-
-func update_board_stats(remaining_tiles: int, legal_moves: int) -> void:
-	lbl_tiles.text = str(remaining_tiles)
-	lbl_sets.text = str(legal_moves)
-	if legal_moves == 0 and remaining_tiles > 0:
-		lbl_sets.add_theme_color_override("font_color", Color(1.0, 0.4, 0.4))
-	elif legal_moves <= 2 and remaining_tiles > 0:
-		lbl_sets.add_theme_color_override("font_color", Color(1.0, 0.78, 0.35))
-	else:
-		lbl_sets.remove_theme_color_override("font_color")
 
 func _on_score_updated(new_score: int, _delta: int) -> void:
 	target_score = new_score

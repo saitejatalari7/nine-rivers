@@ -13,8 +13,8 @@ extends Node
 ## only where they sit. Everything else in the band the camera gives the board
 ## has to be transparent to input.
 
-const TOP_BAR_END: float = 208.0
-const PROPS_BAR_H: float = 195.0
+const TOP_BAR_END: float = 168.0
+const PROPS_BAR_H: float = 124.0
 ## Names permitted to accept input anywhere; these are the real controls.
 const INTERACTIVE: Array[String] = ["BtnMenu", "BtnUndo", "BtnHint", "BtnShuffle"]
 

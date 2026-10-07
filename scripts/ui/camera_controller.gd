@@ -33,7 +33,7 @@ func frame_board(bounds: Rect2, viewport_size: Vector2) -> void:
 	# the timer strip is reserved in the modes that show it and nothing has to
 	# be kept in step by hand. The constants are the fallback for a camera with
 	# no HUD, as in some harnesses.
-	const TOP_BAR_END: float = 208.0
+	const TOP_BAR_END: float = 168.0
 	const PROPS_BAR_H: float = 165.0
 	const SIDE_GUTTER: float = 16.0
 	const WALL_BUFFER: float = 8.0
