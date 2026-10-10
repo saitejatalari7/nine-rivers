@@ -10,6 +10,7 @@ signal start_daily_requested()
 signal restart_stage_requested()
 signal next_stage_requested()
 signal premium_shop_requested()
+signal shuffle_ad_requested()
 signal deadlock_accepted()
 signal deadlock_retry()
 signal resume_game_requested()
@@ -910,6 +911,24 @@ func show_premium_offer(theme_key: String) -> void:
 	show_modal()
 
 
+## Offered only when the player taps Shuffle with none left, never on its
+## own: the one ad that can appear during play is one the player asked for.
+func show_shuffle_offer() -> void:
+	_current_screen = "shuffle_offer"
+	_clear_content()
+	_add_header("Out of Shuffles", "The clock is paused")
+	_add_hairline()
+	_add_tile_row(GLYPH_GOLD, "Watch a video", "+1 Shuffle, used right away", "", func():
+		hide_modal()
+		shuffle_ad_requested.emit()
+	, true)
+	_add_toggle_row("Not now", "›", func():
+		hide_modal()
+		resume_game_requested.emit()
+	, UITheme.IVORY_MUTED)
+	show_modal()
+
+
 ## Big enough to be the point of the screen rather than an illustration on it.
 const DETAIL_TILE_SCALE: float = 2.4
 
@@ -1252,7 +1271,7 @@ func handle_back_pressed() -> void:
 				show_main_menu()
 		"privacy", "credits":
 			show_settings_menu()
-		"pause":
+		"pause", "shuffle_offer":
 			hide_modal()
 			resume_game_requested.emit()
 		"level_clear", "daily_clear", "game_over", "run_won", "theme_unlocked", "deadlock":

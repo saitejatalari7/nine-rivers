@@ -10,6 +10,8 @@ extends Node
 ## then one of each ad is preloaded so a tap never waits on the network.
 
 signal rewarded
+## The rewarded video has left the screen, watched to the end or not.
+signal rewarded_closed
 
 const RETRY_SECONDS: float = 30.0
 const DEVELOPER_TEST_DEVICES: Array[String] = ["9524D58E36EA045039FEFE6522D20123"]
@@ -88,9 +90,11 @@ func show_rewarded_video() -> void:
 	ad.full_screen_content_callback.on_ad_dismissed_full_screen_content = func():
 		ad.destroy()
 		_load_rewarded()
+		rewarded_closed.emit()
 	ad.full_screen_content_callback.on_ad_failed_to_show_full_screen_content = func(_e):
 		ad.destroy()
 		_load_rewarded()
+		rewarded_closed.emit()
 	ad.show(listener)
 
 

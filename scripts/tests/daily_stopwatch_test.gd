@@ -13,6 +13,7 @@ func _ready() -> void:
 	main.get_node("SplashScreen").visible = false
 	SaveManager.prog["tutorial_completed"] = true
 	SaveManager.prog["daily_attempts_today"] = 0
+	SaveManager.prog["last_daily_date"] = ""
 	await get_tree().create_timer(0.5).timeout
 	main.get_node("Modal").hide_modal()
 

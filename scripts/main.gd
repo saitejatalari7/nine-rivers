@@ -64,6 +64,9 @@ func _ready() -> void:
 	modal.deadlock_accepted.connect(_on_deadlock_accepted)
 	modal.deadlock_retry.connect(_on_deadlock_retry)
 	modal.resume_game_requested.connect(_resume_game)
+	modal.shuffle_ad_requested.connect(func(): MonetizationManager.show_rewarded_ad("shuffle"))
+	MonetizationManager.rewarded_ad_closed.connect(_on_rewarded_closed)
+	MonetizationManager.rewarded_ad_unavailable.connect(_on_rewarded_unavailable)
 	modal.return_home_requested.connect(_return_home)
 	modal.background_quiet_changed.connect(func(quiet: bool):
 		if zen_background and zen_background.has_method("set_quiet"):
@@ -583,7 +586,7 @@ func _on_hint_clicked() -> void:
 
 func _on_shuffle_clicked() -> void:
 	if GameManager.shuffles <= 0:
-		hud.show_toast("No Shuffles left! Tap ◈ Pearls to visit Bazaar.")
+		_offer_shuffle_ad()
 		return
 	if board.shuffle_remaining_tiles():
 		GameManager.props_used += 1
@@ -596,6 +599,34 @@ func _on_shuffle_clicked() -> void:
 	# column, for instance, where the lower can never be uncovered. The player
 	# did nothing wrong and should not pay for it.
 	hud.show_toast("This board cannot be untangled. Restart the stage from the menu.")
+
+
+## Out of shuffles: a video for one more, if the player wants it. Not in the
+## Daily Puzzle, where everyone races the same board for the leaderboard.
+func _offer_shuffle_ad() -> void:
+	if GameManager.current_mode == GameManager.GameMode.DAILY:
+		hud.show_toast("No shuffles left. The Daily Puzzle has no extras.")
+		return
+	if not MonetizationManager.can_offer_rewarded_ad():
+		hud.show_toast("No shuffles left. More videos tomorrow.")
+		return
+	GameManager.is_timer_active = false
+	modal.show_shuffle_offer()
+
+
+func _on_rewarded_closed(placement: String) -> void:
+	if placement != "shuffle":
+		return
+	_resume_game()
+	if GameManager.shuffles > 0:
+		_on_shuffle_clicked()
+
+
+func _on_rewarded_unavailable(placement: String) -> void:
+	if placement != "shuffle":
+		return
+	hud.show_toast("No video right now. Try again in a moment.")
+	_resume_game()
 
 
 ## Spends one of the three daily runs, once, on the first match of the run.

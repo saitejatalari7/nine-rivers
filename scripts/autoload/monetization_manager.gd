@@ -10,6 +10,8 @@ signal purchase_succeeded(product_id: String)
 signal purchase_failed(product_id: String, reason: String)
 signal rewarded_ad_rewarded(placement: String, reward_type: String, amount: int)
 signal rewarded_ad_unavailable(placement: String)
+## The video is off the screen, rewarded or not, so the game can carry on.
+signal rewarded_ad_closed(placement: String)
 signal interstitial_ad_shown(context: String)
 signal banner_visibility_changed(is_visible: bool)
 signal theme_unlocked(theme_id: String)
@@ -159,6 +161,7 @@ var _admob: Object = null
 var _pending_callbacks: Dictionary = {}
 var _pending_ad_placement: String = ""
 var _pending_ad_callback: Callable = Callable()
+var _showing_placement: String = ""
 
 ## Test builds only. The "testbuild" feature is set by a dedicated export
 ## preset, and a release export does not carry it. Belt and braces: it also
@@ -476,6 +479,7 @@ func _init_platform_ads() -> void:
 		return
 	var ads = load("res://scripts/ads/admob_ads.gd").new()
 	ads.rewarded.connect(_on_admob_reward_granted)
+	ads.rewarded_closed.connect(_on_admob_rewarded_closed)
 	_admob = ads
 	# Autoloads are still being parented when _ready runs, so add_child fails
 	# outright; defer both the attach and the start.
@@ -494,6 +498,15 @@ func _on_admob_reward_granted(_type: String = "", _amount: int = 0) -> void:
 	_pending_ad_placement = ""
 	_pending_ad_callback = Callable()
 	_grant_reward(placement, cb)
+
+func _on_admob_rewarded_closed() -> void:
+	var placement: String = _showing_placement
+	_showing_placement = ""
+	# Closed early: no reward, and nothing pending that a late signal could pay.
+	_pending_ad_placement = ""
+	_pending_ad_callback = Callable()
+	if not placement.is_empty():
+		rewarded_ad_closed.emit(placement)
 
 func _check_daily_ad_reset() -> void:
 	var dt := Time.get_date_dict_from_system(true)
@@ -883,11 +896,13 @@ func show_rewarded_ad(placement: String, on_reward: Callable = Callable()) -> vo
 		# exercised without an ad network.
 		_consume_rewarded_charge()
 		_grant_reward(placement, on_reward)
+		rewarded_ad_closed.emit(placement)
 		return
 
 	_consume_rewarded_charge()
 	_pending_ad_placement = placement
 	_pending_ad_callback = on_reward
+	_showing_placement = placement
 	_admob.show_rewarded_video()
 
 
@@ -907,6 +922,12 @@ func _grant_reward(placement: String, on_reward: Callable = Callable()) -> void:
 			rewarded_ad_rewarded.emit(placement, "pearls", SHOP_VIDEO_PEARLS)
 			if on_reward.is_valid():
 				on_reward.call("pearls", SHOP_VIDEO_PEARLS)
+		"shuffle":
+			GameManager.shuffles += 1
+			GameManager.props_updated.emit(GameManager.undos, GameManager.hints, GameManager.shuffles)
+			rewarded_ad_rewarded.emit(placement, "shuffle", 1)
+			if on_reward.is_valid():
+				on_reward.call("shuffle", 1)
 		"props_refill":
 			GameManager.hints += 1
 			GameManager.shuffles += 1
