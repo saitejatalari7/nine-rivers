@@ -65,7 +65,8 @@ func submit_daily(seconds: float) -> void:
 	if _signed_in and _boards != null:
 		_boards.submit_score(DAILY_PUZZLE_ID, score)
 	else:
-		_pending_score = maxi(_pending_score, score)
+		# Smallest first: hold the fastest time, not the largest number.
+		_pending_score = score if _pending_score <= 0 else mini(_pending_score, score)
 
 
 func open_daily() -> void:
