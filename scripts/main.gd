@@ -93,7 +93,7 @@ const BOOT_MIN_SECONDS: float = 1.0
 const BOOT_MAX_SECONDS: float = 4.0
 
 var _booting: bool = false
-var _boot_bar: ColorRect = null
+var _boot_bar: Panel = null
 
 ## The screen refreshes at up to 120 Hz on current phones, and with no cap the
 ## game redrew the whole animated pond that often even on a still menu. 60 is
@@ -115,19 +115,38 @@ func _show_intro_splash() -> void:
 	_boot_load()
 
 
+## A pill under the tagline. It was a 4px line at 86% height: on a 20:9
+## phone that put it across the tagline itself, and it could not be seen.
 func _build_boot_bar() -> void:
-	var track := ColorRect.new()
-	track.color = Color(1, 1, 1, 0.10)
-	track.anchor_left = 0.3
-	track.anchor_right = 0.7
-	track.anchor_top = 0.86
-	track.anchor_bottom = 0.86
-	track.offset_bottom = 4.0
+	var track := Panel.new()
+	var sb_track := StyleBoxFlat.new()
+	sb_track.bg_color = Color(0.0, 0.06, 0.04, 0.6)
+	sb_track.border_color = Color(UITheme.GOLD_CORE, 0.45)
+	sb_track.set_border_width_all(2)
+	sb_track.set_corner_radius_all(14)
+	sb_track.anti_aliasing = true
+	track.add_theme_stylebox_override("panel", sb_track)
+	track.anchor_left = 0.24
+	track.anchor_right = 0.76
+	track.anchor_top = 0.925
+	track.anchor_bottom = 0.925
+	track.offset_top = -14.0
+	track.offset_bottom = 14.0
 	track.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	splash_screen.add_child(track)
-	_boot_bar = ColorRect.new()
-	_boot_bar.color = UITheme.GOLD_CORE
+	_boot_bar = Panel.new()
+	var sb_fill := StyleBoxFlat.new()
+	sb_fill.bg_color = UITheme.GOLD_CORE
+	sb_fill.set_corner_radius_all(10)
+	sb_fill.shadow_color = Color(UITheme.GOLD_BRIGHT, 0.5)
+	sb_fill.shadow_size = 6
+	sb_fill.anti_aliasing = true
+	_boot_bar.add_theme_stylebox_override("panel", sb_fill)
 	_boot_bar.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_boot_bar.offset_left = 5.0
+	_boot_bar.offset_top = 5.0
+	_boot_bar.offset_right = -5.0
+	_boot_bar.offset_bottom = -5.0
 	_boot_bar.anchor_right = 0.0
 	_boot_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	track.add_child(_boot_bar)
