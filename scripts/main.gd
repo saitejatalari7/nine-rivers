@@ -221,6 +221,11 @@ func _notification(what: int) -> void:
 	if what in [NOTIFICATION_WM_CLOSE_REQUEST, NOTIFICATION_APPLICATION_PAUSED,
 			NOTIFICATION_APPLICATION_FOCUS_OUT]:
 		_capture_session()
+	# A call or the notification shade must not cost Timed Mode seconds or add
+	# them to a Daily time: leaving the app pauses the game.
+	if what in [NOTIFICATION_APPLICATION_PAUSED, NOTIFICATION_APPLICATION_FOCUS_OUT]:
+		if hud.visible and GameManager.is_timer_active:
+			_on_menu_clicked()
 
 func _unhandled_input(event: InputEvent) -> void:
 	# The splash can no longer be tapped away: it lifts itself when loading is
@@ -459,7 +464,6 @@ func _start_daily_mode() -> void:
 	hud.setup_hud(GameManager.GameMode.DAILY, 1)
 	var layout_name: String = daily_layout_for_seed(GameManager.daily_seed)
 	GameManager.current_layout_name = layout_name
-	GameManager.apply_daily_time(BoardGenerator.get_layout_positions(layout_name).size())
 
 	if zen_background and zen_background.has_method("set_level"):
 		var daily_level: int = (abs(GameManager.daily_seed) % 25) + 1
@@ -636,9 +640,10 @@ func _on_board_cleared() -> void:
 		var blessing: int = DAILY_BLESSING_PEARLS if first_today else 0
 		if blessing > 0:
 			SaveManager.add_pearls(blessing)
-		LeaderboardManager.submit_daily(GameManager.score)
+		LeaderboardManager.submit_daily(GameManager.elapsed)
 		modal.show_daily_clear(GameManager.score, GameManager.best_flow,
-			int(SaveManager.prog.get("daily_streak", 1)), blessing, sampled_theme)
+			int(SaveManager.prog.get("daily_streak", 1)), blessing, sampled_theme,
+			GameManager.elapsed)
 	else:
 		# Straight into the next board. There used to be a relic draft here; it
 		# was the thing testers understood least and it is gone, so a cleared
@@ -680,6 +685,7 @@ func _capture_session() -> void:
 		"hints": GameManager.hints,
 		"shuffles": GameManager.shuffles,
 		"time_left": GameManager.time_left,
+		"elapsed": GameManager.elapsed,
 		"max_time": GameManager.max_time,
 		"rapids_charged": _rapids_charged,
 		"daily_charged": _daily_charged,
@@ -718,6 +724,7 @@ func _resume_session() -> bool:
 	GameManager.shuffles = int(s.get("shuffles", 0))
 	GameManager.max_time = float(s.get("max_time", 180.0))
 	GameManager.time_left = float(s.get("time_left", GameManager.max_time))
+	GameManager.elapsed = float(s.get("elapsed", 0.0))
 	GameManager.is_first_match_of_stage = GameManager.flow_level <= 0
 	# A run that was left before its first match has not been charged yet, and
 	# resuming must not charge it either - the first match still will.
@@ -731,7 +738,7 @@ func _resume_session() -> bool:
 	GameManager.flow_updated.emit(GameManager.flow_level, GameManager.flow_suit,
 		GameManager.is_overdrive_active())
 	GameManager.is_timer_active = mode != 0
-	GameManager.time_updated.emit(GameManager.time_left, GameManager.max_time)
+	GameManager._emit_clock()
 
 	if zen_background and zen_background.has_method("set_level"):
 		zen_background.set_level(GameManager.current_level)

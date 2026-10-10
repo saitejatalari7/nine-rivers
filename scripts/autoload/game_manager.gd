@@ -7,6 +7,9 @@ enum GameMode { CALM, RUN, DAILY }
 signal score_updated(new_score: int, delta: int)
 signal flow_updated(flow_level: int, suit_name: String, is_overdrive: bool)
 signal time_updated(time_left: float, max_time: float)
+## The Daily Puzzle has no countdown: it times the player, and the fastest
+## finish ranks highest on the leaderboard.
+signal elapsed_updated(elapsed: float)
 signal props_updated(undos: int, hints: int, shuffles: int)
 signal stage_cleared(stats: Dictionary)
 signal game_over(reason: String)
@@ -40,6 +43,7 @@ var score_mult: float = 1.0
 var time_gain_rate: float = 1.5
 var penalty_seconds: float = 3.0
 var is_timer_active: bool = false
+var elapsed: float = 0.0
 
 # Daily Tide metadata
 var daily_seed: int = 0
@@ -48,7 +52,11 @@ var daily_seed: int = 0
 var is_first_match_of_stage: bool = true
 
 func _process(delta: float) -> void:
-	if is_timer_active and current_mode != GameMode.CALM:
+	if is_timer_active and current_mode == GameMode.DAILY:
+		elapsed += delta
+		elapsed_updated.emit(elapsed)
+		return
+	if is_timer_active and current_mode == GameMode.RUN:
 		var drain_rate: float = 1.5 if StageModifiers.is_rush_active() else 1.0
 		time_left -= delta * drain_rate
 		time_updated.emit(max(0.0, time_left), max_time)
@@ -139,15 +147,6 @@ func apply_stage_time(tiles: int, carry_over: bool) -> void:
 	time_updated.emit(time_left, max_time)
 
 
-## The daily was a fixed 40-tile board when 120s was chosen; it now deals
-## 100-144, which quietly cut the time per match by more than half. Called once
-## the layout is known, since the date seed has to pick that first.
-func apply_daily_time(board_tiles: int) -> void:
-	time_left = clampf(60.0 + float(board_tiles) * 1.5, 100.0, 260.0)
-	max_time = time_left
-	time_updated.emit(time_left, max_time)
-
-
 func start_daily_tide() -> void:
 	current_mode = GameMode.DAILY
 	# Seed based on current UTC year/month/day
@@ -165,14 +164,13 @@ func start_daily_tide() -> void:
 	undos = 2
 	hints = 2
 	shuffles = 2
-	time_left = 120.0
-	max_time = time_left
+	elapsed = 0.0
 	is_timer_active = true
 
 	props_updated.emit(undos, hints, shuffles)
 	score_updated.emit(score, 0)
 	flow_updated.emit(0, "", false)
-	time_updated.emit(time_left, max_time)
+	elapsed_updated.emit(elapsed)
 	on_stage_started()
 
 ## Called at the start of every stage, including the second and later stages of
@@ -183,7 +181,7 @@ func on_stage_started() -> void:
 	is_first_match_of_stage = true
 	if current_mode != GameMode.CALM:
 		is_timer_active = true
-		time_updated.emit(time_left, max_time)
+		_emit_clock()
 
 
 ## Flow at which Overdrive kicks in, and what a misplay costs. Both used to be
@@ -202,6 +200,7 @@ func snapshot_state() -> Dictionary:
 		"flow_suit": flow_suit,
 		"best_flow": best_flow,
 		"time_left": time_left,
+		"elapsed": elapsed,
 		"misplays": misplays,
 		"is_first_match_of_stage": is_first_match_of_stage
 	}
@@ -212,13 +211,20 @@ func restore_state(snap: Dictionary) -> void:
 	flow_suit = snap.get("flow_suit", flow_suit)
 	best_flow = snap.get("best_flow", best_flow)
 	time_left = snap.get("time_left", time_left)
+	elapsed = snap.get("elapsed", elapsed)
 	misplays = snap.get("misplays", misplays)
 	is_first_match_of_stage = snap.get("is_first_match_of_stage", is_first_match_of_stage)
 
 	var is_overdrive: bool = is_overdrive_active()
 	flow_updated.emit(flow_level, flow_suit, is_overdrive)
 	score_updated.emit(score, 0)
-	if current_mode != GameMode.CALM:
+	_emit_clock()
+
+
+func _emit_clock() -> void:
+	if current_mode == GameMode.DAILY:
+		elapsed_updated.emit(elapsed)
+	elif current_mode == GameMode.RUN:
 		time_updated.emit(time_left, max_time)
 
 func register_match(suit: String, is_triple: bool,
@@ -263,7 +269,7 @@ func register_match(suit: String, is_triple: bool,
 
 	# 3. Time return. Gated on the clock actually running: a match must not add
 	# time to a countdown that is not counting down.
-	if is_timer_active:
+	if is_timer_active and current_mode == GameMode.RUN:
 		var bonus: float = time_gain_rate * (1.6 if is_triple else 1.0)
 		time_left = minf(max_time, time_left + bonus)
 		time_updated.emit(time_left, max_time)
@@ -281,9 +287,12 @@ func register_misplay() -> void:
 	var is_overdrive: bool = is_overdrive_active()
 	flow_updated.emit(flow_level, flow_suit, is_overdrive)
 
-	if current_mode != GameMode.CALM:
+	if current_mode == GameMode.RUN:
 		time_left = maxf(0.0, time_left - penalty_seconds)
 		time_updated.emit(time_left, max_time)
+	elif current_mode == GameMode.DAILY:
+		elapsed += penalty_seconds
+		elapsed_updated.emit(elapsed)
 
 	AudioManager.play_misplay()
 

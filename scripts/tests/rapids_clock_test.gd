@@ -92,23 +92,24 @@ func _t2_a_frozen_clock_is_not_topped_up() -> void:
 ## time was measured against, which opened Rapids at 56%.
 func _t3_the_bar_opens_full_in_every_mode() -> void:
 	print("--- #3  the time bar opens full ---")
-	GameManager.start_daily_tide()
-	GameManager.apply_daily_time(144)
-	await get_tree().process_frame
-	var daily_fill: float = GameManager.time_left / GameManager.max_time
-	# Not is_equal_approx: the clock is already running, so a frame of drain
-	# lands a fraction under 1.0 and that is not what this is looking for.
-	_check("a long Daily opens full", daily_fill > 0.99,
-		"time_left=%.0f / max_time=%.0f" % [GameManager.time_left, GameManager.max_time])
+	# The Daily is a stopwatch: it counts up from zero and cannot run out.
+	main._start_daily_mode()
+	var t_before: float = GameManager.time_left
+	await get_tree().create_timer(0.5).timeout
+	_check("the Daily counts up from zero", GameManager.elapsed > 0.2 and GameManager.elapsed < 2.0,
+		"elapsed=%.2f" % GameManager.elapsed)
+	_check("and leaves the countdown alone", is_equal_approx(t_before, GameManager.time_left),
+		"time_left %.2f -> %.2f" % [t_before, GameManager.time_left])
+	var e0: float = GameManager.elapsed
+	GameManager.register_misplay()
+	_check("a misplay adds to the Daily time", GameManager.elapsed >= e0 + GameManager.penalty_seconds,
+		"elapsed %.2f -> %.2f" % [e0, GameManager.elapsed])
 
 	main._start_run_mode()
 	await get_tree().process_frame
 	var fill: float = GameManager.time_left / GameManager.max_time
 	_check("Rapids after a Daily opens full", fill > 0.99,
 		"time_left=%.0f / max_time=%.0f = %.0f%%" % [GameManager.time_left, GameManager.max_time, fill * 100.0])
-	_check("and its ceiling is the Rapids start, not the Daily's",
-		is_equal_approx(GameManager.max_time, RAPIDS_START),
-		"max_time=%.0f (expected %.0f)" % [GameManager.max_time, RAPIDS_START])
 
 func _report() -> void:
 	print("")

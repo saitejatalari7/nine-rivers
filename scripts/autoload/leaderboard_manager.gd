@@ -2,8 +2,8 @@ extends Node
 
 ## Nine Rivers — the Daily Puzzle leaderboard on Google Play Games.
 ##
-## One board only: everyone plays the same deal each day, so it is the one
-## ranking that measures skill rather than luck or time spent. Google keeps
+## One board only: everyone plays the same deal each day, so the fastest
+## finish measures skill rather than luck or time spent. Google keeps
 ## each player's best and provides the Today / This week / All time views.
 ##
 ## Independent of the Cloud Save choice: a player who keeps saves on the phone
@@ -55,9 +55,11 @@ func _on_user_authenticated(is_authenticated: bool) -> void:
 		_show()
 
 
-## Called on a cleared Daily Puzzle. Google ignores a score lower than the
-## player's best, so every clear can be sent.
-func submit_daily(score: int) -> void:
+## Called on a cleared Daily Puzzle with the time it took. The board is set
+## to Time format, smallest first, which takes milliseconds; Google keeps
+## each player's fastest, so every clear can be sent.
+func submit_daily(seconds: float) -> void:
+	var score: int = int(round(seconds * 1000.0))
 	if not is_available() or score <= 0:
 		return
 	if _signed_in and _boards != null:

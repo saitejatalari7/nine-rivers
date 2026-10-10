@@ -65,6 +65,7 @@ func _ready() -> void:
 	GameManager.score_updated.connect(_on_score_updated)
 	GameManager.flow_updated.connect(_on_flow_updated)
 	GameManager.time_updated.connect(_on_time_updated)
+	GameManager.elapsed_updated.connect(_on_elapsed_updated)
 	GameManager.props_updated.connect(_on_props_updated)
 
 	flow_banner.modulate.a = 0.0
@@ -210,6 +211,9 @@ func setup_hud(mode: GameManager.GameMode, level_no: int) -> void:
 		GameManager.GameMode.DAILY:
 			lbl_level.text = "DAILY"
 			timer_container.visible = true
+	# A stopwatch has nothing to fill, so the daily shows the clock alone.
+	time_bar.visible = mode != GameManager.GameMode.DAILY
+	lbl_clock.remove_theme_color_override("font_color")
 
 func _on_score_updated(new_score: int, _delta: int) -> void:
 	target_score = new_score
@@ -276,6 +280,13 @@ func _on_time_updated(time_left: float, max_time: float) -> void:
 			AudioManager.play_tick_warn()
 	elif time_left > 15.0:
 		_last_warn_second = -1
+
+func _on_elapsed_updated(elapsed: float) -> void:
+	lbl_clock.text = format_clock(elapsed)
+
+static func format_clock(seconds: float) -> String:
+	var s: int = int(seconds)
+	return "%d:%02d" % [s / 60, s % 60]
 
 func _on_props_updated(u: int, h: int, s: int) -> void:
 	btn_undo.text = "Undo  %d" % u if u > 0 else "Undo  +"

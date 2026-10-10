@@ -415,6 +415,7 @@ func _sanitize_session(raw: Variant) -> Dictionary:
 		"hints": _vint(d.get("hints"), 0, 0, 9),
 		"shuffles": _vint(d.get("shuffles"), 0, 0, 9),
 		"time_left": _vfloat(d.get("time_left"), 0.0, 0.0, 600.0),
+		"elapsed": _vfloat(d.get("elapsed"), 0.0, 0.0, 86400.0),
 		"max_time": _vfloat(d.get("max_time"), 180.0, 1.0, 600.0),
 		# Defaults to charged. A forged session claiming otherwise would hand out
 		# a free run; one that has genuinely not been charged yet loses nothing,
