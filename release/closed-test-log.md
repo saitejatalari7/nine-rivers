@@ -40,11 +40,18 @@ cap, cached audio); Shop-only rewarded video; recorded ambience per background.
 - **A Timed Mode game is three stages.** It rolled on to stage 4, 5... until
   the clock ran out; clearing the third stage now wins the game. Menu wording
   is "3 games a day" for both Timed Mode and the Daily Puzzle.
-- **Worldwide Daily Puzzle leaderboard** on Google Play Games. Only the daily
-  is ranked, because everyone plays the same board that day.
+- **Daily Puzzle is a stopwatch**, no longer a second countdown mode, with a
+  **worldwide leaderboard** on Google Play Games ranked by fastest finish.
+  Only the daily is ranked, because everyone plays the same board that day.
 - **Tiles never under the timer.** The board is framed between the top panel,
   the timer strip and the bottom buttons, measured on screen. The bottom
-  buttons are one slim row at the bottom edge, giving the space to the tiles.
+  buttons are one slim row at the bottom edge; the top bar is slimmer and
+  shows stage and score only.
+- **Leaving the app pauses the game**, so a call cannot cost clock time.
+- **Steady loading screen.** The engine splash and the loading screen now
+  frame the art the same way (no jump), and the loading bar can be seen.
+- **Optional video for one more shuffle** when out of shuffles (not in the
+  Daily Puzzle), within the existing four-a-day video limit.
 
 ## Tester feedback received
 
@@ -57,6 +64,9 @@ cap, cached audio); Shop-only rewarded video; recorded ambience per background.
 | 2026-10-05 | Developer | Played more than three daily games | Caps enforced | 11 |
 | 2026-10-06 | Developer | Timed Mode reached stage 4 | Game ends after stage 3 | 12 |
 | 2026-10-06 | Developer | Timer bar over the top tiles; bottom buttons bulky | Board framed below timer; slim bar | 12 |
+| 2026-10-07 | Developer | Top bar busy (tiles, sets) | Stage and score only, slimmer | 12 |
+| 2026-10-10 | Developer | Daily and Timed both count down | Daily is a stopwatch, ranked by time | 12 |
+| 2026-10-10 | Developer | Loading screen jumps; bar invisible | Matched framing; visible bar | 12 |
 
 ## Pre-launch report
 
