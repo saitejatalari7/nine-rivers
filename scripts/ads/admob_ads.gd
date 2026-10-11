@@ -41,18 +41,28 @@ func start(rewarded_id: String, interstitial_id: String) -> void:
 	rewarded_unit = rewarded_id
 	interstitial_unit = interstitial_id
 	var params := ConsentRequestParameters.new()
-	UserMessagingPlatform.consent_information.update(params, _on_consent_info, func(_e): _start_sdk())
+	UserMessagingPlatform.consent_information.update(params, _on_consent_info, _on_consent_error)
 
 
+## Everything handed to the plugin is a method, never a lambda. The plugin
+## keeps callbacks in static variables, which the engine clears last at
+## shutdown; a lambda's cleanup then locks its script's already-destroyed
+## mutex and Android reports the app as crashed on exit.
 func _on_consent_info() -> void:
 	var info := UserMessagingPlatform.consent_information
 	if info.get_consent_status() != ConsentInformation.ConsentStatus.REQUIRED \
 			or not info.get_is_consent_form_available():
 		_start_sdk()
 		return
-	UserMessagingPlatform.load_consent_form(
-		func(form: ConsentForm): form.show(func(_e): _start_sdk()),
-		func(_e): _start_sdk())
+	UserMessagingPlatform.load_consent_form(_on_consent_form_loaded, _on_consent_error)
+
+
+func _on_consent_form_loaded(form: ConsentForm) -> void:
+	form.show(_on_consent_error)
+
+
+func _on_consent_error(_e = null) -> void:
+	_start_sdk()
 
 
 func _start_sdk() -> void:
@@ -68,11 +78,30 @@ func _start_sdk() -> void:
 	config.test_device_ids = DEVELOPER_TEST_DEVICES
 	MobileAds.set_request_configuration(config)
 	var listener := OnInitializationCompleteListener.new()
-	listener.on_initialization_complete = func(_status):
-		_ready_to_load = true
-		_load_rewarded()
-		_load_interstitial()
+	listener.on_initialization_complete = _on_sdk_ready
 	MobileAds.initialize(listener)
+
+
+func _on_sdk_ready(_status = null) -> void:
+	_ready_to_load = true
+	_load_rewarded()
+	_load_interstitial()
+	_release_plugin_statics.call_deferred()
+
+
+func _exit_tree() -> void:
+	_release_plugin_statics()
+
+
+func _release_plugin_statics() -> void:
+	MobileAds._current_on_initialization_complete_listener = null
+	UserMessagingPlatform._on_consent_form_load_success_listener_callback = null
+	UserMessagingPlatform._on_consent_form_load_failure_listener_callback = null
+	UserMessagingPlatform.active_consent_form = null
+	var info = UserMessagingPlatform.consent_information
+	if info != null:
+		info._on_consent_info_updated_success_callback = null
+		info._on_consent_info_updated_failure_callback = null
 
 
 func is_rewarded_ready() -> bool:

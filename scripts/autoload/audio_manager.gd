@@ -324,7 +324,11 @@ func _pregenerate_ambient_track() -> void:
 	wav.stereo = false
 	wav.loop_mode = AudioStreamWAV.LOOP_FORWARD
 	wav.loop_begin = 0
-	wav.loop_end = total_frames
+	# The last sample, not one past it: a forward loop mixes up to and
+	# including loop_end. total_frames read past the buffer on every lap, and
+	# on phones whose allocator puts a guard page after large blocks that was
+	# a SIGSEGV in the audio thread - the crash testers hit in builds 10-12.
+	wav.loop_end = total_frames - 1
 	wav.data = pcm
 	print("Nine Rivers: ambient bed generated in %d ms" % (Time.get_ticks_msec() - _t_start))
 	if is_instance_valid(self) and is_instance_valid(ambient_player):
