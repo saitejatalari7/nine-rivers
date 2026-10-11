@@ -53,6 +53,22 @@ cap, cached audio); Shop-only rewarded video; recorded ambience per background.
 - **Optional video for one more shuffle** when out of shuffles (not in the
   Daily Puzzle), within the existing four-a-day video limit.
 
+### Build 13 (1.0.1) - 2026-10-11
+
+Build 12 never reached the closed testers: Android vitals showed native
+crashes on builds 10 and 11, and a tester (Nikki) crashed during onboarding on
+a fresh install. Symbolised with Godot 4.6.2's published release symbols:
+
+- **Crash during play (54 events, 6 users, Android 14-16 on Vivo, iQOO and
+  Samsung).** The generated ambient loop read one sample past its buffer at
+  each loop point; on these phones that memory is guarded. Fixed, with a test
+  that fails on the old value.
+- **Crash on exit (2 issues).** An ad-consent callback outlived its script at
+  shutdown. Callbacks handed to the ad plugin are now plain methods and are
+  released once ads start.
+- Confirmed fixed on the tester's phone via internal testing before the
+  closed-track release.
+
 ## Tester feedback received
 
 | Date | From | Feedback | Action | Build |
@@ -67,6 +83,8 @@ cap, cached audio); Shop-only rewarded video; recorded ambience per background.
 | 2026-10-07 | Developer | Top bar busy (tiles, sets) | Stage and score only, slimmer | 12 |
 | 2026-10-10 | Developer | Daily and Timed both count down | Daily is a stopwatch, ranked by time | 12 |
 | 2026-10-10 | Developer | Loading screen jumps; bar invisible | Matched framing; visible bar | 12 |
+| 2026-10-11 | Nikki + Android vitals | Crash in onboarding / during play | Audio loop bound fixed | 13 |
+| 2026-10-11 | Android vitals | Crash on closing the app | Ad callbacks released | 13 |
 
 ## Pre-launch report
 
