@@ -363,46 +363,65 @@ static func deal_board(layout_name: String, rng: RandomNumberGenerator = null) -
 	# Designate exactly one specific special tile set in each match as the
 	# Crystal Glass Tile.
 	_assign_special_glass_set(tiles, rng)
-	_assign_koi_sets(tiles, rng)
 	return tiles
 
 
 const KOI_SETS: int = 3
-const KOI_MIN_TILES: int = 24
+const KOI_WAKE_FRACTION: float = 0.5
+## Where each koi pair sits in the deal's clearing order, as the share of the
+## board already gone: the first comes early, the second mid-way, and the
+## sleeping one after the halfway mark.
+const KOI_BANDS: Array[Vector2] = [Vector2(0.03, 0.25), Vector2(0.25, 0.48), Vector2(0.5, 0.72)]
 
-## Marks up to three pairs as koi. Only faces dealt exactly twice qualify, so a
-## koi tile can only ever be cleared with its own partner and "Koi 2/3" always
-## means two whole pairs. Uses its own generator off the deal's seed, so the
-## deal itself - and every seeded board, the Daily Puzzle included - is
-## unchanged, and everyone gets the same koi on the same daily board.
-static func _assign_koi_sets(tiles: Array[RiverTile], rng: RandomNumberGenerator) -> void:
-	if tiles.size() < KOI_MIN_TILES:
-		return
+## Koi Rescue: three pairs painted as koi, the last asleep under a lotus leaf
+## until half the board is cleared.
+##
+## The set ids are the deal's own clearing order - peel_dynamic takes the board
+## apart and set 0 comes off first in a sequence proven to finish it. Taking
+## the sleeping pair from sets that sequence removes after the halfway mark
+## means the leaf can never make a board unfinishable. Faces dealt exactly
+## twice are preferred, so a koi clears with its own partner.
+static func assign_koi_rescue(tiles: Array[RiverTile], seed_value: int) -> void:
+	var sets: Dictionary = {}
 	var per_face: Dictionary = {}
 	for t in tiles:
+		if not sets.has(t.set_id):
+			sets[t.set_id] = []
+		sets[t.set_id].append(t)
 		per_face[t.get_match_key()] = int(per_face.get(t.get_match_key(), 0)) + 1
-	var by_set: Dictionary = {}
-	for t in tiles:
-		if t.is_glass or t.size != 2 or t.is_wild_suit() or int(per_face[t.get_match_key()]) != 2:
-			continue
-		if not by_set.has(t.set_id):
-			by_set[t.set_id] = []
-		by_set[t.set_id].append(t)
-	var ids: Array = []
-	for sid in by_set.keys():
-		if (by_set[sid] as Array).size() == 2:
-			ids.append(sid)
+	var ids: Array = sets.keys()
 	ids.sort()
+	var before: Dictionary = {}
+	var acc: int = 0
+	for sid in ids:
+		before[sid] = float(acc) / float(maxi(1, tiles.size()))
+		acc += (sets[sid] as Array).size()
 	var krng := RandomNumberGenerator.new()
-	krng.seed = (rng.seed if rng != null else 0) ^ 0x4B4F49
-	for i in range(ids.size() - 1, 0, -1):
-		var j: int = krng.randi() % (i + 1)
-		var tmp = ids[i]
-		ids[i] = ids[j]
-		ids[j] = tmp
-	for k in mini(KOI_SETS, ids.size()):
-		for t in by_set[ids[k]]:
+	krng.seed = seed_value ^ 0x4B4F49
+	var used: Dictionary = {}
+	for band in KOI_SETS:
+		var pool: Array = []
+		var unique: Array = []
+		for sid in ids:
+			var g: Array = sets[sid]
+			var t0: RiverTile = g[0]
+			if used.has(sid) or g.size() != 2 or t0.is_glass or t0.is_wild_suit():
+				continue
+			var f: float = before[sid]
+			if f < KOI_BANDS[band].x or f >= KOI_BANDS[band].y:
+				continue
+			pool.append(sid)
+			if int(per_face[t0.get_match_key()]) == 2:
+				unique.append(sid)
+		var pick_from: Array = unique if not unique.is_empty() else pool
+		if pick_from.is_empty():
+			continue
+		var chosen = pick_from[krng.randi() % pick_from.size()]
+		used[chosen] = true
+		for t in sets[chosen]:
 			t.is_koi = true
+			t.koi_sleep = band == KOI_SETS - 1
+
 
 ## Stops two tiles of the same type being dealt directly on top of one another.
 ##

@@ -10,8 +10,10 @@ signal no_moves_left()
 ## is matched, so move_completed never fires.
 signal blocked_tap(tile: RiverTile)
 signal toast_requested(message: String)
-## Every koi pair on the board has been cleared.
-signal koi_trio(points: int, pearls: int)
+## Every koi on a Koi Rescue board is free: the level is won.
+signal koi_rescued(points: int, pearls: int)
+## Half the board is gone and the sleeping koi has woken.
+signal koi_woke()
 signal combo_reward(combo: int, pearls: int)
 
 const RiverTile = preload("res://scripts/core/river_tile.gd")
@@ -27,11 +29,11 @@ const StageModifiers = preload("res://scripts/core/stage_modifiers.gd")
 ## A wild tile pays a small bonus. Was 5 River Jade before the currencies
 ## merged; three jade were worth one pearl.
 const WILD_TILE_PEARLS: int = 2
-## Koi: clear every koi pair on a board for a bonus. Quick Combo: matches made
+## Koi Rescue: free every koi and the level is won. Quick Combo: matches made
 ## within COMBO_WINDOW of each other chain, each link worth a little more.
 ## Pearls are paid once per board, so Undo cannot farm them.
-const KOI_TRIO_POINTS: int = 2000
-const KOI_TRIO_PEARLS: int = 10
+const KOI_RESCUE_POINTS: int = 2000
+const KOI_RESCUE_PEARLS: int = 25
 const COMBO_WINDOW_MS: int = 2500
 const COMBO_STEP_POINTS: int = 100
 const COMBO_MAX_STEPS: int = 9
@@ -57,6 +59,8 @@ var stage_match_count: int = 0
 var _combo: int = 0
 var _last_match_ms: int = 0
 var _koi_paid: bool = false
+var _koi_awake: bool = true
+var _rescue_pending: bool = false
 var _combo_paid: bool = false
 
 var _cached_legal_sets: Array[Array] = []
@@ -75,11 +79,14 @@ func _on_theme_equipped(_theme_id: String) -> void:
 		if is_instance_valid(view) and view.has_method("update_theme_style"):
 			view.update_theme_style()
 
-func load_stage(layout_name: String, rng: RandomNumberGenerator = null) -> void:
+func load_stage(layout_name: String, rng: RandomNumberGenerator = null, koi_rescue: bool = false) -> void:
 	clear_board()
 	stage_match_count = 0
 	_reset_bonuses()
 	var tiles := BoardGenerator.deal_board(layout_name, rng)
+	if koi_rescue:
+		BoardGenerator.assign_koi_rescue(tiles, int(rng.seed) if rng != null else 0)
+	_koi_awake = not _has_sleeping_koi(tiles)
 	live_tiles = tiles
 	selected_tiles.clear()
 	history.clear()
@@ -190,6 +197,7 @@ func snapshot_tiles() -> Array:
 			"open": t.is_open, "gone": t.is_removed,
 			"glass": t.is_glass,
 			"koi": t.is_koi,
+			"koi_sleep": t.koi_sleep,
 		})
 	return out
 
@@ -218,13 +226,12 @@ func restore_stage(tiles_data: Array) -> bool:
 		t.is_removed = bool(d.get("gone", false))
 		t.is_glass = bool(d.get("glass", false))
 		t.is_koi = bool(d.get("koi", false))
+		t.koi_sleep = bool(d.get("koi_sleep", false))
 		rebuilt.append(t)
 	if rebuilt.is_empty():
 		return false
 	live_tiles = rebuilt
-	# A board resumed after its koi were all caught has already paid for them.
-	var koi: Vector2i = koi_progress()
-	_koi_paid = koi.y > 0 and koi.x >= koi.y
+	_koi_awake = not _has_sleeping_koi(rebuilt) or cleared_fraction() >= BoardGenerator.KOI_WAKE_FRACTION
 	selected_tiles.clear()
 	history.clear()
 	_seat_tiles(false)
@@ -266,6 +273,8 @@ func get_spatial_grid(active_list: Array[RiverTile]) -> Dictionary:
 	return grid
 
 func get_tile_blocked_reason(t: RiverTile, grid: Dictionary) -> String:
+	if t.koi_sleep and not _koi_awake:
+		return "asleep"
 	var top_z: int = maxi(current_max_z, t.z + 1)
 	for z_above in range(t.z + 1, top_z + 1):
 		for dx in range(-1, 2):
@@ -300,12 +309,15 @@ func is_tile_free_grid(t: RiverTile, grid: Dictionary) -> bool:
 func update_all_tiles_status() -> void:
 	var active := get_active_tiles()
 	var grid := get_spatial_grid(active)
+	var sleep_progress: float = minf(1.0, cleared_fraction() / BoardGenerator.KOI_WAKE_FRACTION)
 	for t in active:
 		var v = tile_views.get(t)
 		if not is_instance_valid(v):
 			continue
 		var free := is_tile_free_grid(t, grid)
 		v.setup(t, free)
+		if t.koi_sleep:
+			v.set_koi_sleep(not _koi_awake, sleep_progress)
 
 func get_active_tiles() -> Array[RiverTile]:
 	var res: Array[RiverTile] = []
@@ -376,6 +388,8 @@ func _on_tile_clicked(view: TileView) -> void:
 		AudioManager.play_tile_clack(0.7, view.position + Vector2(TW * 0.5, TH * 0.5), t.z, t.suit)
 		if reason == "covered":
 			toast_requested.emit("Covered by a tile above!")
+		elif reason == "asleep":
+			toast_requested.emit("This koi is asleep. It wakes when half the board is cleared (%d%% so far)." % int(cleared_fraction() * 100.0))
 		else:
 			toast_requested.emit("Blocked on both left and right sides!")
 		return
@@ -537,6 +551,12 @@ func _resolve_matched_set(group: Array[RiverTile]) -> void:
 		if cam and cam.has_method("punch_camera"):
 			cam.punch_camera(Vector2(randf_range(-5.0, 5.0), randf_range(3.0, 6.0)))
 
+	if _rescue_pending:
+		_rescue_pending = false
+		_wash_away()
+		return
+	_update_koi_wake()
+
 	invalidate_legal_sets()
 	update_all_tiles_status()
 
@@ -675,17 +695,68 @@ func _reset_bonuses() -> void:
 	_combo_paid = false
 
 
-## Koi pairs cleared and on the board, as (cleared, total).
+func cleared_fraction() -> float:
+	if live_tiles.is_empty():
+		return 0.0
+	var gone: int = 0
+	for t in live_tiles:
+		if t.is_removed:
+			gone += 1
+	return float(gone) / float(live_tiles.size())
+
+
+func _has_sleeping_koi(tiles: Array) -> bool:
+	for t in tiles:
+		if t.koi_sleep and not t.is_removed:
+			return true
+	return false
+
+
+## Koi pairs freed and on the board, as (freed, total). Counted in tiles: a
+## koi whose face was dealt four times can clear with a plain twin, and it is
+## still free.
 func koi_progress() -> Vector2i:
-	var sets: Dictionary = {}
+	var total: int = 0
+	var gone: int = 0
 	for t in live_tiles:
 		if t.is_koi:
-			sets[t.set_id] = bool(sets.get(t.set_id, true)) and t.is_removed
-	var done: int = 0
-	for sid in sets.keys():
-		if sets[sid]:
-			done += 1
-	return Vector2i(done, sets.size())
+			total += 1
+			if t.is_removed:
+				gone += 1
+	return Vector2i(gone / 2, total / 2)
+
+
+func is_koi_board() -> bool:
+	for t in live_tiles:
+		if t.is_koi:
+			return true
+	return false
+
+
+func _update_koi_wake() -> void:
+	if _koi_awake or cleared_fraction() < BoardGenerator.KOI_WAKE_FRACTION:
+		return
+	_koi_awake = true
+	koi_woke.emit()
+
+
+## The rest of the board washes away left to right, then the level is won.
+func _wash_away() -> void:
+	selected_tiles.clear()
+	var rest: Array[RiverTile] = get_active_tiles()
+	rest.sort_custom(func(a, b): return a.x < b.x if a.x != b.x else a.z > b.z)
+	var i: int = 0
+	for t in rest:
+		t.is_removed = true
+		var v = tile_views.get(t)
+		if is_instance_valid(v):
+			v.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			get_tree().create_timer(0.025 * float(i)).timeout.connect(v.play_clear_animation)
+		tile_views.erase(t)
+		i += 1
+	AudioManager.play_win()
+	await get_tree().create_timer(0.025 * float(i) + 0.9).timeout
+	board_cleared.emit()
 
 
 func _apply_quick_combo(extra: Array[String]) -> int:
@@ -720,11 +791,12 @@ func _apply_koi(group: Array[RiverTile], extra: Array[String]) -> int:
 		extra.append("Koi %d/%d" % [koi.x, koi.y])
 		return 0
 	_koi_paid = true
-	GameManager.add_bonus(KOI_TRIO_POINTS)
-	SaveManager.add_pearls(KOI_TRIO_PEARLS)
-	koi_trio.emit(KOI_TRIO_POINTS, KOI_TRIO_PEARLS)
+	_rescue_pending = true
+	GameManager.add_bonus(KOI_RESCUE_POINTS)
+	SaveManager.add_pearls(KOI_RESCUE_PEARLS)
+	koi_rescued.emit(KOI_RESCUE_POINTS, KOI_RESCUE_PEARLS)
 	AudioManager.play_combo_high()
-	return KOI_TRIO_POINTS
+	return KOI_RESCUE_POINTS
 
 
 func undo_last_move() -> bool:

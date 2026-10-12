@@ -397,6 +397,7 @@ func _sanitize_session(raw: Variant) -> Dictionary:
 			"frozen": bool(t.get("frozen", false)),
 			"glass": bool(t.get("glass", false)),
 			"koi": bool(t.get("koi", false)),
+			"koi_sleep": bool(t.get("koi_sleep", false)),
 		})
 	return {
 		"tiles": clean_tiles,

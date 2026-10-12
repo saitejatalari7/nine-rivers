@@ -659,7 +659,11 @@ func play_clear_animation() -> void:
 	mat.shader = DissolveShader
 	mat.set_shader_parameter("dissolve_amount", 0.0)
 	mat.set_shader_parameter("edge_thickness", 0.14)
-	if tile_data and tile_data.is_glass:
+	if tile_data and tile_data.is_koi:
+		mat.set_shader_parameter("edge_color", KOI_CORAL)
+		mat.set_shader_parameter("ember_color", Color(1.0, 0.92, 0.85, 1.0))
+		mat.set_shader_parameter("burn_color", Color(0.95, 0.40, 0.20, 1.0))
+	elif tile_data and tile_data.is_glass:
 		mat.set_shader_parameter("edge_color", Color(0.70, 0.92, 1.0, 1.0)) # Icy diamond cyan
 		mat.set_shader_parameter("ember_color", Color(1.0, 1.0, 1.0, 1.0))
 		mat.set_shader_parameter("burn_color", Color(0.35, 0.70, 0.95, 1.0))
@@ -771,26 +775,63 @@ static var debug_face_draws: int = 0
 
 const KOI_CORAL := Color(0.97, 0.47, 0.30)
 
-func _draw_koi_badge(at: Vector2) -> void:
-	const R: float = 11.0
-	draw_circle(at, R + 1.5, Color(0.0, 0.0, 0.0, 0.25), true, -1.0, true)
-	draw_circle(at, R, Color(0.04, 0.27, 0.22), true, -1.0, true)
-	draw_arc(at, R, 0.0, TAU, 28, COL_GOLD, 1.6, true)
-	# Body leaning up-right, tail down-left, the way the pond koi swim.
-	var dir := Vector2(0.8, -0.6)
-	var side := Vector2(-dir.y, dir.x)
-	var body := PackedVector2Array()
-	for i in 16:
-		var ang: float = TAU * float(i) / 16.0
-		body.append(at + dir * (cos(ang) * 6.0 + 1.2) + side * sin(ang) * 3.2)
-	draw_colored_polygon(body, Color(0.98, 0.96, 0.91))
-	draw_circle(at + dir * 3.0 + side * 0.6, 2.0, KOI_CORAL.darkened(0.08), true, -1.0, true)
-	draw_circle(at - dir * 1.2 - side * 0.8, 1.7, KOI_CORAL.darkened(0.08), true, -1.0, true)
-	var tail_root: Vector2 = at - dir * 4.4
-	draw_colored_polygon(PackedVector2Array([
-		tail_root,
-		tail_root - dir * 4.0 + side * 3.2,
-		tail_root - dir * 4.0 - side * 3.2]), KOI_CORAL.darkened(0.08))
+## Koi tiles are painted whole: a warm koi face and coral walls, with the
+## symbol still drawn on top so the pair can be read.
+const KOI_FACE := Color("#ffd3bf")
+const KOI_FACE_BLOCKED := Color("#e9b9a4")
+const LEAF := Color(0.16, 0.47, 0.29)
+const LEAF_DARK := Color(0.09, 0.30, 0.18)
+
+var koi_asleep: bool = false
+var koi_progress: float = 0.0
+var leaf_alpha: float = 1.0
+var leaf_drift: float = 0.0
+
+func set_koi_sleep(asleep: bool, progress: float) -> void:
+	var waking: bool = koi_asleep and not asleep
+	koi_asleep = asleep
+	koi_progress = progress
+	if not asleep and not waking and leaf_alpha > 0.0 and leaf_drift == 0.0 and tile_data and tile_data.koi_sleep:
+		# Already awake when the board was built (a resumed board).
+		leaf_alpha = 0.0
+	if waking:
+		var tw := create_tween().set_parallel(true)
+		tw.tween_property(self, "leaf_drift", 1.0, 1.2).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+		tw.tween_property(self, "leaf_alpha", 0.0, 1.2).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		tw.tween_method(func(_v): queue_redraw(), 0.0, 1.0, 1.2)
+	queue_redraw()
+
+
+func _draw_koi_face(ci: CanvasItem, face_rect: Rect2) -> void:
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = KOI_FACE if (is_free or is_revealed or is_dissolving) else KOI_FACE_BLOCKED
+	sb.border_color = KOI_CORAL
+	sb.set_border_width_all(3)
+	sb.set_corner_radius_all(8)
+	sb.anti_aliasing = true
+	ci.draw_style_box(sb, face_rect)
+
+
+func _draw_lotus_leaf(face_rect: Rect2) -> void:
+	var a: float = leaf_alpha
+	var centre: Vector2 = face_rect.get_center() + Vector2(14.0, -18.0) * leaf_drift
+	var r: float = minf(face_rect.size.x, face_rect.size.y) * 0.46
+	# A lily pad: a disc with a notch cut to the centre.
+	var pts := PackedVector2Array([centre])
+	var notch: float = 0.32
+	for i in 33:
+		var ang: float = -PI * 0.5 + notch * 0.5 + (TAU - notch) * float(i) / 32.0
+		pts.append(centre + Vector2(cos(ang), sin(ang)) * r)
+	draw_colored_polygon(pts, Color(LEAF.r, LEAF.g, LEAF.b, a))
+	draw_polyline(pts.slice(1), Color(LEAF_DARK.r, LEAF_DARK.g, LEAF_DARK.b, a), 1.5, true)
+	for i in 7:
+		var ang: float = -PI * 0.5 + notch + (TAU - notch * 2.0) * float(i) / 6.0
+		draw_line(centre, centre + Vector2(cos(ang), sin(ang)) * r * 0.86,
+			Color(0.55, 0.80, 0.55, 0.55 * a), 1.0, true)
+	if koi_asleep:
+		draw_arc(face_rect.get_center(), r + 4.0, 0.0, TAU, 40, Color(0, 0, 0, 0.35 * a), 3.5, true)
+		draw_arc(face_rect.get_center(), r + 4.0, -PI * 0.5, -PI * 0.5 + TAU * koi_progress, 40,
+			Color(COL_GOLD.r, COL_GOLD.g, COL_GOLD.b, a), 3.5, true)
 
 
 func _draw_body(ci: CanvasItem) -> void:
@@ -862,6 +903,9 @@ func _draw_body(ci: CanvasItem) -> void:
 		elif cur_th == "theme_cherry_blossom":
 			_draw_cherry_blossom_framing(face_rect)
 
+	if tile_data.is_koi:
+		_draw_koi_face(ci, face_rect)
+
 
 func _draw() -> void:
 	debug_face_draws += 1
@@ -927,17 +971,6 @@ func _draw() -> void:
 		draw_colored_polygon(c_pts, Color(0.75, 0.92, 1.0, 0.95))
 		draw_circle(crystal_pt, 1.5, Color.WHITE, true, -1.0, true)
 
-	# 5.6 Koi pair: a warm coral rim, and a koi roundel on the top-right corner,
-	# clear of the symbol, so the pairs can be spotted across the board.
-	if tile_data.is_koi:
-		var koi_sb := StyleBoxFlat.new()
-		koi_sb.draw_center = false
-		koi_sb.border_color = KOI_CORAL
-		koi_sb.set_border_width_all(3)
-		koi_sb.set_corner_radius_all(8)
-		koi_sb.anti_aliasing = true
-		draw_style_box(koi_sb, face_rect)
-		_draw_koi_badge(face_rect.position + Vector2(TILE_W - 7.0, 5.0))
 
 	# 6. Selection, Reveal & Hint Overlays (matching HTML .tile.sel / .tile.hint)
 	if is_selected and get_effective_theme() == "theme_imperial_gold":
@@ -981,6 +1014,11 @@ func _draw() -> void:
 	# 9. Atmospheric Depth Wash for Blocked Tiles (matching HTML .tile.blocked::after)
 	if not is_free and not is_revealed and not StageModifiers.is_fog_active() and not is_dissolving:
 		_draw_atmospheric_blocked_tint(face_rect)
+
+	# 10. The sleeping koi lies under a lotus leaf, drawn last so it hides the
+	# face; the ring shows how close the board is to waking it.
+	if tile_data.koi_sleep and leaf_alpha > 0.01:
+		_draw_lotus_leaf(face_rect)
 
 func _draw_atmospheric_blocked_tint(face_r: Rect2) -> void:
 	# Soft warm translucent shadow wash (preserves beautiful ivory porcelain look)
@@ -1309,6 +1347,8 @@ static var _side_box_cache: Dictionary = {}
 ## so the side reads as a solid wall rather than a drop shadow.
 func _draw_side_wall(ci: CanvasItem, body: Rect2, theme_id: String) -> void:
 	var base: Color = get_theme_back_edge(theme_id)
+	if tile_data and tile_data.is_koi:
+		base = KOI_CORAL.darkened(0.12)
 	if not (is_free or is_revealed):
 		base = base.darkened(0.25)
 	for i in range(SIDE_DEPTH, 0, -1):

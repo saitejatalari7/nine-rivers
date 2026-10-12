@@ -198,6 +198,12 @@ static func tier_for_level(level: int) -> int:
 ## Round-robin within the tier: the nth level of a given tier takes the nth
 ## shape in that tier's pool. A stride-based index left 28 of 101 shapes
 ## unreachable, which is authored content nobody ever sees.
+## Koi Rescue: every fifth level from 10. Level 5 already carries the
+## premium-tile offer, and the first boards are too small for a dig.
+static func is_koi_level(level: int) -> bool:
+	return level >= 10 and level % 5 == 0 and level <= TOTAL_LEVELS
+
+
 static func layout_for_level(level: int) -> String:
 	var tier: int = tier_for_level(level)
 	var pool: Array = layouts_in_tier(tier)

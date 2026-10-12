@@ -11,22 +11,35 @@ func _ready() -> void:
 	SaveManager.prog["tutorial_completed"] = true
 	await get_tree().create_timer(1.0).timeout
 	main.get_node("Modal").hide_modal()
-	main._start_calm_mode(30)
-	await get_tree().create_timer(1.8).timeout
+	var lv: int = int(OS.get_environment("KOI_LEVEL")) if OS.get_environment("KOI_LEVEL") != "" else 30
+	main._start_calm_mode(lv)
+	await get_tree().create_timer(2.0).timeout
 	var out: String = OS.get_environment("SHOT_DIR")
 	await RenderingServer.frame_post_draw
 	get_viewport().get_texture().get_image().save_png(out + "/koi_board.png")
 	var board = main.get_node("Board")
-	for i in 3:
-		var sets: Array = board.get_legal_sets()
+	# Clear to just under half, so the ring shows progress.
+	var by_set: Dictionary = {}
+	for t in board.live_tiles:
+		if not by_set.has(t.set_id):
+			by_set[t.set_id] = []
+		by_set[t.set_id].append(t)
+	var ids: Array = by_set.keys()
+	ids.sort()
+	for sid in ids:
+		if board.cleared_fraction() >= 0.42:
+			break
+		var g: Array = by_set[sid]
+		if g[0].is_removed or g[0].is_koi:
+			continue
 		var typed: Array[RiverTile] = []
-		for t in sets[0]:
+		for t in g:
 			typed.append(t)
 		board._resolve_matched_set(typed)
-		await get_tree().create_timer(0.7 if i < 2 else 0.35).timeout
+	await get_tree().create_timer(1.6).timeout
 	await RenderingServer.frame_post_draw
-	get_viewport().get_texture().get_image().save_png(out + "/koi_combo.png")
-	main.get_node("HUD").show_bonus("KOI TRIO!", "+2000  ·  +10 ◈")
+	get_viewport().get_texture().get_image().save_png(out + "/koi_ring.png")
+	main.get_node("HUD").show_bonus("KOI RESCUED!", "Level complete  ·  +25 ◈")
 	await get_tree().create_timer(0.5).timeout
 	await RenderingServer.frame_post_draw
 	get_viewport().get_texture().get_image().save_png(out + "/koi_trio.png")

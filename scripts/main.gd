@@ -47,8 +47,11 @@ func _ready() -> void:
 	board.board_cleared.connect(_on_board_cleared)
 	board.no_moves_left.connect(_on_no_moves_left)
 	board.toast_requested.connect(func(msg): hud.show_toast(msg))
-	board.koi_trio.connect(func(pts, pearls):
-		hud.show_bonus("KOI TRIO!", "+%d  ·  +%d ◈" % [pts, pearls]))
+	board.koi_rescued.connect(func(_pts, pearls):
+		_koi_rescued = true
+		hud.show_bonus("KOI RESCUED!", "Level complete  ·  +%d ◈" % pearls))
+	board.koi_woke.connect(func():
+		hud.show_toast("The last koi woke up! Free it to win."))
 	board.combo_reward.connect(func(combo, pearls):
 		hud.show_toast("Combo ×%d!  +%d ◈ Spirit Pearls" % [combo, pearls]))
 	board.blocked_tap.connect(func(tile): tutorial.notify_blocked_tap(tile))
@@ -100,6 +103,7 @@ const BOOT_MIN_SECONDS: float = 1.0
 const BOOT_MAX_SECONDS: float = 4.0
 
 var _booting: bool = false
+var _koi_rescued: bool = false
 var _boot_bar: Panel = null
 
 ## The screen refreshes at up to 120 Hz on current phones, and with no cap the
@@ -414,8 +418,12 @@ func _start_calm_mode(level: int) -> void:
 	# Seeded from the level number, so a stage is the same puzzle every time.
 	var rng := RandomNumberGenerator.new()
 	rng.seed = plan["seed"]
-	board.load_stage(layout_name, rng)
+	_koi_rescued = false
+	var koi_level: bool = StagePlan.is_koi_level(level)
+	board.load_stage(layout_name, rng, koi_level)
 	camera.frame_board(board.board_bounds, get_viewport_rect().size)
+	if koi_level:
+		hud.show_toast("Koi Rescue! Free all 3 koi to win the level.")
 
 	_offer_theme_sample(level)
 
@@ -522,7 +530,9 @@ func _restart_current_stage() -> void:
 		rng = RandomNumberGenerator.new()
 		rng.seed = GameManager.daily_seed
 	GameManager.on_stage_started()
-	board.load_stage(GameManager.current_layout_name, rng)
+	_koi_rescued = false
+	board.load_stage(GameManager.current_layout_name, rng,
+		GameManager.current_mode == GameManager.GameMode.CALM and StagePlan.is_koi_level(GameManager.current_level))
 	camera.frame_board(board.board_bounds, get_viewport_rect().size)
 
 func _next_stage() -> void:
@@ -673,6 +683,11 @@ func _on_board_cleared() -> void:
 		var stars: int = 1
 		if GameManager.misplays <= 2: stars += 1
 		if GameManager.props_used == 0: stars += 1
+		# Rescuing every koi wins the level outright, and is never worth less
+		# than clearing the whole board would have been.
+		if _koi_rescued:
+			stars = 3
+			_koi_rescued = false
 		SaveManager.record_level_clear(GameManager.current_level, GameManager.score, stars)
 		# A milestone set is offered before the usual clear screen, so it reads as
 		# the event it is rather than a row on a results sheet. Taking it or
