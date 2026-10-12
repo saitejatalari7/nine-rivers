@@ -296,6 +296,52 @@ func _on_props_updated(u: int, h: int, s: int) -> void:
 	btn_shuffle.text = "Shuffle  %d" % s if s > 0 else "Shuffle  +"
 	btn_shuffle.modulate.a = 0.65 if s <= 0 else 1.0
 
+## A big gold call-out in the middle of the screen, for the moments that earn
+## more than the floating +points: catching every koi.
+func show_bonus(title: String, sub: String) -> void:
+	var box: Control = VBoxContainer.new()
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	(box as VBoxContainer).alignment = BoxContainer.ALIGNMENT_CENTER
+	var big := Label.new()
+	big.text = title
+	big.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	UITheme.style_label(big, "ui", 96, UITheme.GOLD_BRIGHT, UITheme.W_SEMIBOLD)
+	big.add_theme_color_override("font_outline_color", Color(0.05, 0.12, 0.09, 0.95))
+	big.add_theme_constant_override("outline_size", 14)
+	var small := Label.new()
+	small.text = sub
+	small.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	UITheme.style_label(small, "ui", UITheme.FS_TITLE, UITheme.IVORY_BASE, UITheme.W_SEMIBOLD)
+	small.add_theme_color_override("font_outline_color", Color(0.05, 0.12, 0.09, 0.95))
+	small.add_theme_constant_override("outline_size", 10)
+	box.add_child(big)
+	box.add_child(small)
+	var card := PanelContainer.new()
+	card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var sb := UITheme.create_panel_box(Color(0.02, 0.10, 0.08, 0.86), UITheme.GOLD_CORE, 2, 28, 0.5)
+	sb.content_margin_left = 48
+	sb.content_margin_right = 48
+	sb.content_margin_top = 20
+	sb.content_margin_bottom = 24
+	card.add_theme_stylebox_override("panel", sb)
+	card.add_child(box)
+	add_child(card)
+	var vp: Vector2 = get_viewport().get_visible_rect().size
+	card.reset_size()
+	card.position = Vector2((vp.x - card.size.x) * 0.5, vp.y * 0.40)
+	card.pivot_offset = card.size * 0.5
+	box = card
+	box.scale = Vector2(0.6, 0.6)
+	box.modulate.a = 0.0
+	var tw := create_tween()
+	tw.tween_property(box, "modulate:a", 1.0, 0.12)
+	tw.parallel().tween_property(box, "scale", Vector2(1.08, 1.08), 0.22).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_property(box, "scale", Vector2.ONE, 0.12)
+	tw.tween_interval(1.1)
+	tw.tween_property(box, "modulate:a", 0.0, 0.45)
+	tw.parallel().tween_property(box, "position:y", box.position.y - 60.0, 0.45)
+	tw.tween_callback(box.queue_free)
+
 func show_toast(msg: String) -> void:
 	lbl_toast.text = msg
 	var t := create_tween()

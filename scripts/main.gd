@@ -47,6 +47,10 @@ func _ready() -> void:
 	board.board_cleared.connect(_on_board_cleared)
 	board.no_moves_left.connect(_on_no_moves_left)
 	board.toast_requested.connect(func(msg): hud.show_toast(msg))
+	board.koi_trio.connect(func(pts, pearls):
+		hud.show_bonus("KOI TRIO!", "+%d  ·  +%d ◈" % [pts, pearls]))
+	board.combo_reward.connect(func(combo, pearls):
+		hud.show_toast("Combo ×%d!  +%d ◈ Spirit Pearls" % [combo, pearls]))
 	board.blocked_tap.connect(func(tile): tutorial.notify_blocked_tap(tile))
 	board.move_completed.connect(func(_r, _l): tutorial.notify_match())
 

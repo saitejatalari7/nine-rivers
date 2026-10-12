@@ -10,6 +10,9 @@ signal no_moves_left()
 ## is matched, so move_completed never fires.
 signal blocked_tap(tile: RiverTile)
 signal toast_requested(message: String)
+## Every koi pair on the board has been cleared.
+signal koi_trio(points: int, pearls: int)
+signal combo_reward(combo: int, pearls: int)
 
 const RiverTile = preload("res://scripts/core/river_tile.gd")
 const BoardGenerator = preload("res://scripts/core/board_generator.gd")
@@ -24,6 +27,16 @@ const StageModifiers = preload("res://scripts/core/stage_modifiers.gd")
 ## A wild tile pays a small bonus. Was 5 River Jade before the currencies
 ## merged; three jade were worth one pearl.
 const WILD_TILE_PEARLS: int = 2
+## Koi: clear every koi pair on a board for a bonus. Quick Combo: matches made
+## within COMBO_WINDOW of each other chain, each link worth a little more.
+## Pearls are paid once per board, so Undo cannot farm them.
+const KOI_TRIO_POINTS: int = 2000
+const KOI_TRIO_PEARLS: int = 10
+const COMBO_WINDOW_MS: int = 2500
+const COMBO_STEP_POINTS: int = 100
+const COMBO_MAX_STEPS: int = 9
+const COMBO_PEARL_AT: int = 5
+const COMBO_PEARLS: int = 5
 
 const TW: float = 64.0
 const TH: float = 84.0
@@ -41,6 +54,10 @@ var history: Array[Dictionary] = [] # For Undo
 var board_bounds := Rect2()
 var current_max_z: int = 0
 var stage_match_count: int = 0
+var _combo: int = 0
+var _last_match_ms: int = 0
+var _koi_paid: bool = false
+var _combo_paid: bool = false
 
 var _cached_legal_sets: Array[Array] = []
 var _legal_sets_dirty: bool = true
@@ -61,6 +78,7 @@ func _on_theme_equipped(_theme_id: String) -> void:
 func load_stage(layout_name: String, rng: RandomNumberGenerator = null) -> void:
 	clear_board()
 	stage_match_count = 0
+	_reset_bonuses()
 	var tiles := BoardGenerator.deal_board(layout_name, rng)
 	live_tiles = tiles
 	selected_tiles.clear()
@@ -171,6 +189,7 @@ func snapshot_tiles() -> Array:
 			"set_id": t.set_id, "size": t.size,
 			"open": t.is_open, "gone": t.is_removed,
 			"glass": t.is_glass,
+			"koi": t.is_koi,
 		})
 	return out
 
@@ -185,6 +204,7 @@ func snapshot_tiles() -> Array:
 func restore_stage(tiles_data: Array) -> bool:
 	clear_board()
 	stage_match_count = 0
+	_reset_bonuses()
 	var rebuilt: Array[RiverTile] = []
 	for entry in tiles_data:
 		if not (entry is Dictionary):
@@ -197,10 +217,14 @@ func restore_stage(tiles_data: Array) -> bool:
 		t.is_open = bool(d.get("open", false))
 		t.is_removed = bool(d.get("gone", false))
 		t.is_glass = bool(d.get("glass", false))
+		t.is_koi = bool(d.get("koi", false))
 		rebuilt.append(t)
 	if rebuilt.is_empty():
 		return false
 	live_tiles = rebuilt
+	# A board resumed after its koi were all caught has already paid for them.
+	var koi: Vector2i = koi_progress()
+	_koi_paid = koi.y > 0 and koi.x >= koi.y
 	selected_tiles.clear()
 	history.clear()
 	_seat_tiles(false)
@@ -473,6 +497,9 @@ func _resolve_matched_set(group: Array[RiverTile]) -> void:
 		match_at = last_view_pos + Vector2(TW * 0.5, TH * 0.5)
 	var pts: int = GameManager.register_match(suit_name, is_triple,
 		is_glass_match, match_at, last_z)
+	var extra: Array[String] = []
+	pts += _apply_quick_combo(extra)
+	pts += _apply_koi(group, extra)
 
 	if has_last_pos:
 		var match_center := match_at
@@ -480,7 +507,10 @@ func _resolve_matched_set(group: Array[RiverTile]) -> void:
 		var chip: FloatingChip = FloatingChipScene.instantiate()
 		chip.position = last_view_pos + Vector2(TW * 0.5, TH * 0.3)
 		add_child(chip)
-		chip.setup("+" + str(pts), is_triple or GameManager.flow_level >= 5 or is_glass_match)
+		var text: String = "+" + str(pts)
+		for line in extra:
+			text += "\n" + line
+		chip.setup(text, is_triple or GameManager.flow_level >= 5 or is_glass_match or not extra.is_empty())
 
 	if is_glass_match:
 		toast_requested.emit("Crystal Glass Shattered! (+500 pts)")
@@ -638,9 +668,70 @@ func provide_hint() -> bool:
 			v.flash_hint(2.5)
 	return true
 
+func _reset_bonuses() -> void:
+	_combo = 0
+	_last_match_ms = 0
+	_koi_paid = false
+	_combo_paid = false
+
+
+## Koi pairs cleared and on the board, as (cleared, total).
+func koi_progress() -> Vector2i:
+	var sets: Dictionary = {}
+	for t in live_tiles:
+		if t.is_koi:
+			sets[t.set_id] = bool(sets.get(t.set_id, true)) and t.is_removed
+	var done: int = 0
+	for sid in sets.keys():
+		if sets[sid]:
+			done += 1
+	return Vector2i(done, sets.size())
+
+
+func _apply_quick_combo(extra: Array[String]) -> int:
+	var now: int = Time.get_ticks_msec()
+	if _last_match_ms > 0 and now - _last_match_ms <= COMBO_WINDOW_MS:
+		_combo += 1
+	else:
+		_combo = 1
+	_last_match_ms = now
+	if _combo < 2:
+		return 0
+	var bonus: int = COMBO_STEP_POINTS * mini(_combo - 1, COMBO_MAX_STEPS)
+	GameManager.add_bonus(bonus)
+	extra.append("Combo ×%d" % _combo)
+	if _combo >= COMBO_PEARL_AT and not _combo_paid:
+		_combo_paid = true
+		SaveManager.add_pearls(COMBO_PEARLS)
+		combo_reward.emit(_combo, COMBO_PEARLS)
+	return bonus
+
+
+func _apply_koi(group: Array[RiverTile], extra: Array[String]) -> int:
+	var hit: bool = false
+	for t in group:
+		if t.is_koi:
+			hit = true
+			break
+	if not hit:
+		return 0
+	var koi: Vector2i = koi_progress()
+	if koi.x < koi.y or _koi_paid:
+		extra.append("Koi %d/%d" % [koi.x, koi.y])
+		return 0
+	_koi_paid = true
+	GameManager.add_bonus(KOI_TRIO_POINTS)
+	SaveManager.add_pearls(KOI_TRIO_PEARLS)
+	koi_trio.emit(KOI_TRIO_POINTS, KOI_TRIO_PEARLS)
+	AudioManager.play_combo_high()
+	return KOI_TRIO_POINTS
+
+
 func undo_last_move() -> bool:
 	if history.is_empty():
 		return false
+	_combo = 0
+	_last_match_ms = 0
 	var last: Dictionary = history.pop_back()
 	var group: Array = last["group"]
 	var ripples: Array = last["ripples"]

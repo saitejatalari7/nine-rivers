@@ -363,7 +363,46 @@ static func deal_board(layout_name: String, rng: RandomNumberGenerator = null) -
 	# Designate exactly one specific special tile set in each match as the
 	# Crystal Glass Tile.
 	_assign_special_glass_set(tiles, rng)
+	_assign_koi_sets(tiles, rng)
 	return tiles
+
+
+const KOI_SETS: int = 3
+const KOI_MIN_TILES: int = 24
+
+## Marks up to three pairs as koi. Only faces dealt exactly twice qualify, so a
+## koi tile can only ever be cleared with its own partner and "Koi 2/3" always
+## means two whole pairs. Uses its own generator off the deal's seed, so the
+## deal itself - and every seeded board, the Daily Puzzle included - is
+## unchanged, and everyone gets the same koi on the same daily board.
+static func _assign_koi_sets(tiles: Array[RiverTile], rng: RandomNumberGenerator) -> void:
+	if tiles.size() < KOI_MIN_TILES:
+		return
+	var per_face: Dictionary = {}
+	for t in tiles:
+		per_face[t.get_match_key()] = int(per_face.get(t.get_match_key(), 0)) + 1
+	var by_set: Dictionary = {}
+	for t in tiles:
+		if t.is_glass or t.size != 2 or t.is_wild_suit() or int(per_face[t.get_match_key()]) != 2:
+			continue
+		if not by_set.has(t.set_id):
+			by_set[t.set_id] = []
+		by_set[t.set_id].append(t)
+	var ids: Array = []
+	for sid in by_set.keys():
+		if (by_set[sid] as Array).size() == 2:
+			ids.append(sid)
+	ids.sort()
+	var krng := RandomNumberGenerator.new()
+	krng.seed = (rng.seed if rng != null else 0) ^ 0x4B4F49
+	for i in range(ids.size() - 1, 0, -1):
+		var j: int = krng.randi() % (i + 1)
+		var tmp = ids[i]
+		ids[i] = ids[j]
+		ids[j] = tmp
+	for k in mini(KOI_SETS, ids.size()):
+		for t in by_set[ids[k]]:
+			t.is_koi = true
 
 ## Stops two tiles of the same type being dealt directly on top of one another.
 ##

@@ -769,6 +769,30 @@ func _redraw_all() -> void:
 static var debug_body_draws: int = 0
 static var debug_face_draws: int = 0
 
+const KOI_CORAL := Color(0.97, 0.47, 0.30)
+
+func _draw_koi_badge(at: Vector2) -> void:
+	const R: float = 11.0
+	draw_circle(at, R + 1.5, Color(0.0, 0.0, 0.0, 0.25), true, -1.0, true)
+	draw_circle(at, R, Color(0.04, 0.27, 0.22), true, -1.0, true)
+	draw_arc(at, R, 0.0, TAU, 28, COL_GOLD, 1.6, true)
+	# Body leaning up-right, tail down-left, the way the pond koi swim.
+	var dir := Vector2(0.8, -0.6)
+	var side := Vector2(-dir.y, dir.x)
+	var body := PackedVector2Array()
+	for i in 16:
+		var ang: float = TAU * float(i) / 16.0
+		body.append(at + dir * (cos(ang) * 6.0 + 1.2) + side * sin(ang) * 3.2)
+	draw_colored_polygon(body, Color(0.98, 0.96, 0.91))
+	draw_circle(at + dir * 3.0 + side * 0.6, 2.0, KOI_CORAL.darkened(0.08), true, -1.0, true)
+	draw_circle(at - dir * 1.2 - side * 0.8, 1.7, KOI_CORAL.darkened(0.08), true, -1.0, true)
+	var tail_root: Vector2 = at - dir * 4.4
+	draw_colored_polygon(PackedVector2Array([
+		tail_root,
+		tail_root - dir * 4.0 + side * 3.2,
+		tail_root - dir * 4.0 - side * 3.2]), KOI_CORAL.darkened(0.08))
+
+
 func _draw_body(ci: CanvasItem) -> void:
 	debug_body_draws += 1
 	if not tile_data:
@@ -902,6 +926,18 @@ func _draw() -> void:
 		])
 		draw_colored_polygon(c_pts, Color(0.75, 0.92, 1.0, 0.95))
 		draw_circle(crystal_pt, 1.5, Color.WHITE, true, -1.0, true)
+
+	# 5.6 Koi pair: a warm coral rim, and a koi roundel on the top-right corner,
+	# clear of the symbol, so the pairs can be spotted across the board.
+	if tile_data.is_koi:
+		var koi_sb := StyleBoxFlat.new()
+		koi_sb.draw_center = false
+		koi_sb.border_color = KOI_CORAL
+		koi_sb.set_border_width_all(3)
+		koi_sb.set_corner_radius_all(8)
+		koi_sb.anti_aliasing = true
+		draw_style_box(koi_sb, face_rect)
+		_draw_koi_badge(face_rect.position + Vector2(TILE_W - 7.0, 5.0))
 
 	# 6. Selection, Reveal & Hint Overlays (matching HTML .tile.sel / .tile.hint)
 	if is_selected and get_effective_theme() == "theme_imperial_gold":

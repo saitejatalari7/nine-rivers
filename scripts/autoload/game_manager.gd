@@ -227,6 +227,14 @@ func _emit_clock() -> void:
 	elif current_mode == GameMode.RUN:
 		time_updated.emit(time_left, max_time)
 
+## Points that are not a match of their own: Koi and Quick Combo bonuses. Kept
+## in score, so Undo's snapshot takes them back with the match that earned them.
+func add_bonus(pts: int) -> void:
+	if pts <= 0:
+		return
+	score += pts
+	score_updated.emit(score, pts)
+
 func register_match(suit: String, is_triple: bool,
 		is_glass: bool = false, at: Vector2 = Vector2.INF, z: int = 0) -> int:
 	# 1. Flow calculation

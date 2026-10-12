@@ -12,6 +12,7 @@ var size: int = 2 # 2 for pair, 3 for triple
 var is_open: bool = false # Stranded wild tile
 var is_removed: bool = false
 var is_glass: bool = false
+var is_koi: bool = false
 
 func _init(px: int = 0, py: int = 0, pz: int = 0, psuit: String = "dot", prank: int = 1, pset: int = 0, psize: int = 2) -> void:
 	x = px
