@@ -344,6 +344,17 @@ func show_bonus(title: String, sub: String) -> void:
 
 func show_toast(msg: String) -> void:
 	lbl_toast.text = msg
+	# A long message wraps inside the screen; it used to run off both edges.
+	var vp: Vector2 = get_viewport().get_visible_rect().size
+	var max_w: float = vp.x - 120.0
+	lbl_toast.autowrap_mode = TextServer.AUTOWRAP_OFF
+	lbl_toast.custom_minimum_size.x = 0.0
+	if lbl_toast.get_minimum_size().x > max_w - 48.0:
+		lbl_toast.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		lbl_toast.custom_minimum_size.x = max_w - 48.0
+	lbl_toast.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	toast_panel.reset_size()
+	toast_panel.position.x = (vp.x - toast_panel.size.x) * 0.5
 	var t := create_tween()
 	t.tween_property(toast_panel, "modulate:a", 1.0, 0.12)
 	t.tween_interval(1.8)
