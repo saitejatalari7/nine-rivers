@@ -20,6 +20,12 @@
 #
 # Usage: tools/build_android.sh [aab|apk]
 set -euo pipefail
+
+# Gradle's cache (several GB, growing with each build) lives on D:, not in
+# the user profile on the nearly full C: drive.
+if [ -d "/d/Godot_Devs/.gradle" ]; then
+  export GRADLE_USER_HOME="D:/Godot_Devs/.gradle"
+fi
 cd "$(dirname "$0")/.."
 
 TARGET="${1:-aab}"
