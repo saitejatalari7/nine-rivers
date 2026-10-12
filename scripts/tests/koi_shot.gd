@@ -3,7 +3,7 @@ extends Node
 const RiverTile = preload("res://scripts/core/river_tile.gd")
 
 func _ready() -> void:
-	get_window().size = Vector2i(540, 1158)
+	get_window().size = Vector2i(1080, 2316)
 	var main = (load("res://scenes/main.tscn") as PackedScene).instantiate()
 	add_child(main)
 	await get_tree().process_frame

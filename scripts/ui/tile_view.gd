@@ -779,8 +779,8 @@ const KOI_CORAL := Color(0.97, 0.47, 0.30)
 ## symbol still drawn on top so the pair can be read.
 const KOI_FACE := Color("#ffd3bf")
 const KOI_FACE_BLOCKED := Color("#e9b9a4")
-const LEAF := Color(0.16, 0.47, 0.29)
-const LEAF_DARK := Color(0.09, 0.30, 0.18)
+const POOL := Color("#085041")
+const KOI_BODY := Color("#faece7")
 
 var koi_asleep: bool = false
 var koi_progress: float = 0.0
@@ -812,23 +812,50 @@ func _draw_koi_face(ci: CanvasItem, face_rect: Rect2) -> void:
 	ci.draw_style_box(sb, face_rect)
 
 
-func _draw_lotus_leaf(face_rect: Rect2) -> void:
+func _draw_sleeping_koi(face_rect: Rect2) -> void:
 	var a: float = leaf_alpha
-	var centre: Vector2 = face_rect.get_center() + Vector2(14.0, -18.0) * leaf_drift
+	var lift := Vector2(0.0, -16.0) * leaf_drift
+	var pool_sb := StyleBoxFlat.new()
+	pool_sb.bg_color = Color(POOL.r, POOL.g, POOL.b, a)
+	pool_sb.set_corner_radius_all(7)
+	pool_sb.anti_aliasing = true
+	draw_style_box(pool_sb, Rect2(face_rect.position + Vector2(3, 3) + lift, face_rect.size - Vector2(6, 6)))
+	var centre: Vector2 = face_rect.get_center() + Vector2(0.0, 2.0) + lift
 	var r: float = minf(face_rect.size.x, face_rect.size.y) * 0.46
-	# A lily pad: a disc with a notch cut to the centre.
-	var pts := PackedVector2Array([centre])
-	var notch: float = 0.32
-	for i in 33:
-		var ang: float = -PI * 0.5 + notch * 0.5 + (TAU - notch) * float(i) / 32.0
-		pts.append(centre + Vector2(cos(ang), sin(ang)) * r)
-	draw_colored_polygon(pts, Color(LEAF.r, LEAF.g, LEAF.b, a))
-	draw_polyline(pts.slice(1), Color(LEAF_DARK.r, LEAF_DARK.g, LEAF_DARK.b, a), 1.5, true)
-	for i in 7:
-		var ang: float = -PI * 0.5 + notch + (TAU - notch * 2.0) * float(i) / 6.0
-		draw_line(centre, centre + Vector2(cos(ang), sin(ang)) * r * 0.86,
-			Color(0.55, 0.80, 0.55, 0.55 * a), 1.0, true)
+	var body := Color(KOI_BODY.r, KOI_BODY.g, KOI_BODY.b, a)
+	var spot := Color(KOI_CORAL.r, KOI_CORAL.g, KOI_CORAL.b, a)
+	# A koi curled nose to tail: discs along an arc, broad at the head and
+	# narrowing to the tail, so it reads as a fish rather than a ring.
+	var curl_r: float = r * 0.42
+	var head_ang: float = -PI * 0.55
+	var span: float = PI * 1.45
+	const STEPS: int = 18
+	var tail_pt := Vector2.ZERO
+	var tail_dir := Vector2.ZERO
+	for i in STEPS + 1:
+		var f: float = float(i) / float(STEPS)
+		var ang: float = head_ang + span * f
+		var p: Vector2 = centre + Vector2(cos(ang), sin(ang)) * curl_r
+		draw_circle(p, lerpf(r * 0.24, r * 0.07, f), body, true, -1.0, true)
+		if i == STEPS:
+			tail_pt = p
+			tail_dir = Vector2(-sin(ang), cos(ang))
+	var head: Vector2 = centre + Vector2(cos(head_ang), sin(head_ang)) * curl_r
+	draw_circle(head + Vector2(cos(head_ang), sin(head_ang)) * r * 0.06, r * 0.08, spot, true, -1.0, true)
+	draw_circle(centre + Vector2(cos(head_ang + 0.9), sin(head_ang + 0.9)) * curl_r, r * 0.10, spot, true, -1.0, true)
+	draw_circle(head + Vector2(cos(head_ang - 1.2), sin(head_ang - 1.2)) * r * 0.10, r * 0.035, Color(0.05, 0.12, 0.10, a), true, -1.0, true)
+	var side := Vector2(-tail_dir.y, tail_dir.x)
+	draw_colored_polygon(PackedVector2Array([
+		tail_pt,
+		tail_pt + tail_dir * r * 0.30 + side * r * 0.20,
+		tail_pt + tail_dir * r * 0.20,
+		tail_pt + tail_dir * r * 0.30 - side * r * 0.20]), spot)
+	# Asleep: two z's between the koi and the ring.
 	if koi_asleep:
+		var font: Font = ThemeDB.fallback_font
+		var zc := Color(0.92, 1.0, 0.96, a)
+		draw_string(font, centre + Vector2(r * 0.50, -r * 0.42), "z", HORIZONTAL_ALIGNMENT_LEFT, -1, int(r * 0.30), zc)
+		draw_string(font, centre + Vector2(r * 0.66, -r * 0.62), "z", HORIZONTAL_ALIGNMENT_LEFT, -1, int(r * 0.24), zc)
 		draw_arc(face_rect.get_center(), r + 4.0, 0.0, TAU, 40, Color(0, 0, 0, 0.35 * a), 3.5, true)
 		draw_arc(face_rect.get_center(), r + 4.0, -PI * 0.5, -PI * 0.5 + TAU * koi_progress, 40,
 			Color(COL_GOLD.r, COL_GOLD.g, COL_GOLD.b, a), 3.5, true)
@@ -1015,10 +1042,10 @@ func _draw() -> void:
 	if not is_free and not is_revealed and not StageModifiers.is_fog_active() and not is_dissolving:
 		_draw_atmospheric_blocked_tint(face_rect)
 
-	# 10. The sleeping koi lies under a lotus leaf, drawn last so it hides the
-	# face; the ring shows how close the board is to waking it.
+	# 10. The sleeping koi, curled in a pool over the face and drawn last so it
+	# hides it; the ring shows how close the board is to waking it.
 	if tile_data.koi_sleep and leaf_alpha > 0.01:
-		_draw_lotus_leaf(face_rect)
+		_draw_sleeping_koi(face_rect)
 
 func _draw_atmospheric_blocked_tint(face_r: Rect2) -> void:
 	# Soft warm translucent shadow wash (preserves beautiful ivory porcelain look)
