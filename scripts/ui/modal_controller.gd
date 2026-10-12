@@ -1215,7 +1215,10 @@ func show_privacy_modal() -> void:
 	# Play requires the policy to be reachable from inside the app, not only
 	# from the store listing.
 	_add_button("Read Full Policy", func():
-		OS.shell_open(PRIVACY_POLICY_URL)
+		# Headless runs are the test harnesses: no browser to open, and the
+		# spawned one kept the audit process from exiting.
+		if DisplayServer.get_name() != "headless":
+			OS.shell_open(PRIVACY_POLICY_URL)
 	)
 	_add_button("Back", func():
 		show_settings_menu()
