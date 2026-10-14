@@ -198,6 +198,32 @@ static func tier_for_level(level: int) -> int:
 ## Round-robin within the tier: the nth level of a given tier takes the nth
 ## shape in that tier's pool. A stride-based index left 28 of 101 shapes
 ## unreachable, which is authored content nobody ever sees.
+## Timed Mode deals a fresh shape for each stage, small then medium then
+## large. It used to play the same three shapes - quick, gate, steps - in
+## every game. The bands bracket those three, and the clock is already sized to
+## each board, so the race stays as fair as it was.
+const TIMED_BANDS: Array[Vector2i] = [Vector2i(24, 44), Vector2i(40, 58), Vector2i(52, 76)]
+static var _size_cache: Dictionary = {}
+
+static func layout_size(name: String) -> int:
+	if not _size_cache.has(name):
+		_size_cache[name] = BoardGenerator.get_layout_positions(name).size()
+	return _size_cache[name]
+
+
+static func timed_layout(stage_no: int, rng: RandomNumberGenerator, avoid: Array = []) -> String:
+	var band: Vector2i = TIMED_BANDS[clampi(stage_no - 1, 0, TIMED_BANDS.size() - 1)]
+	var pool: Array = []
+	for name in LayoutData.LAYOUTS.keys():
+		var n: int = layout_size(name)
+		if n >= band.x and n <= band.y and not avoid.has(name):
+			pool.append(name)
+	if pool.is_empty():
+		return BoardGenerator.LADDER[clampi(stage_no - 1, 0, BoardGenerator.LADDER.size() - 1)]
+	pool.sort()
+	return pool[rng.randi() % pool.size()]
+
+
 ## Koi Rescue: every fifth level from 10. Level 5 already carries the
 ## premium-tile offer, and the first boards are too small for a dig.
 static func is_koi_level(level: int) -> bool:

@@ -104,6 +104,9 @@ const BOOT_MAX_SECONDS: float = 4.0
 
 var _booting: bool = false
 var _koi_rescued: bool = false
+var _run_rng := RandomNumberGenerator.new()
+## The shapes this Timed Mode game has used, so its three stages all differ.
+var _run_layouts: Array = []
 var _boot_bar: Panel = null
 
 ## The screen refreshes at up to 120 Hz on current phones, and with no cap the
@@ -448,7 +451,9 @@ func _start_run_mode() -> void:
 	hud.visible = true
 	GameManager.start_timed_run()
 	hud.setup_hud(GameManager.GameMode.RUN, 1)
-	var layout_name: String = LADDER[0]
+	_run_rng.randomize()
+	var layout_name: String = StagePlan.timed_layout(1, _run_rng)
+	_run_layouts = [layout_name]
 	GameManager.current_layout_name = layout_name
 
 	if zen_background and zen_background.has_method("set_level"):
@@ -473,18 +478,30 @@ static func daily_layout_pool() -> Array[String]:
 	pool.sort()
 	return pool
 
+## One fixed shuffle of the pool, walked a day at a time: every shape comes
+## round once in pool.size() days and never sooner. Hashing each date
+## independently repeated great_fan two days apart.
 static func daily_layout_for_seed(seed_value: int) -> String:
 	var pool: Array[String] = daily_layout_pool()
 	if pool.is_empty():
 		return BoardGenerator.LADDER[1]
-	# A single LCG step leaves consecutive dates striding the pool by a fixed
-	# alternating amount (17, 13, 17, 13...), so a whole year is predictable
-	# from one day. Mix properly before taking the modulo.
-	var h: int = seed_value * 2654435761
-	h = (h ^ (h >> 15)) * 2246822519
-	h = (h ^ (h >> 13)) * 3266489917
-	h = absi(h ^ (h >> 16))
-	return pool[h % pool.size()]
+	var order: Array = pool.duplicate()
+	var shuffle := RandomNumberGenerator.new()
+	shuffle.seed = 0x5EEDDA11
+	for i in range(order.size() - 1, 0, -1):
+		var j: int = shuffle.randi() % (i + 1)
+		var tmp = order[i]
+		order[i] = order[j]
+		order[j] = tmp
+	return order[posmod(_day_number(seed_value), order.size())]
+
+
+## Days since 1970 for a yyyymmdd seed.
+static func _day_number(seed_value: int) -> int:
+	var unix: int = Time.get_unix_time_from_datetime_dict({
+		"year": seed_value / 10000, "month": (seed_value / 100) % 100, "day": seed_value % 100,
+		"hour": 0, "minute": 0, "second": 0})
+	return unix / 86400
 
 func _start_daily_mode() -> void:
 	if SaveManager.daily_closed_today():
@@ -553,8 +570,8 @@ func _next_stage() -> void:
 		board.visible = true
 		hud.visible = true
 		GameManager.current_stage_no += 1
-		var layout_idx: int = mini(LADDER.size() - 1, GameManager.current_stage_no - 1)
-		var layout_name: String = LADDER[layout_idx]
+		var layout_name: String = StagePlan.timed_layout(GameManager.current_stage_no, _run_rng, _run_layouts)
+		_run_layouts.append(layout_name)
 		GameManager.current_layout_name = layout_name
 		hud.setup_hud(GameManager.current_mode, GameManager.current_stage_no)
 		GameManager.on_stage_started()
