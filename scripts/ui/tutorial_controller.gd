@@ -172,7 +172,7 @@ func _deal(which: String) -> void:
 		"C": layout = TutorialBoards.C_LAYERS
 		_:
 			_board.clear_board()
-			_show_done_button()
+			_show_finale()
 			return
 	_hide_done_button()
 	# duplicate(true): restore_stage reads these dictionaries into live tiles,
@@ -206,6 +206,110 @@ func _show_done_button() -> void:
 func _hide_done_button() -> void:
 	if _done != null:
 		_done.visible = false
+	if _finale != null:
+		_finale.queue_free()
+		_finale = null
+		_card.visible = true
+
+
+## The lesson ends on a celebration, not a small card with a thin Play button:
+## a centred panel over the dimmed pond - well done, three stars, the star
+## rule, and one big button into the first real stage.
+var _finale: Control = null
+
+func _show_finale() -> void:
+	_card.visible = false
+	if _finale != null:
+		return
+	_finale = Control.new()
+	_finale.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_finale.mouse_filter = Control.MOUSE_FILTER_STOP
+	add_child(_finale)
+	var dim := ColorRect.new()
+	dim.color = Color(0.0, 0.03, 0.02, 0.55)
+	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_finale.add_child(dim)
+
+	var centre := CenterContainer.new()
+	centre.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_finale.add_child(centre)
+	var panel := PanelContainer.new()
+	panel.custom_minimum_size = Vector2(880, 0)
+	var sb := UITheme.create_panel_box(Color("#11191b"), UITheme.GOLD_CORE, 3, 28, 0.96)
+	sb.content_margin_left = 56
+	sb.content_margin_right = 56
+	sb.content_margin_top = 52
+	sb.content_margin_bottom = 52
+	panel.add_theme_stylebox_override("panel", sb)
+	centre.add_child(panel)
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 22)
+	panel.add_child(col)
+
+	var title := Label.new()
+	title.text = "Well done!"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	UITheme.style_label(title, "ui", UITheme.FS_DISPLAY, UITheme.GOLD_BRIGHT, UITheme.W_SEMIBOLD)
+	col.add_child(title)
+	var lead := Label.new()
+	lead.text = "You know everything you need."
+	lead.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lead.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	UITheme.style_label(lead, "ui", UITheme.FS_BODY_LG, UITheme.IVORY_BASE, UITheme.W_MEDIUM)
+	col.add_child(lead)
+
+	var stars := _StarRow.new()
+	stars.custom_minimum_size = Vector2(0, 120)
+	col.add_child(stars)
+
+	var rule := Label.new()
+	rule.text = "Earn up to three stars on every stage: one for clearing it, one for two mistakes or fewer, one for using no undo, hint or shuffle."
+	rule.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	rule.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	UITheme.style_label(rule, "ui", UITheme.FS_BODY, UITheme.IVORY_MUTED, UITheme.W_MEDIUM)
+	col.add_child(rule)
+
+	var go := Button.new()
+	go.text = "Start Level 1"
+	go.custom_minimum_size = Vector2(0, 168)
+	UITheme.style_button(go, true, 20)
+	for state in ["normal", "hover", "focus"]:
+		go.add_theme_stylebox_override(state, UITheme.create_panel_box(UITheme.GOLD_CORE, UITheme.GOLD_BRIGHT, 2, 20, 1.0))
+	go.add_theme_stylebox_override("pressed", UITheme.create_panel_box(UITheme.GOLD_DARK, UITheme.GOLD_CORE, 2, 20, 1.0))
+	for col_name in ["font_color", "font_hover_color", "font_focus_color", "font_pressed_color"]:
+		go.add_theme_color_override(col_name, Color("#1c1406"))
+	go.add_theme_font_size_override("font_size", UITheme.FS_TITLE)
+	go.pressed.connect(_finish)
+	UITheme.add_press_feedback(go)
+	col.add_child(go)
+
+	panel.pivot_offset = Vector2(440, 300)
+	panel.scale = Vector2(0.86, 0.86)
+	_finale.modulate.a = 0.0
+	var tw := create_tween().set_parallel(true)
+	tw.tween_property(_finale, "modulate:a", 1.0, 0.25)
+	tw.tween_property(panel, "scale", Vector2.ONE, 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	AudioManager.play_win()
+
+
+## Three gold stars, drawn rather than typed: no font in the build is sure to
+## carry the star glyph on every phone.
+class _StarRow extends Control:
+	func _draw() -> void:
+		var gold := Color(1.0, 0.82, 0.34)
+		var rim := Color(0.62, 0.42, 0.10)
+		var r: float = minf(size.y * 0.46, 56.0)
+		for i in 3:
+			var c := Vector2(size.x * 0.5 + (i - 1) * r * 2.5, size.y * 0.5 + (0.0 if i == 1 else r * 0.18))
+			var rr: float = r * (1.12 if i == 1 else 0.92)
+			var pts := PackedVector2Array()
+			for k in 10:
+				var ang: float = -PI * 0.5 + PI * float(k) / 5.0
+				var rad: float = rr if k % 2 == 0 else rr * 0.45
+				pts.append(c + Vector2(cos(ang), sin(ang)) * rad)
+			draw_colored_polygon(pts, gold)
+			pts.append(pts[0])
+			draw_polyline(pts, rim, 3.0, true)
 
 
 ## Beat two is complete the moment the player tries the covered tile and it
@@ -226,6 +330,10 @@ func notify_match() -> void:
 
 
 func _finish() -> void:
+	if _finale != null:
+		_finale.queue_free()
+		_finale = null
+		_card.visible = true
 	if _board != null:
 		var clear: Array[RiverTile] = []
 		_board.tutorial_focus = clear
