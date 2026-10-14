@@ -108,7 +108,7 @@ func _ready() -> void:
 	_pregenerate_glass_shatter_sounds()
 
 	# Offload heavy ambient water track generation to WorkerThreadPool to avoid blocking main thread
-	WorkerThreadPool.add_task(_pregenerate_ambient_track_task)
+	_ambient_task = WorkerThreadPool.add_task(_pregenerate_ambient_track_task)
 
 	SettingsManager.setting_changed.connect(_on_setting_changed)
 	_start_ambient_guzheng_loop()
@@ -909,9 +909,20 @@ func play_hitstop_impact() -> void:
 static func _note_key(freq: float, duration: float) -> int:
 	return int(freq * 10.0) ^ (int(duration * 100.0) << 16)
 
-## Notes being built on a worker thread, so a second request waits for the
-## first rather than building the same note twice.
+## Notes being built on a worker thread, by task id, so a second request
+## waits for the first rather than building the same note twice.
 var _building_notes: Dictionary = {}
+var _ambient_task: int = -1
+
+## Worker tasks still running at exit would outlive the engine and crash it on
+## the way out. They are short; wait for them.
+func _exit_tree() -> void:
+	if _ambient_task >= 0:
+		WorkerThreadPool.wait_for_task_completion(_ambient_task)
+		_ambient_task = -1
+	for id in _building_notes.values():
+		WorkerThreadPool.wait_for_task_completion(id)
+	_building_notes.clear()
 
 ## A note not yet built is built off the main thread and plays when ready.
 ## Building it inline froze the game: 25 ms for a match note and 166 ms for a
@@ -926,8 +937,7 @@ func _play_guzheng_string(freq: float, duration: float, volume: float,
 		return
 	if _building_notes.has(key):
 		return
-	_building_notes[key] = true
-	WorkerThreadPool.add_task(_build_note.bind(key, freq, duration, volume, at, z))
+	_building_notes[key] = WorkerThreadPool.add_task(_build_note.bind(key, freq, duration, volume, at, z))
 
 
 func _build_note(key: int, freq: float, duration: float, volume: float, at: Vector2, z: int) -> void:
@@ -937,6 +947,8 @@ func _build_note(key: int, freq: float, duration: float, volume: float, at: Vect
 
 
 func _note_built(key: int, wav: AudioStreamWAV, volume: float, at: Vector2, z: int) -> void:
+	if _building_notes.has(key):
+		WorkerThreadPool.wait_for_task_completion(_building_notes[key])
 	_building_notes.erase(key)
 	_guzheng_cache[key] = wav
 	if volume > 0.0:

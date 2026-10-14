@@ -13,6 +13,13 @@ func _ready() -> void:
 	await get_tree().process_frame
 	main.get_node("SplashScreen").visible = false
 	await get_tree().create_timer(1.0).timeout
+	# The bed is synthesised on a worker thread; on a busy machine that takes
+	# longer than the fixed second above, and the beds start only after it.
+	var waited: float = 0.0
+	while not AudioManager.is_ambient_ready and waited < 10.0:
+		await get_tree().create_timer(0.1).timeout
+		waited += 0.1
+	await get_tree().create_timer(0.3).timeout
 
 	var bus: int = AudioServer.get_bus_index(AudioManager.BUS_AMBIENT)
 	_check("ambient bus exists", bus != -1, "")

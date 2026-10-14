@@ -408,8 +408,7 @@ func _prefetch_level(level: int) -> void:
 	var plan: Dictionary = StagePlan.describe(level)
 	var layout_name: String = plan["layout"]
 	var seed_value: int = plan["seed"]
-	_prefetching[level] = true
-	WorkerThreadPool.add_task(func():
+	_prefetching[level] = WorkerThreadPool.add_task(func():
 		var rng := RandomNumberGenerator.new()
 		rng.seed = seed_value
 		var tiles: Array = BoardGenerator.deal_board(layout_name, rng)
@@ -417,6 +416,8 @@ func _prefetch_level(level: int) -> void:
 
 
 func _prefetch_done(level: int, layout_name: String, tiles: Array) -> void:
+	if _prefetching.has(level):
+		WorkerThreadPool.wait_for_task_completion(_prefetching[level])
 	_prefetching.erase(level)
 	_prefetched.clear()
 	_prefetched[level] = {"layout": layout_name, "tiles": tiles}
@@ -430,6 +431,15 @@ func _take_prefetched(level: int, layout_name: String) -> Array:
 	if p.is_empty() or String(p["layout"]) != layout_name:
 		return []
 	return p["tiles"]
+
+
+## A deal still running when the game closes would outlive the engine and
+## crash it on the way out - an "app has a bug" report on exit. It is at most
+## a fraction of a second, so wait for it.
+func _exit_tree() -> void:
+	for id in _prefetching.values():
+		WorkerThreadPool.wait_for_task_completion(id)
+	_prefetching.clear()
 
 
 func _start_calm_mode(level: int) -> void:
