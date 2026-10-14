@@ -888,6 +888,21 @@ func show_cloud_offer(on_done: Callable) -> void:
 	show_modal()
 
 
+## The first Koi Rescue level explains itself once; later ones only toast.
+func show_koi_intro() -> void:
+	_current_screen = "koi_intro"
+	_clear_content()
+	_add_header("Koi Rescue", "A new kind of level")
+	_add_hairline()
+	_add_description("Three koi pairs are hidden on this board - the coral tiles. Free all of them and the level is won at once, with three stars and 25 pearls.")
+	_add_description("The last koi sleeps until half the board is cleared. Its gold ring shows how close it is to waking.")
+	_add_separator()
+	_add_tile_row(GLYPH_GOLD, "Find the koi", "Or clear the whole board", "", func():
+		hide_modal()
+	, true)
+	show_modal()
+
+
 ## Shown once, after the stage that wore a premium set. Skip carries on to the
 ## clear screen; Shop drops it and opens the set's page.
 func show_premium_offer(theme_key: String) -> void:
@@ -1277,6 +1292,8 @@ func handle_back_pressed() -> void:
 		"pause", "shuffle_offer":
 			hide_modal()
 			resume_game_requested.emit()
+		"koi_intro":
+			hide_modal()
 		"level_clear", "daily_clear", "game_over", "run_won", "theme_unlocked", "deadlock":
 			# No hide_modal(): _return_home() puts the main menu up in its place,
 			# and hiding first would race the fade against it.

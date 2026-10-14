@@ -461,6 +461,7 @@ func _sanitize_prog(raw: Variant) -> Dictionary:
 	if d.has("streak_shields"): out["streak_shields"] = _vint(d["streak_shields"], 0, 0, 99)
 	if d.has("last_daily_date"): out["last_daily_date"] = _vstr(d["last_daily_date"], "")
 	if d.has("tutorial_completed"): out["tutorial_completed"] = _vbool(d["tutorial_completed"], false)
+	if d.has("koi_intro_seen"): out["koi_intro_seen"] = _vbool(d["koi_intro_seen"], false)
 
 	# stars: {"<level>": 0..3}. Anything not shaped like that is discarded rather
 	# than copied in, which is what used to break record_level_clear() forever.

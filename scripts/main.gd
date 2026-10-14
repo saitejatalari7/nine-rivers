@@ -473,7 +473,12 @@ func _start_calm_mode(level: int) -> void:
 	board.load_stage(layout_name, rng, koi_level, _take_prefetched(level, layout_name))
 	camera.frame_board(board.board_bounds, get_viewport_rect().size)
 	if koi_level:
-		hud.show_toast("Koi Rescue! Free all 3 koi to win the level.")
+		if not bool(SaveManager.prog.get("koi_intro_seen", false)):
+			SaveManager.prog["koi_intro_seen"] = true
+			SaveManager.request_save()
+			modal.show_koi_intro()
+		else:
+			hud.show_toast("Koi Rescue! Free all 3 koi to win the level.")
 	_prefetch_level(level + 1)
 
 	_offer_theme_sample(level)
