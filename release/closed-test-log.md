@@ -69,6 +69,30 @@ a fresh install. Symbolised with Godot 4.6.2's published release symbols:
 - Confirmed fixed on the tester's phone via internal testing before the
   closed-track release.
 
+### Build 14 (1.0.14) - 2026-10-14
+
+From this build every upload has its own version name, so a tester's Play
+Store page shows which build they have (builds 10-13 all read 1.0.1).
+
+- **Smoother play.** A tester reported, and the developer saw, a stuck
+  feeling when tiles clear. Measured: after every match every tile on the
+  board redrew (a 35 ms frame on a desktop), and the music built new notes
+  on the main thread (166 ms each). Both fixed; the worst frame after a
+  match went from 23-39 ms to 17-21 ms (16.7 ms is a smooth 60 fps).
+  Level starts no longer stall: the next level is dealt in the background.
+- **500 levels** (from 350) with **51 new board shapes** - nature, zodiac,
+  geometric and island shapes drawn for the 8-column board, every one
+  proven clearable.
+- **Koi Rescue** every fifth level from 10: free three koi pairs to win the
+  level at once; the last sleeps until half the board is cleared.
+  **Quick Combo** on every board for fast matches.
+- **More variety:** Timed Mode deals new shapes every game (it used to repeat
+  the same three); the Daily Puzzle never repeats a shape within 42 days.
+- Sharper tile characters when pinch-zoomed; long messages wrap on screen.
+- Readable crash reports: native debug symbols uploaded with the build.
+- Play's two advisories (edge-to-edge APIs, orientation) come from the engine's
+  immersive mode and the portrait-only design; noted, not blocking.
+
 ## Tester feedback received
 
 | Date | From | Feedback | Action | Build |
@@ -85,6 +109,10 @@ a fresh install. Symbolised with Godot 4.6.2's published release symbols:
 | 2026-10-10 | Developer | Loading screen jumps; bar invisible | Matched framing; visible bar | 12 |
 | 2026-10-11 | Nikki + Android vitals | Crash in onboarding / during play | Audio loop bound fixed | 13 |
 | 2026-10-11 | Android vitals | Crash on closing the app | Ad callbacks released | 13 |
+| 2026-10-12 | Developer | Wanted rewards from clearing, not power buttons | Koi Rescue, Quick Combo | 14 |
+| 2026-10-13 | Developer | Same layouts in Timed and Daily | Random Timed shapes; Daily 42-day cycle | 14 |
+| 2026-10-13 | Developer | Wants 500 levels | 51 new shapes, 500 levels | 14 |
+| 2026-10-14 | Tester + developer | Stutter when tiles clear | Redraw and audio fixes | 14 |
 
 ## Pre-launch report
 
