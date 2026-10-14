@@ -69,6 +69,8 @@ static var _body_tex_cache: Dictionary = {}
 ## Test-only: suppresses the suit artwork so a probe can diff a drawn tile
 ## against a bare body and isolate the ink. Never set outside scripts/tests.
 static var debug_skip_artwork: bool = false
+static var debug_no_dissolve: bool = false
+var _was_open: bool = false
 
 ## How much a blocked tile darkens. Multiplying toward black is right only
 ## while the ink is lighter than the face: on a dark-ink theme it drags the
@@ -536,12 +538,18 @@ func _on_mouse_exited() -> void:
 		_redraw_all()
 
 func setup(data: RiverTile, free_status: bool) -> void:
+	# The board calls this for every tile after every match. Redrawing them all
+	# each time cost a 35 ms frame on a desktop - a visible hitch on a phone -
+	# when only the few tiles a match freed actually change.
+	var changed: bool = data != tile_data or free_status != is_free or is_dissolving or (data != null and data.is_open != _was_open)
 	tile_data = data
 	is_free = free_status
 	is_dissolving = false
+	_was_open = data != null and data.is_open
 	set_process(data != null and data.is_open)
-	_update_blocked_fade()
-	_redraw_all()
+	if changed:
+		_update_blocked_fade()
+		_redraw_all()
 
 func get_accent_color() -> Color:
 	if not tile_data:
@@ -653,6 +661,11 @@ func play_clear_animation() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	is_dissolving = true
 	z_index += 300 # Bring dissolving tile above all others during disintegration
+	if debug_no_dissolve:
+		var fade := create_tween()
+		fade.tween_property(self, "modulate:a", 0.0, 0.3)
+		fade.tween_callback(queue_free)
+		return
 
 	# Instantiate runtime Voronoi burning ember dissolve shader
 	var mat := ShaderMaterial.new()

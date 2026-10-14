@@ -56,6 +56,8 @@ var history: Array[Dictionary] = [] # For Undo
 var board_bounds := Rect2()
 var current_max_z: int = 0
 var stage_match_count: int = 0
+## Perf probes switch the clear effects off one at a time.
+static var debug_no_dust: bool = false
 var _combo: int = 0
 var _last_match_ms: int = 0
 var _koi_paid: bool = false
@@ -470,6 +472,10 @@ func _resolve_matched_set(group: Array[RiverTile]) -> void:
 			last_z = t.z
 			has_last_pos = true
 			# Spawn visual particle shatter dust on cleared tiles
+			if debug_no_dust:
+				v.play_clear_animation()
+				tile_views.erase(t)
+				continue
 			var dust = TileShatterDustScene.instantiate()
 			dust.position = v.position + Vector2(TW * 0.5, TH * 0.5)
 			dust.z_index = v.z_index + 40

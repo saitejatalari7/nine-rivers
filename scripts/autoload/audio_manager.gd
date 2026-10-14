@@ -133,6 +133,8 @@ func _pregenerate_ambient_track_task() -> void:
 	call_deferred("_mark_ambient_ready")
 	if is_instance_valid(SettingsManager) and SettingsManager.music_enabled:
 		call_deferred("start_ambient_music")
+	# After the bed, so the music and the loading screen do not wait on them.
+	_prebuild_match_notes()
 
 func _on_setting_changed(setting_name: String, new_val: Variant) -> void:
 	if setting_name == "music":
@@ -904,24 +906,59 @@ func play_hitstop_impact() -> void:
 
 # ================= GUZHENG PHYSICAL STRING SYNTHESIZER =================
 
+static func _note_key(freq: float, duration: float) -> int:
+	return int(freq * 10.0) ^ (int(duration * 100.0) << 16)
+
+## Notes being built on a worker thread, so a second request waits for the
+## first rather than building the same note twice.
+var _building_notes: Dictionary = {}
+
+## A note not yet built is built off the main thread and plays when ready.
+## Building it inline froze the game: 25 ms for a match note and 166 ms for a
+## 2.5 s ambient note on a desktop, several times that on a phone - the
+## "stuck" moments players felt, at random, while the music played.
+## The set of notes is small and fixed, so the cache is never cleared.
 func _play_guzheng_string(freq: float, duration: float, volume: float,
 		at: Vector2 = Vector2.INF, z: int = 0) -> void:
-	var key: int = int(freq * 10.0) ^ (int(duration * 100.0) << 16)
-	var wav: AudioStreamWAV
-
+	var key: int = _note_key(freq, duration)
 	if _guzheng_cache.has(key):
-		wav = _guzheng_cache[key]
-	else:
-		wav = _synthesize_guzheng_wav(freq, duration)
-		# Bounded, but large enough for every pitch and length the game uses;
-		# clearing it at 64 threw away the whole set and rebuilt it.
-		if _guzheng_cache.size() > 200:
-			_guzheng_cache.clear()
-		_guzheng_cache[key] = wav
+		_play_at(_guzheng_cache[key], at, z, linear_to_db(clampf(volume, 0.01, 1.0)), 1.0)
+		return
+	if _building_notes.has(key):
+		return
+	_building_notes[key] = true
+	WorkerThreadPool.add_task(_build_note.bind(key, freq, duration, volume, at, z))
 
-	_play_at(wav, at, z, linear_to_db(clampf(volume, 0.01, 1.0)), 1.0)
+
+func _build_note(key: int, freq: float, duration: float, volume: float, at: Vector2, z: int) -> void:
+	var wav: AudioStreamWAV = _synthesize_guzheng_wav(freq, duration)
+	if is_instance_valid(self):
+		_note_built.call_deferred(key, wav, volume, at, z)
+
+
+func _note_built(key: int, wav: AudioStreamWAV, volume: float, at: Vector2, z: int) -> void:
+	_building_notes.erase(key)
+	_guzheng_cache[key] = wav
+	if volume > 0.0:
+		_play_at(wav, at, z, linear_to_db(clampf(volume, 0.01, 1.0)), 1.0)
+
+
+## The notes a match plays, built with the ambient bed during the loading
+## screen so the first match of a session never waits for one.
+func _prebuild_match_notes() -> void:
+	for idx in range(4, PENTATONIC.size()):
+		var f: float = PENTATONIC[idx]
+		for spec in [[f, 0.42]]:
+			var key: int = _note_key(spec[0], spec[1])
+			var wav: AudioStreamWAV = _synthesize_guzheng_wav(spec[0], spec[1])
+			if not is_instance_valid(self):
+				return
+			_note_built.call_deferred(key, wav, 0.0, Vector2.INF, 0)
 
 func _synthesize_guzheng_wav(freq: float, duration: float) -> AudioStreamWAV:
+	# Runs on worker threads: its own generator, not the shared global one.
+	var noise := RandomNumberGenerator.new()
+	noise.seed = _note_key(freq, duration)
 	var total_frames := int(sample_rate * duration)
 	var pcm := PackedByteArray()
 	pcm.resize(total_frames * 2)
@@ -946,7 +983,7 @@ func _synthesize_guzheng_wav(freq: float, duration: float) -> AudioStreamWAV:
 		var h5 := sin(t * TAU * cur_freq * 5.0) * 0.04 * exp(-t * (13.0 * inv_dur))
 
 		# Pluck pick impact transient (brief 4ms high-frequency strike burst)
-		var pluck_transient := (randf() * 2.0 - 1.0) * exp(-t * 450.0) * 0.14
+		var pluck_transient := (noise.randf() * 2.0 - 1.0) * exp(-t * 450.0) * 0.14
 
 		# Paulownia wood Guzheng body resonance (warm lower chamber vibration)
 		var body_res := sin(t * TAU * 240.0) * exp(-t * 18.0) * 0.08
