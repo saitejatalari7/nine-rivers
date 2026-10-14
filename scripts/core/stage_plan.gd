@@ -17,7 +17,7 @@ extends RefCounted
 const BoardGenerator = preload("res://scripts/core/board_generator.gd")
 const LayoutData = preload("res://scripts/core/layout_data.gd")
 
-const TOTAL_LEVELS: int = 350
+const TOTAL_LEVELS: int = 500
 const LEVELS_PER_CHAPTER: int = 50
 const CHAPTERS: int = TOTAL_LEVELS / LEVELS_PER_CHAPTER
 

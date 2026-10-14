@@ -22,13 +22,17 @@ func _ready() -> void:
 		var bottom: float = main.get_node("HUD/PropsBar").get_global_rect().position.y
 		var worst_scale: float = 99.0
 		var seen := {}
-		for lv in range(1, 351, 3):
-			var layout: String = StagePlan.layout_for_level(lv)
-			if seen.has(layout):
-				continue
+		# Every shape by name, not a sample of levels: a level sweep missed
+		# shapes that no sampled level happened to use.
+		var all_names: Array = load("res://scripts/core/layout_data.gd").LAYOUTS.keys()
+		all_names.sort()
+		main._start_calm_mode(31)
+		await get_tree().create_timer(0.5).timeout
+		for layout in all_names:
 			seen[layout] = true
-			main._start_calm_mode(lv)
-			await get_tree().create_timer(0.5).timeout
+			main.get_node("Board").load_stage(layout)
+			main.get_node("Camera2D").frame_board(main.get_node("Board").board_bounds, get_viewport().get_visible_rect().size)
+			await get_tree().create_timer(0.45).timeout
 			worst_scale = minf(worst_scale, main.get_node("Camera2D").zoom.x)
 			_check(main, size, layout, top, bottom)
 		print("%s: %d layouts, smallest zoom %.2f" % [size, seen.size(), worst_scale])
@@ -37,6 +41,7 @@ func _ready() -> void:
 		for i in 6:
 			if i % 2 == 0:
 				SaveManager.prog["daily_attempts_today"] = 0
+				SaveManager.prog["last_daily_date"] = ""
 				main._start_daily_mode()
 			else:
 				SaveManager.prog["rapids_runs_today"] = 0
