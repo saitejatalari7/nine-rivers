@@ -104,6 +104,11 @@ const BOOT_MAX_SECONDS: float = 4.0
 
 var _booting: bool = false
 var _koi_rescued: bool = false
+## The next level's deal, made on a worker thread while this one is played.
+## Dealing a large board took up to 130 ms on a desktop - a stall as the level
+## began - and every deal is fixed by its level, so it can be done early.
+var _prefetched: Dictionary = {}
+var _prefetching: Dictionary = {}
 var _run_rng := RandomNumberGenerator.new()
 ## The shapes this Timed Mode game has used, so its three stages all differ.
 var _run_layouts: Array = []
@@ -202,6 +207,8 @@ func _boot_load() -> void:
 
 	# 3. The menu, built behind the splash so it is whole when revealed.
 	_return_home()
+	# The level the player will most likely start, dealt in the background.
+	_prefetch_level(int(SaveManager.prog.get("level", 1)))
 	for i in 2:
 		await get_tree().process_frame
 	_boot_progress(1.0)
@@ -395,6 +402,36 @@ func _return_home() -> void:
 	StageModifiers.reset()
 	modal.show_main_menu()
 
+func _prefetch_level(level: int) -> void:
+	if level < 1 or level > StagePlan.TOTAL_LEVELS or _prefetched.has(level) or _prefetching.has(level):
+		return
+	var plan: Dictionary = StagePlan.describe(level)
+	var layout_name: String = plan["layout"]
+	var seed_value: int = plan["seed"]
+	_prefetching[level] = true
+	WorkerThreadPool.add_task(func():
+		var rng := RandomNumberGenerator.new()
+		rng.seed = seed_value
+		var tiles: Array = BoardGenerator.deal_board(layout_name, rng)
+		_prefetch_done.call_deferred(level, layout_name, tiles))
+
+
+func _prefetch_done(level: int, layout_name: String, tiles: Array) -> void:
+	_prefetching.erase(level)
+	_prefetched.clear()
+	_prefetched[level] = {"layout": layout_name, "tiles": tiles}
+
+
+## The prefetched deal for this level, or [] to deal now. Taken once: a restart
+## of the same level deals again from its seed and gets the same board.
+func _take_prefetched(level: int, layout_name: String) -> Array:
+	var p: Dictionary = _prefetched.get(level, {})
+	_prefetched.erase(level)
+	if p.is_empty() or String(p["layout"]) != layout_name:
+		return []
+	return p["tiles"]
+
+
 func _start_calm_mode(level: int) -> void:
 	# Before anything is dealt. Dealing stage 1 and then starting the lesson
 	# over the top of it meant GameManager was mid-stage-1 the whole time,
@@ -423,10 +460,11 @@ func _start_calm_mode(level: int) -> void:
 	rng.seed = plan["seed"]
 	_koi_rescued = false
 	var koi_level: bool = StagePlan.is_koi_level(level)
-	board.load_stage(layout_name, rng, koi_level)
+	board.load_stage(layout_name, rng, koi_level, _take_prefetched(level, layout_name))
 	camera.frame_board(board.board_bounds, get_viewport_rect().size)
 	if koi_level:
 		hud.show_toast("Koi Rescue! Free all 3 koi to win the level.")
+	_prefetch_level(level + 1)
 
 	_offer_theme_sample(level)
 

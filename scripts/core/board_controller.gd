@@ -81,11 +81,16 @@ func _on_theme_equipped(_theme_id: String) -> void:
 		if is_instance_valid(view) and view.has_method("update_theme_style"):
 			view.update_theme_style()
 
-func load_stage(layout_name: String, rng: RandomNumberGenerator = null, koi_rescue: bool = false) -> void:
+func load_stage(layout_name: String, rng: RandomNumberGenerator = null, koi_rescue: bool = false,
+		pre_dealt: Array = []) -> void:
 	clear_board()
 	stage_match_count = 0
 	_reset_bonuses()
-	var tiles := BoardGenerator.deal_board(layout_name, rng)
+	var tiles: Array[RiverTile] = []
+	if pre_dealt.is_empty():
+		tiles = BoardGenerator.deal_board(layout_name, rng)
+	else:
+		tiles.assign(pre_dealt)
 	if koi_rescue:
 		BoardGenerator.assign_koi_rescue(tiles, int(rng.seed) if rng != null else 0)
 	_koi_awake = not _has_sleeping_koi(tiles)
@@ -119,47 +124,83 @@ func _seat_tiles(animate: bool) -> void:
 		return a.x < b.x
 	)
 
-	# Instantiate tile visual nodes. A restored board has already-matched tiles
-	# in the list, for the geometry and for the bounds above; they get no view.
-	for t in live_tiles:
-		if t.is_removed:
-			continue
-		var view: TileView = TileViewScene.instantiate()
-		add_child(view)
-
-		var px: float = (t.x * 0.5) * TW + t.z * LAYER_OFF_X
-		var py: float = (t.y * 0.5) * TH + (max_z - t.z) * LAYER_OFF_Y
-		var target_pos := Vector2(px, py)
-
-		if animate:
-			# Cascading staggered deal animation (0.35s total wave)
-			var delay: float = clampf((t.z * 0.06) + (t.y * 0.012) + (t.x * 0.006), 0.0, 0.38)
-			view.position = target_pos - Vector2(0, 50.0)
-			view.modulate.a = 0.0
-			view.scale = Vector2(0.85, 0.85)
-
-			var tween := view.create_tween()
-			tween.tween_interval(delay)
-			tween.tween_property(view, "position", target_pos, 0.22).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-			tween.parallel().tween_property(view, "scale", Vector2.ONE, 0.20).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-			tween.parallel().tween_property(view, "modulate:a", 1.0, 0.16)
-		else:
-			view.position = target_pos
-
-		view.z_index = t.z * 100 + t.y * 2 + (1 if t.x % 2 == 1 else 0)
-
-		view.tile_clicked.connect(_on_tile_clicked)
-		view.tile_long_pressed.connect(_on_tile_long_pressed)
-		view.tree_exiting.connect(func():
-			if tile_views.get(t) == view:
-				tile_views.erase(t)
-		)
-		tile_views[t] = view
-
 	board_bounds = Rect2(0, 0, (max_x * 0.5) * TW + TW + max_z * LAYER_OFF_X, (max_y * 0.5) * TH + TH + max_z * LAYER_OFF_Y)
 
-	update_all_tiles_status()
+	# A dealt board builds its views a few at a time, bottom layer first, in
+	# step with the deal wave. All at once - up to 130 scenes made and drawn
+	# in one frame - was a 56-114 ms stall on a desktop as every level began.
+	# A restored board appears whole, so it is still built in one go.
+	_seat_generation += 1
+	_sample_dress.clear()
+	if animate:
+		_seat_views_in_batches(_seat_generation, max_z)
+	else:
+		for t in live_tiles:
+			if not t.is_removed:
+				_make_view(t, max_z, false)
+		update_all_tiles_status()
 	move_completed.emit(live_tiles.size(), get_legal_sets().size())
+
+
+const SEAT_BATCH: int = 18
+var _seat_generation: int = 0
+## Tiles wearing a sampled premium set, by tile, for views not yet built.
+var _sample_dress: Dictionary = {}
+
+func _seat_views_in_batches(generation: int, max_z: int) -> void:
+	var grid: Dictionary = get_spatial_grid(get_active_tiles())
+	var made: int = 0
+	for t in live_tiles:
+		if generation != _seat_generation:
+			return
+		if t.is_removed:
+			continue
+		var view: TileView = _make_view(t, max_z, true)
+		view.setup(t, is_tile_free_grid(t, grid))
+		made += 1
+		if made % SEAT_BATCH == 0:
+			await get_tree().process_frame
+	if generation == _seat_generation:
+		update_all_tiles_status()
+
+
+func _make_view(t: RiverTile, max_z: int, animate: bool) -> TileView:
+	var view: TileView = TileViewScene.instantiate()
+	add_child(view)
+	if _sample_dress.has(t):
+		view.theme_override = _sample_dress[t]
+		view.update_theme_style()
+
+	var px: float = (t.x * 0.5) * TW + t.z * LAYER_OFF_X
+	var py: float = (t.y * 0.5) * TH + (max_z - t.z) * LAYER_OFF_Y
+	var target_pos := Vector2(px, py)
+
+	if animate:
+		# Cascading staggered deal animation (0.35s total wave)
+		var delay: float = clampf((t.z * 0.06) + (t.y * 0.012) + (t.x * 0.006), 0.0, 0.38)
+		view.position = target_pos - Vector2(0, 50.0)
+		view.modulate.a = 0.0
+		view.scale = Vector2(0.85, 0.85)
+
+		var tween := view.create_tween()
+		tween.tween_interval(delay)
+		tween.tween_property(view, "position", target_pos, 0.22).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		tween.parallel().tween_property(view, "scale", Vector2.ONE, 0.20).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		tween.parallel().tween_property(view, "modulate:a", 1.0, 0.16)
+	else:
+		view.position = target_pos
+
+	view.z_index = t.z * 100 + t.y * 2 + (1 if t.x % 2 == 1 else 0)
+
+	view.tile_clicked.connect(_on_tile_clicked)
+	view.tile_long_pressed.connect(_on_tile_long_pressed)
+	view.tree_exiting.connect(func():
+		if tile_views.get(t) == view:
+			tile_views.erase(t)
+	)
+	tile_views[t] = view
+	return view
+
 
 ## The board as plain data, for a session written to disk. Only what cannot be
 ## re-derived: the layout name replays the geometry, but which tiles were dealt
@@ -180,11 +221,14 @@ func sample_theme(theme_id: String, count: int) -> int:
 	var step: int = maxi(1, live.size() / maxi(1, count * 2))
 	var i: int = 0
 	while i < live.size() and dressed < count:
+		# Kept on the tile as well as the view: a dealt board builds its views
+		# over a few frames, top layer last, so the view may not exist yet.
+		_sample_dress[live[i]] = theme_id
 		var v = tile_views.get(live[i])
 		if v != null and is_instance_valid(v):
 			v.theme_override = theme_id
 			v.update_theme_style()
-			dressed += 1
+		dressed += 1
 		i += step
 	return dressed
 

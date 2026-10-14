@@ -311,7 +311,10 @@ static func _deal_once(layout_name: String, rng: RandomNumberGenerator) -> Array
 	var order := peel_dynamic(positions, triples_count, total_pairs_count, rng)
 	# Exposed for layout_validator: the peel order IS a valid clearing sequence,
 	# so replaying it proves the dealt board can be finished.
-	last_deal_order = order
+	# A worker thread deals the next level ahead of time; only a deal made on
+	# the main thread is the one the validator should read.
+	if OS.get_thread_caller_id() == OS.get_main_thread_id():
+		last_deal_order = order
 	
 	var tiles: Array[RiverTile] = []
 	if not order.is_empty():
