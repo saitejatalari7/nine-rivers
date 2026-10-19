@@ -84,3 +84,19 @@ the 500 levels is checked by automated tests to deal a solvable board and fit
 the screen, and the app passes our full test suite. Testers completed the
 tutorial, campaign, Daily Puzzle and Timed Mode on several devices, and the
 issues they raised were fixed in the updates listed above.
+
+## As submitted - 2026-10-19 (each field has a 300-character limit)
+
+**Recruitment:** We used a paid testing provider (Testers Community), whose testers joined through a Google Group, plus friends and family who joined through our internal and closed testing links. At least 12 testers stayed opted in for the full 14 days.
+
+**Engagement:** Testers played the campaign, Daily Puzzle and Timed Mode on many phones (Samsung, Vivo, iQOO; Android 14-16). A friend tested fresh installs including the tutorial. We tested in-app purchases ourselves. Crash reports from testers in Android vitals led to two crash fixes.
+
+**Feedback:** Collected from tester messages, our own play on several phones and Android vitals. Main points: tiles too small, blocked gold tiles looked tappable, Timed Mode too hard, daily limits could be bypassed, a tutorial crash on some phones, stutter when tiles clear, repeated board shapes.
+
+**Audience:** Teens and adults (13+) who enjoy calm puzzle games, especially mahjong solitaire players. It suits short relaxing sessions, with an optional Daily Puzzle leaderboard for players who like a daily challenge. It is not made for young children.
+
+**Stand out:** 500 hand-designed stages, every board generated to be solvable, so players are never stuck on an impossible deal. Koi Rescue levels, a shared Daily Puzzle with a world leaderboard, a calm pond setting with recorded nature sounds, offline play, and no ads during play - videos only on request.
+
+**Changes:** Bigger tiles (8-column boards); greyed out blocked gold tiles; fair Timed Mode clock and 3-stage games; fixed a daily-limit loophole; fixed two crashes found in Android vitals; removed stutter when tiles clear; added 51 board shapes (500 levels) so modes stop repeating boards.
+
+**Ready:** Both crashes reported in Android vitals are fixed and confirmed on the affected tester's phone, with no new crash types since. Automated tests check every one of the 500 levels deals a solvable board and fits the screen, and all issues raised by testers were fixed.
