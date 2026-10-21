@@ -1,13 +1,13 @@
 # Play Store listing copy - Nine Rivers
 
-Package: `com.ninerivers.mahjong` - version 1.0.1 (code 2)
+Package: `com.ninerivers.mahjong` - written for version 1.0.14 (code 14)
 
 Character counts below were measured on the exact text in this file. Re-measure if you edit it.
 Play counts characters, not bytes, and counts spaces.
 
-> **Read before publishing:** the descriptions below describe the build as it is today, which
-> serves no advertisements. When the AdMob update ships, the lines marked **[ads]** must be
-> rewritten. Leaving them as they are would be a false claim in the listing.
+> **Read before publishing:** the descriptions below describe build 14, which shows
+> full-screen ads between stages (from stage 4) and optional rewarded videos. If the ad
+> behaviour changes, rewrite the ADS paragraph so the listing stays true.
 
 ---
 
@@ -30,43 +30,30 @@ and C spends the whole budget on generic words. B keeps the name first and says 
 **Recommended:**
 
 ```
-A calm mahjong solitaire game. 350 stages, a daily puzzle, and no time pressure.
+Calm mahjong solitaire: 500 stages, Koi Rescue levels and a fresh daily puzzle.
 ```
 
-**80 characters** - exactly at the limit, with no room to edit. If you want slack, take an
-alternate below.
+**79 characters.**
 
 ### Alternates
 
 ```
-Quiet mahjong solitaire. 350 hand-built stages, a daily puzzle, plays offline.
-```
-
-**78 characters.**
-
-```
-Unhurried mahjong solitaire. 350 stages, a daily puzzle, no account needed.
+Calm mahjong solitaire. 500 stages, a daily puzzle and a world leaderboard.
 ```
 
 **75 characters.**
 
 ```
-Mahjong solitaire, slowly. 350 stages, a daily puzzle, an optional timed run.
+Relaxing mahjong solitaire with 500 stages, koi to rescue and a daily puzzle.
 ```
 
 **77 characters.**
-
-```
-Mahjong solitaire made calm. 350 stages and a fresh puzzle every day. Offline.
-```
-
-**78 characters.**
 
 ---
 
 ## 3. Full description (4000 characters maximum)
 
-**1,792 characters** including line breaks, against a 4,000 limit.
+**2,551 characters** including line breaks, against a 4,000 limit.
 
 Paragraphs are deliberately left on single long lines. Paste as-is; do not re-wrap, or the
 line breaks will show up in the listing.
@@ -74,40 +61,33 @@ line breaks will show up in the listing.
 ```
 Nine Rivers is mahjong solitaire without the hurry. You match pairs of free tiles until the board is clear. There is no clock in the main game, no lives to run out, and nothing asking you to come back in four hours.
 
-CALM
-350 stages, arranged in chapters that open as you go. Every board can actually be finished: boards are built backwards from a solved state, so you will never be handed one that cannot be cleared. Stages pay one to three stars depending on how cleanly you clear them, and stars earn Spirit Pearls.
+500 STAGES
+500 stages across ten chapters, with more than 150 board shapes: animals, flowers, the zodiac, islands and patterns. Every board can actually be finished: boards are built backwards from a solved state, so you will never be handed one that cannot be cleared. Stages pay one to three stars depending on how cleanly you clear them, and stars earn Spirit Pearls.
+
+KOI RESCUE
+Every fifth stage from stage 10, three pairs of coral koi tiles are hidden in the board. Free all three and the stage is won at once, with three stars and bonus pearls. The last koi sleeps until half the board is cleared, so you will have to dig for it.
+
+QUICK COMBOS
+Match pairs quickly, one after another, to build a combo for bonus points. Long combos pay Spirit Pearls too.
 
 DAILY PUZZLE
-One board a day, the same board for everyone, reset at midnight. It takes a few minutes. Play it on consecutive days and your streak grows.
+One board a day, the same board for everyone. A stopwatch counts how long you take, and every wrong tap adds three seconds. Sign in with Google Play Games to put your time on the world leaderboard and see how you compare. Play on consecutive days and your streak grows.
 
-TIMED RUN
-For when you do want pressure: a three-act run against the clock, with a score to beat. It is capped at three runs a day on purpose. This is a game meant to be put down.
+TIMED MODE
+For when you do want pressure: three stages against the clock, with a score to beat. It is capped at three games a day on purpose. This is a game meant to be put down.
 
 WHAT IT IS LIKE
-Quiet tile clacks and soft ambient sound, which you can turn off. Still water and koi that react to the run you are having. A reduced-motion setting and colour-blind palettes for anyone who needs them. Pinch to zoom, drag to pan, and boards that fit the screen without cutting anything off.
+Quiet tile clacks, soft music and recorded nature sounds, all of which you can turn off. A still pond with koi. A reduced-motion setting and colour-blind palettes for anyone who needs them. Pinch to zoom, drag to pan, and boards that fit the screen without cutting anything off.
 
-NO ACCOUNT, NO NETWORK
-Nine Rivers plays entirely offline. There is no sign-up, no login and no profile. If you want your progress to survive a new phone you can switch on Google Play Games cloud save in Settings; leave it off and everything stays on your phone.
+NO ACCOUNT NEEDED
+Nine Rivers plays offline. There is no sign-up and no profile to make. If you want your progress to survive a new phone, switch on Google Play Games cloud save in Settings; leave it off and everything stays on your phone.
 
 ADS
-This version has none.
+A full-screen ad between stages now and then: never in the middle of a board and never in your first three stages. Short videos are always your choice, for Spirit Pearls or an extra shuffle. A one-time purchase removes the full-screen ads.
 
 PURCHASES
-Optional, cosmetic, and one-time. Extra tile sets and backgrounds, a Remove Ads upgrade, and Spirit Pearl packs if you would rather buy a tile set than earn one. Every tile set and background can also be unlocked with Spirit Pearls earned from playing, and the Deep Indigo set cannot be bought at all: it is earned at stage 50.
+Optional and cosmetic. Extra tile sets and backgrounds, a Remove Ads upgrade, and Spirit Pearl packs if you would rather buy a tile set than earn one. Every tile set and background can also be unlocked with Spirit Pearls earned from playing, and the Deep Indigo set cannot be bought at all: it is earned at stage 50.
 ```
-
-### [ads] Replacement for the ADS paragraph when AdMob ships
-
-Delete `ADS / This version has none.` and use:
-
-```
-ADS
-A full-screen ad between stages now and then - never in the middle of a board, and never in
-your first few stages. Optional short videos you can choose to watch for pearls. A one-time
-purchase removes the full-screen ads.
-```
-
-Recount the description after swapping this in.
 
 ---
 
@@ -124,9 +104,7 @@ Recount the description after swapping this in.
   4. Single player
   5. Brain games
 - **Content rating:** see `content-rating-answers.md`
-- **Ads declaration:** "No ads" for this release. **Must be changed to "Contains ads" in the
-  same release that adds the AdMob SDK.** Shipping ads under a "No ads" declaration is a
-  policy violation.
+- **Ads declaration:** "Contains ads" (the build ships the AdMob SDK).
 - **In-app purchases:** yes. Play shows a price range automatically; with the current catalogue
   it will read Rs 49 - Rs 399 per item.
 
