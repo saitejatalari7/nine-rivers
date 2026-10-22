@@ -37,16 +37,17 @@ func _ready() -> void:
 
 	var modal = main.get_node("Modal")
 	modal.show_main_menu()
-	await _shot("01_main_menu")
+	await _shot("05_main_menu")
 
-	await _board("classic_jade", "emerald_pond", 12, "02_board_jade")
-	await _board("theme_imperial_gold", "moonlit_river", 33, "03_board_gold")
-	await _board("theme_cherry_blossom", "misty_spring", 57, "04_board_blossom")
+	await _board("classic_jade", "emerald_pond", 12, "01_board_jade")
+	await _board("theme_imperial_gold", "moonlit_river", 30, "03_board_gold")
+	await _board("theme_cherry_blossom", "misty_spring", 60, "04_board_blossom")
+	await _board("classic_jade", "autumn_stream", 20, "02_koi_rescue", true)
 
 	main.get_node("HUD").visible = false
 	main.get_node("Board").visible = false
 	modal.show_tile_detail_modal("theme_obsidian_ink")
-	await _shot("05_tile_set")
+	await _shot("07_tile_set")
 
 	modal.show_level_select()
 	await _shot("06_stages")
@@ -56,24 +57,35 @@ func _ready() -> void:
 	get_tree().quit(0)
 
 
-func _plain_stage(from: int) -> int:
+## The biggest unmodified board in the range: a small board reads as empty
+## water in a thumbnail.
+func _plain_stage(from: int, koi := false) -> int:
+	var best: int = from
+	var best_n: int = -1
 	for lv in range(from, from + 40):
-		if StagePlan.modifier_for_level(lv) == 0:
-			return lv
-	return from
+		if StagePlan.modifier_for_level(lv) != 0 or StagePlan.is_koi_level(lv) != koi:
+			continue
+		var n: int = StagePlan.layout_size(StagePlan.layout_for_level(lv))
+		if n > best_n:
+			best = lv
+			best_n = n
+	return best
 
 
 ## A board a few moves in: a score on the HUD and gaps in the layout read as a
 ## game being played, where a fresh deal reads as a menu background.
-func _board(tiles: String, pond: String, from_stage: int, name: String) -> void:
+func _board(tiles: String, pond: String, from_stage: int, name: String, koi := false) -> void:
 	main.get_node("Modal").hide_modal()
 	MonetizationManager.equip_theme(tiles)
 	MonetizationManager.equip_background_theme(pond)
-	main._start_calm_mode(_plain_stage(from_stage))
+	main._start_calm_mode(_plain_stage(from_stage, koi))
 	await get_tree().create_timer(1.5).timeout
+	main.get_node("Modal").hide_modal()
 	var board = main.get_node("Board")
 	for i in 5:
 		var sets: Array = board.get_legal_sets()
+		if koi:
+			sets = sets.filter(func(s): return not s.any(func(t): return t.is_koi))
 		if sets.is_empty():
 			break
 		var typed: Array[RiverTile] = []
