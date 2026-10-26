@@ -58,7 +58,10 @@ static func get_modifier_name(mod: Modifier = active_modifier) -> String:
 static func get_modifier_desc(mod: Modifier = active_modifier) -> String:
 	match mod:
 		Modifier.FOG: return "Deep river mist conceals all blocked tiles until freed."
-		Modifier.RUSH: return "Timer drains 1.5× faster, but scoring is doubled!"
+		Modifier.RUSH:
+			if GameManager.current_mode == GameManager.GameMode.RUN:
+				return "Timer drains 1.5× faster, but scoring is doubled!"
+			return "Every match scores double on this stage."
 		_: return ""
 
 static func is_fog_active() -> bool:
