@@ -1,5 +1,5 @@
-// Nine Rivers' own Godot Android plugin: Play in-app updates (and, later, the
-// in-app review prompt). Build with tools/build_playcore.sh, which copies the
+// Nine Rivers' own Godot Android plugin: Play in-app updates and the in-app
+// review prompt. Build with tools/build_playcore.sh, which copies the
 // AARs into addons/NineRiversPlayCore/bin.
 plugins {
     id 'com.android.library'
@@ -21,7 +21,8 @@ android {
 
 dependencies {
     compileOnly 'org.godotengine:godot:4.6.2.stable'
-    // Not bundled into the AAR: the export plugin adds it to the app's Gradle
-    // build, so keep the two version strings in step.
+    // Not bundled into the AAR: the export plugin adds them to the app's Gradle
+    // build, so keep the version strings in step with export_plugin.gd.
     implementation 'com.google.android.play:app-update:2.1.0'
+    implementation 'com.google.android.play:review:2.0.2'
 }

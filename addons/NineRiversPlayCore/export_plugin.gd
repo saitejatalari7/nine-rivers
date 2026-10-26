@@ -27,7 +27,10 @@ class PlayCoreExportPlugin extends EditorExportPlugin:
 
 	# Same version as android_plugins/playcore/build.gradle.
 	func _get_android_dependencies(platform, debug):
-		return PackedStringArray(["com.google.android.play:app-update:2.1.0"])
+		return PackedStringArray([
+			"com.google.android.play:app-update:2.1.0",
+			"com.google.android.play:review:2.0.2",
+		])
 
 	func _get_name():
 		return _plugin_name

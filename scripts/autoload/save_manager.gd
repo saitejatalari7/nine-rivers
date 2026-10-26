@@ -464,6 +464,8 @@ func _sanitize_prog(raw: Variant) -> Dictionary:
 	if d.has("koi_intro_seen"): out["koi_intro_seen"] = _vbool(d["koi_intro_seen"], false)
 	if d.has("update_asked_code"): out["update_asked_code"] = _vint(d["update_asked_code"], 0, 0)
 	if d.has("update_asked_at"): out["update_asked_at"] = _vint(d["update_asked_at"], 0, 0)
+	if d.has("review_asked_count"): out["review_asked_count"] = _vint(d["review_asked_count"], 0, 0, 99)
+	if d.has("review_asked_at"): out["review_asked_at"] = _vint(d["review_asked_at"], 0, 0)
 
 	# stars: {"<level>": 0..3}. Anything not shaped like that is discarded rather
 	# than copied in, which is what used to break record_level_clear() forever.

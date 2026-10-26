@@ -13,6 +13,8 @@ import com.google.android.play.core.install.InstallStateUpdatedListener;
 import com.google.android.play.core.install.model.AppUpdateType;
 import com.google.android.play.core.install.model.InstallStatus;
 import com.google.android.play.core.install.model.UpdateAvailability;
+import com.google.android.play.core.review.ReviewManager;
+import com.google.android.play.core.review.ReviewManagerFactory;
 
 import org.godotengine.godot.Godot;
 import org.godotengine.godot.plugin.GodotPlugin;
@@ -23,12 +25,13 @@ import java.util.HashSet;
 import java.util.Set;
 
 /**
- * Play's flexible in-app update: Play shows its own "update available" sheet,
+ * Play's flexible in-app update - Play shows its own "update available" sheet,
  * downloads in the background while the game keeps running, and the game asks
- * the player when to restart into the new version.
+ * the player when to restart into the new version - and Play's in-app review
+ * card.
  *
  * The plugin only reports and acts; when to ask, and how often, is decided in
- * GDScript (scripts/autoload/update_manager.gd).
+ * GDScript (scripts/autoload/update_manager.gd, review_manager.gd).
  */
 public class PlayCorePlugin extends GodotPlugin {
     private static final int UPDATE_REQUEST_CODE = 0x4E52;
@@ -68,6 +71,8 @@ public class PlayCorePlugin extends GodotPlugin {
         signals.add(new SignalInfo("update_downloaded"));
         signals.add(new SignalInfo("update_declined"));
         signals.add(new SignalInfo("update_failed", String.class));
+        signals.add(new SignalInfo("review_done"));
+        signals.add(new SignalInfo("review_failed", String.class));
         return signals;
     }
 
@@ -140,6 +145,29 @@ public class PlayCorePlugin extends GodotPlugin {
         if (m != null) {
             m.completeUpdate();
         }
+    }
+
+    /**
+     * Shows Play's rating card. Play decides whether it actually appears (it
+     * has its own quota) and never says what the player did, so review_done
+     * only means the flow is over.
+     */
+    @UsedByGodot
+    public void requestReview() {
+        final Activity activity = getActivity();
+        if (activity == null) {
+            emitSignal("review_failed", "no activity");
+            return;
+        }
+        final ReviewManager reviews = ReviewManagerFactory.create(activity);
+        reviews.requestReviewFlow().addOnCompleteListener(request -> {
+            if (!request.isSuccessful()) {
+                emitSignal("review_failed", String.valueOf(request.getException()));
+                return;
+            }
+            reviews.launchReviewFlow(activity, request.getResult())
+                    .addOnCompleteListener(flow -> emitSignal("review_done"));
+        });
     }
 
     @Override

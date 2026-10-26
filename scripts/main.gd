@@ -615,7 +615,8 @@ func _next_stage() -> void:
 		var p: Dictionary = _pending_clear
 		_pending_clear = {}
 		modal.show_level_clear(int(p["level"]), int(p["score"]), int(p["stars"]), String(p.get("sampled", "")))
-		MonetizationManager.show_interstitial_if_ready(int(p["level"]), "level_clear")
+		if not MonetizationManager.show_interstitial_if_ready(int(p["level"]), "level_clear"):
+			ReviewManager.after_clear(int(p["level"]), int(p["stars"]))
 		return
 
 	if GameManager.current_mode == GameManager.GameMode.CALM:
@@ -776,7 +777,9 @@ func _on_board_cleared() -> void:
 				modal.show_premium_offer(sampled_theme)
 			return
 		modal.show_level_clear(GameManager.current_level, GameManager.score, stars, sampled_theme)
-		MonetizationManager.show_interstitial_if_ready(GameManager.current_level, "level_clear")
+		# Never both on one clear: an ad and then a rating card is two interruptions.
+		if not MonetizationManager.show_interstitial_if_ready(GameManager.current_level, "level_clear"):
+			ReviewManager.after_clear(GameManager.current_level, stars)
 	elif GameManager.current_mode == GameManager.GameMode.DAILY:
 		var first_today: bool = SaveManager.record_daily_play()
 		var blessing: int = DAILY_BLESSING_PEARLS if first_today else 0

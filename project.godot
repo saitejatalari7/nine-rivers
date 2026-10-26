@@ -36,6 +36,7 @@ GodotPlayGameServices="*uid://r4l1qjx3vraf"
 CloudSaveManager="*res://scripts/autoload/cloud_save_manager.gd"
 LeaderboardManager="*res://scripts/autoload/leaderboard_manager.gd"
 UpdateManager="*res://scripts/autoload/update_manager.gd"
+ReviewManager="*res://scripts/autoload/review_manager.gd"
 
 [display]
 
