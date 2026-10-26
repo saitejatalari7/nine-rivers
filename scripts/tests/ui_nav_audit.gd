@@ -503,11 +503,9 @@ func _audit_live_flows() -> void:
 	for flow in [
 		{"name": "Continue Journey (Calm)", "pre": "calm", "expect": "modal:level_clear",
 			"go_on": "next stage"},
-		# Rapids no longer stops for a relic draft: a cleared stage leads straight
-		# to the next board, so there is no reward screen to carry on from and the
-		# check is that the next stage actually arrives with its HUD.
-		{"name": "Timed Rapids (Run)", "pre": "run", "expect": "board+hud",
-			"go_on": "", "auto_carries": true},
+		# A Timed Mode game is one board, so clearing it is the win screen.
+		{"name": "Timed Rapids (Run)", "pre": "run", "expect": "modal:run_won",
+			"go_on": "", "ends_run": true},
 		# The daily has no continue row by design - it is one board a day - so
 		# the check is that it lands home, not that it carries on.
 		{"name": "The Daily Tide", "pre": "daily", "expect": "modal:daily_clear",

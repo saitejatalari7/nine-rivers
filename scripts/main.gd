@@ -110,7 +110,7 @@ var _koi_rescued: bool = false
 var _prefetched: Dictionary = {}
 var _prefetching: Dictionary = {}
 var _run_rng := RandomNumberGenerator.new()
-## The shapes this Timed Mode game has used, so its three stages all differ.
+## The shapes this Timed Mode game has used.
 var _run_layouts: Array = []
 var _boot_bar: Panel = null
 
@@ -489,7 +489,9 @@ func _start_calm_mode(level: int) -> void:
 ## the mode, looking at it and backing out used to spend a run, so three looks
 ## cost a whole day of them.
 var _rapids_charged: bool = false
-const RUN_STAGES: int = 3
+## One game is one board. A game used to be three stages, which players read
+## as three more tries hidden inside each of their three a day.
+const RUN_STAGES: int = 1
 
 func _start_run_mode() -> void:
 	# The menu hides the row when the runs are spent, but the signal can also
@@ -505,7 +507,7 @@ func _start_run_mode() -> void:
 	GameManager.start_timed_run()
 	hud.setup_hud(GameManager.GameMode.RUN, 1)
 	_run_rng.randomize()
-	var layout_name: String = StagePlan.timed_layout(1, _run_rng)
+	var layout_name: String = StagePlan.timed_layout(2, _run_rng)
 	_run_layouts = [layout_name]
 	GameManager.current_layout_name = layout_name
 
@@ -787,8 +789,8 @@ func _on_board_cleared() -> void:
 		# Straight into the next board. There used to be a relic draft here; it
 		# was the thing testers understood least and it is gone, so a cleared
 		# stage now just leads to the next one.
-		# A Timed Mode game is three stages. Clearing the third wins it; it used
-		# to roll on to R4, R5... until the clock ran out.
+		# Clearing the last stage wins the game; it used to roll on to R4, R5...
+		# until the clock ran out.
 		if GameManager.current_stage_no >= RUN_STAGES:
 			AudioManager.play_win()
 			modal.show_run_won(GameManager.score, GameManager.best_flow)
@@ -984,8 +986,11 @@ func _on_deadlock_accepted() -> void:
 	SaveManager.clear_session()
 	# One star, not three. They did not clear it, and a board that hands out a
 	# perfect score for getting stuck would be worth getting stuck on.
-	if GameManager.current_mode == GameManager.GameMode.CALM:
-		SaveManager.record_level_clear(GameManager.current_level, GameManager.score, 1)
+	if GameManager.current_mode != GameManager.GameMode.CALM:
+		GameManager.is_timer_active = false
+		_on_game_over("No moves left on this board.")
+		return
+	SaveManager.record_level_clear(GameManager.current_level, GameManager.score, 1)
 	modal.hide_modal()
 	hud.visible = true
 	if GameManager.current_mode == GameManager.GameMode.CALM:

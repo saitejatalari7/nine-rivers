@@ -53,7 +53,7 @@ Relaxing mahjong solitaire with 500 stages, koi to rescue and a daily puzzle.
 
 ## 3. Full description (4000 characters maximum)
 
-**2,551 characters** including line breaks, against a 4,000 limit.
+**2,548 characters** including line breaks, against a 4,000 limit.
 
 Paragraphs are deliberately left on single long lines. Paste as-is; do not re-wrap, or the
 line breaks will show up in the listing.
@@ -74,7 +74,7 @@ DAILY PUZZLE
 One board a day, the same board for everyone. A stopwatch counts how long you take, and every wrong tap adds three seconds. Sign in with Google Play Games to put your time on the world leaderboard and see how you compare. Play on consecutive days and your streak grows.
 
 TIMED MODE
-For when you do want pressure: three stages against the clock, with a score to beat. It is capped at three games a day on purpose. This is a game meant to be put down.
+For when you do want pressure: one board against the clock, with a score to beat. It is capped at three games a day on purpose. This is a game meant to be put down.
 
 WHAT IT IS LIKE
 Quiet tile clacks, soft music and recorded nature sounds, all of which you can turn off. A still pond with koi. A reduced-motion setting and colour-blind palettes for anyone who needs them. Pinch to zoom, drag to pan, and boards that fit the screen without cutting anything off.

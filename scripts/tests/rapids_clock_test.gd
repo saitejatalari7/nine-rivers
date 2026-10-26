@@ -28,6 +28,9 @@ func _boot() -> void:
 	var packed: PackedScene = load("res://scenes/main.tscn")
 	main = packed.instantiate()
 	add_child(main)
+	# Other tests share this save and may have spent today's Daily.
+	SaveManager.prog["daily_attempts_today"] = 0
+	SaveManager.prog["last_daily_date"] = ""
 	# The boot splash dissolves over ~0.55s and ends by calling _return_home(),
 	# which stops the clock. Driving a mode before that lands has the splash
 	# reset it out from under the test.

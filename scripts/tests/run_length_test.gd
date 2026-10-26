@@ -1,7 +1,7 @@
 extends Node
 
-## A Timed Mode game is three stages: clearing the third shows the win screen
-## instead of dealing a fourth.
+## A Timed Mode game is one board: clearing it shows the win screen instead
+## of dealing another stage.
 
 const RiverTile = preload("res://scripts/core/river_tile.gd")
 var _fails: int = 0
@@ -19,7 +19,7 @@ func _ready() -> void:
 	var modal = main.get_node("Modal")
 	main._start_run_mode()
 	await get_tree().create_timer(0.6).timeout
-	for stage in 3:
+	for stage in main.RUN_STAGES:
 		# The deal's own clearing order (set ids follow peel_dynamic), which
 		# always finishes - greedy first-set play can corner itself on the
 		# harder shapes Timed Mode now deals.
@@ -41,8 +41,9 @@ func _ready() -> void:
 			board._resolve_matched_set(typed)
 		await get_tree().create_timer(1.6).timeout
 		print("  after stage %d: stage_no=%d screen=%s" % [stage + 1, GameManager.current_stage_no, modal._current_screen])
-	_check("the third clear wins the game", modal.visible and modal._current_screen == "run_won", modal._current_screen)
-	_check("and no fourth stage is dealt", GameManager.current_stage_no == 3, str(GameManager.current_stage_no))
+	_check("one game is one board", main.RUN_STAGES == 1, str(main.RUN_STAGES))
+	_check("clearing it wins the game", modal.visible and modal._current_screen == "run_won", modal._current_screen)
+	_check("and no second stage is dealt", GameManager.current_stage_no == 1, str(GameManager.current_stage_no))
 	print("Failures: %d" % _fails)
 	get_tree().quit(1 if _fails > 0 else 0)
 

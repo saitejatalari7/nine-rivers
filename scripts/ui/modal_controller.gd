@@ -672,21 +672,26 @@ func show_deadlock(level: int, tiles_left: int) -> void:
 	_add_sheet_row("Tiles remaining", str(tiles_left), UITheme.GOLD_CORE)
 
 	_add_separator()
-	_add_tile_row(GLYPH_GOLD, "Complete this level",
-		"Counted as cleared, one star", "", func():
+	if GameManager.current_mode == GameManager.GameMode.CALM:
+		_add_tile_row(GLYPH_GOLD, "Complete this level",
+			"Counted as cleared, one star", "", func():
+				deadlock_accepted.emit()
+		, true)
+		_add_toggle_row("Retry", "Fresh board, same stage", func():
+			deadlock_retry.emit()
+		, UITheme.IVORY_MUTED)
+	else:
+		_add_tile_row(GLYPH_GOLD, "End this game", "The board cannot be finished", "", func():
 			deadlock_accepted.emit()
-	, true)
-	_add_toggle_row("Retry", "Fresh board, same stage", func():
-		deadlock_retry.emit()
-	, UITheme.IVORY_MUTED)
+		, true)
 	show_modal()
 
 
-## A Timed Mode game won: all three stages cleared before the clock ran out.
+## A Timed Mode game won: the board cleared before the clock ran out.
 func show_run_won(score: int, best_flow: int) -> void:
 	_current_screen = "run_won"
 	_clear_content()
-	_add_header("Timed Mode Won", "All 3 stages cleared")
+	_add_header("Timed Mode Won", "Cleared before the clock ran out")
 	_add_hairline()
 	_add_sheet_row("Final Score", str(score), UITheme.GOLD_CORE)
 	_add_sheet_row("Best Combo", "×%d" % best_flow)
@@ -708,18 +713,25 @@ func show_game_over(reason: String) -> void:
 	_add_header("Game Over", reason)
 	_add_hairline()
 
+	var daily: bool = GameManager.current_mode == GameManager.GameMode.DAILY
+	var left: int = SaveManager.daily_attempts_left() if daily else SaveManager.rapids_runs_left()
+	if daily and SaveManager.daily_closed_today():
+		left = 0
 	_add_sheet_row("Final Score", str(GameManager.score), UITheme.GOLD_CORE)
-	_add_sheet_row("Stages Cleared", str(GameManager.current_stage_no - 1))
 	_add_sheet_row("Best Combo", "×%d" % GameManager.best_flow)
+	_add_sheet_row("Games Left Today", str(left))
 	_add_separator()
 
-	_add_tile_row(GLYPH_JADE, "Try Again", "Start again from stage 1", "", func():
-		hide_modal()
-		if GameManager.current_mode == GameManager.GameMode.DAILY:
-			start_daily_requested.emit()
-		else:
-			start_run_requested.emit()
-	, true)
+	# Every game is one of the three a day, so the button says so rather than
+	# reading as a free retry.
+	if left > 0:
+		_add_tile_row(GLYPH_JADE, "Play Again", "Uses 1 of your %d games left today" % left, "", func():
+			hide_modal()
+			if daily:
+				start_daily_requested.emit()
+			else:
+				start_run_requested.emit()
+		, true)
 
 	_add_separator()
 	_add_toggle_row("Main Menu", "›", func():
