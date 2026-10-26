@@ -11,7 +11,7 @@ func _ready() -> void:
 	print("event   dir    travel   ITD(us)   far-ear HF   verdict")
 	for spec in [["drop", "_mono_drop"], ["air", "_mono_air"], ["note", "_mono_note"]]:
 		for ltr in [true, false]:
-			var mono: PackedFloat32Array = AudioManager.call(spec[1])
+			var mono: PackedFloat32Array = AudioManager.call(spec[1], RandomNumberGenerator.new())
 			var wav: AudioStreamWAV = AudioManager._binaural_render(mono, ltr)
 			var d: PackedByteArray = wav.data
 			var frames: int = d.size() / 4

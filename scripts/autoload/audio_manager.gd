@@ -135,6 +135,7 @@ func _pregenerate_ambient_track_task() -> void:
 		call_deferred("start_ambient_music")
 	# After the bed, so the music and the loading screen do not wait on them.
 	_prebuild_match_notes()
+	_prebuild_drift_pool()
 
 func _on_setting_changed(setting_name: String, new_val: Variant) -> void:
 	if setting_name == "music":
@@ -913,10 +914,13 @@ static func _note_key(freq: float, duration: float) -> int:
 ## waits for the first rather than building the same note twice.
 var _building_notes: Dictionary = {}
 var _ambient_task: int = -1
+## Lets the worker stop between drift renders instead of making exit wait.
+var _shutting_down: bool = false
 
 ## Worker tasks still running at exit would outlive the engine and crash it on
 ## the way out. They are short; wait for them.
 func _exit_tree() -> void:
+	_shutting_down = true
 	if _ambient_task >= 0:
 		WorkerThreadPool.wait_for_task_completion(_ambient_task)
 		_ambient_task = -1
@@ -1081,27 +1085,39 @@ func _play_drift_event() -> void:
 	var ltr: bool = _drift_rng.randf() < 0.5
 	# A few variants of each are rendered once and then reused with a pitch
 	# nudge. Rendering a fresh binaural event every 7-16 s kept the CPU busy
-	# for the whole session.
+	# for the whole session; rendering the variants as they were first needed
+	# froze the game for 200-350 ms (on a desktop) eight times in its first
+	# minutes. They are rendered on the loading worker now, and until then a
+	# drift event is simply skipped.
 	var key: String = "%d_%s" % [kind, ltr]
 	var pool: Array = _drift_pool.get(key, [])
-	var stream: AudioStreamWAV
-	if pool.size() < DRIFT_VARIANTS:
-		var mono: PackedFloat32Array
-		match kind:
-			0:
-				mono = _mono_drop()
-			1:
-				mono = _mono_air()
-			_:
-				mono = _mono_note()
-		stream = _binaural_render(mono, ltr)
-		pool.append(stream)
-		_drift_pool[key] = pool
-	else:
-		stream = pool[_drift_rng.randi() % pool.size()]
+	if pool.is_empty():
+		return
+	var stream: AudioStreamWAV = pool[_drift_rng.randi() % pool.size()]
 	free_player.stream = stream
 	free_player.pitch_scale = _drift_rng.randf_range(0.94, 1.06)
 	free_player.play()
+
+## Runs on the ambient worker, after the match notes.
+func _prebuild_drift_pool() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.randomize()
+	var built: Dictionary = {}
+	for kind in [0, 2]:
+		for ltr in [false, true]:
+			var pool: Array = []
+			for i in DRIFT_VARIANTS:
+				if _shutting_down or not is_instance_valid(self):
+					return
+				var mono: PackedFloat32Array = _mono_drop(rng) if kind == 0 else _mono_note(rng)
+				pool.append(_binaural_render(mono, ltr))
+			built["%d_%s" % [kind, ltr]] = pool
+	_set_drift_pool.call_deferred(built)
+
+
+func _set_drift_pool(built: Dictionary) -> void:
+	_drift_pool = built
+
 
 ## Places a mono signal on a head. Three cues, in order of how much they matter
 ## for a sound moving horizontally:
@@ -1171,12 +1187,12 @@ func _read_delayed(buf: PackedFloat32Array, i: int, delay: float) -> float:
 	return lerpf(buf[i0], buf[i1], frac)
 
 ## A single drop with a short pitch fall and a long tail.
-func _mono_drop() -> PackedFloat32Array:
-	var dur: float = _drift_rng.randf_range(3.2, 4.8)
+func _mono_drop(rng: RandomNumberGenerator) -> PackedFloat32Array:
+	var dur: float = rng.randf_range(3.2, 4.8)
 	var frames: int = int(sample_rate * dur)
 	var out := PackedFloat32Array()
 	out.resize(frames)
-	var f_start: float = _drift_rng.randf_range(900.0, 1400.0)
+	var f_start: float = rng.randf_range(900.0, 1400.0)
 	var f_end: float = f_start * 0.55
 	var phase: float = 0.0
 	for i in range(frames):
@@ -1189,17 +1205,17 @@ func _mono_drop() -> PackedFloat32Array:
 	return out
 
 ## Filtered noise that swells and fades - a breath of air over the water.
-func _mono_air() -> PackedFloat32Array:
-	var dur: float = _drift_rng.randf_range(5.0, 7.5)
+func _mono_air(rng: RandomNumberGenerator) -> PackedFloat32Array:
+	var dur: float = rng.randf_range(5.0, 7.5)
 	var frames: int = int(sample_rate * dur)
 	var out := PackedFloat32Array()
 	out.resize(frames)
 	var lp: float = 0.0
 	var hp: float = 0.0
-	var cutoff: float = _drift_rng.randf_range(0.02, 0.05)
+	var cutoff: float = rng.randf_range(0.02, 0.05)
 	for i in range(frames):
 		var u: float = float(i) / float(frames)
-		var n: float = _drift_rng.randf_range(-1.0, 1.0)
+		var n: float = rng.randf_range(-1.0, 1.0)
 		lp += (n - lp) * cutoff
 		hp += (lp - hp) * cutoff * 0.25
 		# Two one-pole stages this gentle leave almost nothing behind, so the
@@ -1208,12 +1224,12 @@ func _mono_air() -> PackedFloat32Array:
 	return out
 
 ## A single pentatonic note, soft enough to sit under the board.
-func _mono_note() -> PackedFloat32Array:
-	var dur: float = _drift_rng.randf_range(4.0, 6.0)
+func _mono_note(rng: RandomNumberGenerator) -> PackedFloat32Array:
+	var dur: float = rng.randf_range(4.0, 6.0)
 	var frames: int = int(sample_rate * dur)
 	var out := PackedFloat32Array()
 	out.resize(frames)
-	var base: float = PENTATONIC[_drift_rng.randi_range(5, 12)]
+	var base: float = PENTATONIC[rng.randi_range(5, 12)]
 	var p1: float = 0.0
 	var p2: float = 0.0
 	var p3: float = 0.0
