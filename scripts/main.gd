@@ -69,6 +69,7 @@ func _ready() -> void:
 	modal.next_stage_requested.connect(_next_stage)
 	modal.premium_shop_requested.connect(func(): _pending_clear = {})
 	modal.deadlock_accepted.connect(_on_deadlock_accepted)
+	UpdateManager.update_ready.connect(_on_update_ready)
 	modal.deadlock_retry.connect(_on_deadlock_retry)
 	modal.resume_game_requested.connect(_resume_game)
 	modal.shuffle_ad_requested.connect(func(): MonetizationManager.show_rewarded_ad("shuffle"))
@@ -980,6 +981,13 @@ func _on_no_moves_left() -> void:
 		return
 	hud.visible = false
 	modal.show_deadlock(GameManager.current_level, board.get_active_tiles().size())
+
+
+## Offered on the main menu only, never over a board in play; a download that
+## finishes mid-game waits for the next time the menu comes up.
+func _on_update_ready() -> void:
+	if modal.visible and modal._current_screen == "main":
+		modal.show_main_menu()
 
 
 func _on_deadlock_accepted() -> void:

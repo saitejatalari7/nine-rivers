@@ -39,3 +39,6 @@ assets/fonts/original/
 
 # Agent worktrees: nested git repos, never part of the project
 .claude/worktrees/
+
+# Android SDK path of this machine, written for the plugin build
+local.properties

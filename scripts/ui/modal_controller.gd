@@ -311,6 +311,10 @@ func hide_modal() -> void:
 		_sync_background_load())
 
 func show_main_menu() -> void:
+	if UpdateManager.ready_to_install and not UpdateManager.restart_offered:
+		UpdateManager.restart_offered = true
+		show_update_ready()
+		return
 	_current_screen = "main"
 	_clear_content()
 	# The Rack floats directly on the water; the tiles supply their own opacity.
@@ -900,6 +904,23 @@ func show_cloud_offer(on_done: Callable) -> void:
 	show_modal()
 
 
+## A new version has downloaded in the background; Play installs it on restart.
+func show_update_ready() -> void:
+	_current_screen = "update_ready"
+	_clear_content()
+	_add_header("Update Ready", "A new version of Nine Rivers")
+	_add_hairline()
+	_add_description("The update has downloaded. Restart to start using it - your progress is saved.")
+	_add_separator()
+	_add_tile_row(GLYPH_JADE, "Restart Now", "Takes a few seconds", "", func():
+		UpdateManager.restart_into_update()
+	, true)
+	_add_toggle_row("Later", "›", func():
+		show_main_menu()
+	, UITheme.IVORY_MUTED)
+	show_modal()
+
+
 ## The first Koi Rescue level explains itself once; later ones only toast.
 func show_koi_intro() -> void:
 	_current_screen = "koi_intro"
@@ -1306,6 +1327,8 @@ func handle_back_pressed() -> void:
 			resume_game_requested.emit()
 		"koi_intro":
 			hide_modal()
+		"update_ready":
+			show_main_menu()
 		"level_clear", "daily_clear", "game_over", "run_won", "theme_unlocked", "deadlock":
 			# No hide_modal(): _return_home() puts the main menu up in its place,
 			# and hiding first would race the fade against it.

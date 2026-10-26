@@ -400,8 +400,10 @@ func _audit_daily_layouts() -> void:
 		return
 
 	var seen: Dictionary = {}
+	var jan1: int = Time.get_unix_time_from_datetime_string("2025-01-01T00:00:00")
 	for day in range(365):
-		var seed_value: int = 20250101 + day
+		var dt: Dictionary = Time.get_date_dict_from_unix_time(jan1 + day * 86400)
+		var seed_value: int = dt["year"] * 10000 + dt["month"] * 100 + dt["day"]
 		var a: String = main.daily_layout_for_seed(seed_value)
 		var b: String = main.daily_layout_for_seed(seed_value)
 		if a != b:

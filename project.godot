@@ -35,6 +35,7 @@ MonetizationManager="*res://scripts/autoload/monetization_manager.gd"
 GodotPlayGameServices="*uid://r4l1qjx3vraf"
 CloudSaveManager="*res://scripts/autoload/cloud_save_manager.gd"
 LeaderboardManager="*res://scripts/autoload/leaderboard_manager.gd"
+UpdateManager="*res://scripts/autoload/update_manager.gd"
 
 [display]
 
@@ -48,7 +49,7 @@ window/handheld/orientation=1
 
 [editor_plugins]
 
-enabled=PackedStringArray("res://addons/GodotGooglePlayBilling/plugin.cfg", "res://addons/GodotPlayGameServices/plugin.cfg", "res://addons/admob/plugin.cfg")
+enabled=PackedStringArray("res://addons/GodotGooglePlayBilling/plugin.cfg", "res://addons/GodotPlayGameServices/plugin.cfg", "res://addons/admob/plugin.cfg", "res://addons/NineRiversPlayCore/plugin.cfg")
 
 [rendering]
 
