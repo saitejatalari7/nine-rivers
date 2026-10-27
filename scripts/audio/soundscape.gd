@@ -21,6 +21,10 @@ const SCAPES: Dictionary = {
 	"autumn_stream": {"beds": STREAMS, "events": ["birdsong"]},
 	"misty_spring": {"beds": RAIN, "events": ["birdsong"]},
 	"sunset_haven": {"beds": ["forest"], "events": []},
+	"bamboo_grove": {"beds": ["forest"], "events": ["birdsong"]},
+	"mountain_temple": {"beds": RAIN, "events": []},
+	"lotus_lake": {"beds": STREAMS, "events": []},
+	"sakura_bridge": {"beds": STREAMS, "events": ["birdsong"]},
 }
 
 const BED_DB: float = -8.0

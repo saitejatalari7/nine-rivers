@@ -123,6 +123,24 @@ const PRODUCTS: Dictionary = {
 		"price_str": "₹49 / $0.99 (or 500 ◈)",
 		"pearl_cost": 500,
 		"is_consumable": false
+	},
+	# The painted scenes are pearls only: not Play products, so they are never
+	# queried from or reconciled against Play.
+	"bg_bamboo_grove": {
+		"id": "bg_bamboo_grove", "theme_id": "bamboo_grove", "name": "Bamboo Panda Grove",
+		"pearl_cost": 500, "pearls_only": true, "is_consumable": false
+	},
+	"bg_mountain_temple": {
+		"id": "bg_mountain_temple", "theme_id": "mountain_temple", "name": "Misty Mountain Temple",
+		"pearl_cost": 500, "pearls_only": true, "is_consumable": false
+	},
+	"bg_lotus_lake": {
+		"id": "bg_lotus_lake", "theme_id": "lotus_lake", "name": "Moonlit Lotus Lake",
+		"pearl_cost": 500, "pearls_only": true, "is_consumable": false
+	},
+	"bg_sakura_bridge": {
+		"id": "bg_sakura_bridge", "theme_id": "sakura_bridge", "name": "Sakura Moon Bridge",
+		"pearl_cost": 500, "pearls_only": true, "is_consumable": false
 	}
 }
 
@@ -240,7 +258,7 @@ func _init_platform_billing() -> void:
 func _iap_ids() -> PackedStringArray:
 	var ids := PackedStringArray()
 	for pid in PRODUCTS.keys():
-		if not is_earn_only(String(pid)):
+		if not is_earn_only(String(pid)) and not is_pearls_only(String(pid)):
 			ids.append(String(pid))
 	return ids
 
@@ -748,6 +766,10 @@ func grant_milestone_themes(cleared_level: int) -> Array[String]:
 	if not granted.is_empty():
 		SaveManager.save_game()
 	return granted
+
+
+func is_pearls_only(product_id: String) -> bool:
+	return PRODUCTS.has(product_id) and bool(PRODUCTS[product_id].get("pearls_only", false))
 
 
 func is_earn_only(product_id: String) -> bool:

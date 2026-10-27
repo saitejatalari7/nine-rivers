@@ -76,6 +76,9 @@ func _ready() -> void:
 	MonetizationManager.rewarded_ad_closed.connect(_on_rewarded_closed)
 	MonetizationManager.rewarded_ad_unavailable.connect(_on_rewarded_unavailable)
 	modal.return_home_requested.connect(_return_home)
+	hud.visibility_changed.connect(func():
+		if zen_background and zen_background.has_method("set_play_dim"):
+			zen_background.set_play_dim(hud.visible))
 	modal.background_quiet_changed.connect(func(quiet: bool):
 		if zen_background and zen_background.has_method("set_quiet"):
 			zen_background.set_quiet(quiet))

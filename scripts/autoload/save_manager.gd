@@ -307,7 +307,8 @@ const VALID_TILE_THEMES: Array[String] = [
 	"classic_jade", "theme_imperial_gold", "theme_obsidian_ink", "theme_cherry_blossom"
 ]
 const VALID_BG_THEMES: Array[String] = [
-	"emerald_pond", "moonlit_river", "autumn_stream", "misty_spring", "sunset_haven"
+	"emerald_pond", "moonlit_river", "autumn_stream", "misty_spring", "sunset_haven",
+	"bamboo_grove", "mountain_temple", "lotus_lake", "sakura_bridge"
 ]
 const VALID_KOI: Array[String] = ["kohaku", "sanke", "showa", "ogon", "dragon_koi"]
 const VALID_DECORATIONS: Array[String] = [

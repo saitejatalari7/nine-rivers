@@ -79,11 +79,78 @@ const THEMES: Array[Dictionary] = [
 		"flora_type": "sunset_lotus",
 		"mote_color": Color(0.98, 0.60, 0.35, 0.8),
 		"ripple_color": Color(0.92, 0.45, 0.72)
+	},
+	# Painted backgrounds: an ink-and-watercolour scene in place of the water
+	# shader. The scene carries its own scenery, so only what belongs in it
+	# moves on top - koi where there is water, petals under the blossom.
+	{
+		"id": "bamboo_grove",
+		"name": "Bamboo Panda Grove",
+		"image": "res://assets/backgrounds/bamboo_grove.jpg",
+		"felt_color": Color("#0b1016"),
+		"secondary_color": Color("#18212b"),
+		"caustic_color": Color(0.55, 0.70, 0.62, 0.30),
+		"gold_color": Color(0.92, 0.86, 0.66, 0.85),
+		"speed": 0.6,
+		"koi_species": [],
+		"flora_type": "none",
+		"mote_color": Color(0.90, 0.92, 0.70, 0.7),
+		"ripple_color": Color(0.70, 0.82, 0.74)
+	},
+	{
+		"id": "mountain_temple",
+		"name": "Misty Mountain Temple",
+		"image": "res://assets/backgrounds/mountain_temple.jpg",
+		"felt_color": Color("#0b0f15"),
+		"secondary_color": Color("#1a2029"),
+		"caustic_color": Color(0.60, 0.66, 0.78, 0.30),
+		"gold_color": Color(0.95, 0.85, 0.62, 0.85),
+		"speed": 0.55,
+		"koi_species": [],
+		"flora_type": "none",
+		"mote_color": Color(0.95, 0.86, 0.60, 0.7),
+		"ripple_color": Color(0.72, 0.78, 0.88)
+	},
+	{
+		"id": "lotus_lake",
+		"name": "Moonlit Lotus Lake",
+		"image": "res://assets/backgrounds/lotus_lake.jpg",
+		"felt_color": Color("#0a0e16"),
+		"secondary_color": Color("#161d2a"),
+		"caustic_color": Color(0.62, 0.66, 0.80, 0.30),
+		"gold_color": Color(0.98, 0.88, 0.62, 0.85),
+		"speed": 0.6,
+		"koi_species": ["kohaku", "shiro"],
+		"flora_type": "none",
+		"mote_color": Color(0.98, 0.88, 0.66, 0.7),
+		"ripple_color": Color(0.78, 0.80, 0.92)
+	},
+	{
+		"id": "sakura_bridge",
+		"name": "Sakura Moon Bridge",
+		"image": "res://assets/backgrounds/sakura_bridge.jpg",
+		"felt_color": Color("#0d0f17"),
+		"secondary_color": Color("#1d1f2c"),
+		"caustic_color": Color(0.80, 0.62, 0.72, 0.30),
+		"gold_color": Color(0.96, 0.80, 0.86, 0.85),
+		"speed": 0.6,
+		"koi_species": ["kohaku", "asagi"],
+		"flora_type": "sakura_petal",
+		"mote_color": Color(0.96, 0.82, 0.88, 0.7),
+		"ripple_color": Color(0.90, 0.74, 0.84)
 	}
 ]
 
+## "auto" walks only the water ponds, a new one every five levels; the painted
+## scenes are bought and chosen.
+const AUTO_CYCLE: int = 5
+## How far the painting dims while a board is in play, so the tiles always lead.
+const PLAY_DIM: float = 0.42
+
 # Parallax Planes
 var bg_color: ColorRect = null
+var bg_image: TextureRect = null
+var bg_dim: ColorRect = null
 var fish_container: Node2D = null
 var flora_container: Node2D = null
 var ripples_container: Node2D = null
@@ -145,6 +212,26 @@ func _ensure_containers() -> void:
 		bg_color.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		add_child(bg_color)
 		
+	# Bleeds past the screen so the parallax drift never shows an edge.
+	bg_image = TextureRect.new()
+	bg_image.name = "BgImage"
+	bg_image.set_anchors_preset(Control.PRESET_FULL_RECT)
+	bg_image.offset_left = -IMAGE_BLEED
+	bg_image.offset_top = -IMAGE_BLEED
+	bg_image.offset_right = IMAGE_BLEED
+	bg_image.offset_bottom = IMAGE_BLEED
+	bg_image.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	bg_image.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	bg_image.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bg_image.visible = false
+	add_child(bg_image)
+	bg_dim = ColorRect.new()
+	bg_dim.name = "BgDim"
+	bg_dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	bg_dim.color = Color(0.0, 0.01, 0.02, 0.0)
+	bg_dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(bg_dim)
+
 	fish_container = get_node_or_null("FishContainer")
 	if not fish_container:
 		fish_container = Node2D.new()
@@ -168,6 +255,18 @@ func _ensure_containers() -> void:
 		motes_container = Node2D.new()
 		motes_container.name = "MotesContainer"
 		add_child(motes_container)
+
+const IMAGE_BLEED: float = 40.0
+var _play_dim: bool = false
+
+## The painting at full strength behind the menus, dimmed under a board.
+func set_play_dim(on: bool) -> void:
+	if _play_dim == on:
+		return
+	_play_dim = on
+	var a: float = PLAY_DIM if on and bg_image.visible else 0.0
+	create_tween().tween_property(bg_dim, "color:a", a, 0.6)
+
 
 ## Throttled, not frozen: the pond stays visible around the card, so frozen koi
 ## would read as a hang. Motion speed is unchanged.
@@ -230,6 +329,7 @@ func _update_parallax(delta: float) -> void:
 		var mat: ShaderMaterial = bg_color.material as ShaderMaterial
 		mat.set_shader_parameter("parallax_offset", current_parallax * 0.00018)
 		
+	bg_image.position = Vector2(-IMAGE_BLEED, -IMAGE_BLEED) + current_parallax * 0.06
 	fish_container.position = current_parallax * 0.22
 	flora_container.position = current_parallax * 0.50
 	ripples_container.position = current_parallax * 0.50
@@ -295,7 +395,7 @@ func apply_theme_by_id(theme_id: String, animate: bool = true) -> void:
 ## Calculate theme based on 5-level bracket
 func get_theme_for_level(level: int) -> Dictionary:
 	var safe_level: int = maxi(1, level)
-	var theme_idx: int = int((safe_level - 1) / 5) % THEMES.size()
+	var theme_idx: int = int((safe_level - 1) / 5) % AUTO_CYCLE
 	return THEMES[theme_idx]
 
 ## Public API to update level and trigger dynamic theme transitions
@@ -306,7 +406,7 @@ func set_level(level: int, animate: bool = true) -> void:
 		apply_theme_by_id(active_th, animate)
 		return
 		
-	var new_theme_idx: int = int((maxi(1, level) - 1) / 5) % THEMES.size()
+	var new_theme_idx: int = int((maxi(1, level) - 1) / 5) % AUTO_CYCLE
 	var theme_data: Dictionary = THEMES[new_theme_idx]
 	
 	var theme_changed_flag: bool = (new_theme_idx != current_theme_idx)
@@ -338,11 +438,39 @@ func _apply_theme(theme_data: Dictionary, animate: bool) -> void:
 			mat.set_shader_parameter("gold_color", theme_data.gold_color)
 			mat.set_shader_parameter("speed", theme_data.speed)
 			
+	_apply_image(String(theme_data.get("image", "")), animate)
+
 	# 2. Spawn / Update Koi Fish
 	_refresh_koi(theme_data)
 	
 	# 3. Spawn / Update Flora
 	_setup_flora(theme_data)
+
+func _apply_image(path: String, animate: bool) -> void:
+	if path.is_empty():
+		bg_color.visible = true
+		if bg_image.visible:
+			if animate:
+				var out := create_tween()
+				out.tween_property(bg_image, "modulate:a", 0.0, 0.8)
+				out.tween_callback(func(): bg_image.visible = false)
+			else:
+				bg_image.visible = false
+		bg_dim.color.a = 0.0
+		return
+	bg_image.texture = load(path) as Texture2D
+	bg_image.visible = true
+	bg_dim.color.a = PLAY_DIM if _play_dim else 0.0
+	if animate:
+		bg_image.modulate.a = 0.0
+		var fade := create_tween()
+		fade.tween_property(bg_image, "modulate:a", 1.0, 1.0)
+		# The water shader is fully covered once the painting is in; stop paying for it.
+		fade.tween_callback(func(): bg_color.visible = not bg_image.visible)
+	else:
+		bg_image.modulate.a = 1.0
+		bg_color.visible = false
+
 
 func _refresh_koi(theme_data: Dictionary) -> void:
 	# Clear old fish
@@ -378,6 +506,8 @@ func _setup_flora(theme_data: Dictionary) -> void:
 		vp_size = Vector2(1080, 2400)
 		
 	var flora_type: String = theme_data.get("flora_type", "lotus_pad")
+	if flora_type == "none":
+		return
 	
 	# Strategic placement in the tall 20:9 voids (top 150-450px and bottom 1500-2200px)
 	# Board sits around y=600..1400, so top and bottom voids frame it gorgeously!

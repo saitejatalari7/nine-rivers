@@ -171,6 +171,34 @@ const BG_THEME_DETAILS: Dictionary = {
 			"caustic_color": Color(0.82, 0.25, 0.48, 0.45),
 			"gold_color": Color(0.98, 0.68, 0.20, 0.9)
 		}
+	},
+	"bamboo_grove": {
+		"id": "bamboo_grove",
+		"name": "Bamboo Panda Grove",
+		"is_free": false,
+		"image": "res://assets/backgrounds/bamboo_grove.jpg",
+		"theme_data": {}
+	},
+	"mountain_temple": {
+		"id": "mountain_temple",
+		"name": "Misty Mountain Temple",
+		"is_free": false,
+		"image": "res://assets/backgrounds/mountain_temple.jpg",
+		"theme_data": {}
+	},
+	"lotus_lake": {
+		"id": "lotus_lake",
+		"name": "Moonlit Lotus Lake",
+		"is_free": false,
+		"image": "res://assets/backgrounds/lotus_lake.jpg",
+		"theme_data": {}
+	},
+	"sakura_bridge": {
+		"id": "sakura_bridge",
+		"name": "Sakura Moon Bridge",
+		"is_free": false,
+		"image": "res://assets/backgrounds/sakura_bridge.jpg",
+		"theme_data": {}
 	}
 }
 
@@ -319,6 +347,8 @@ func show_main_menu() -> void:
 	_clear_content()
 	# The Rack floats directly on the water; the tiles supply their own opacity.
 	_set_card_backing(false)
+	if _painted_background_active():
+		backdrop.color.a = BACKDROP_ALPHA_PAINTED
 
 	_add_title("NINE RIVERS")
 	_add_subtitle("Calm Mahjong Solitaire")
@@ -1048,7 +1078,8 @@ func show_background_catalog_modal() -> void:
 	_add_hairline()
 
 	var cur_bg := MonetizationManager.get_active_background_theme()
-	for bg_id in ["auto", "emerald_pond", "moonlit_river", "autumn_stream", "misty_spring", "sunset_haven"]:
+	for bg_id in ["auto", "emerald_pond", "moonlit_river", "autumn_stream", "misty_spring", "sunset_haven",
+			"bamboo_grove", "mountain_temple", "lotus_lake", "sakura_bridge"]:
 		var detail: Dictionary = BG_THEME_DETAILS[bg_id]
 		var is_active: bool = (cur_bg == bg_id)
 		var is_unlocked: bool = MonetizationManager.is_background_theme_unlocked(bg_id)
@@ -1085,7 +1116,10 @@ func show_background_detail_modal(theme_id: String) -> void:
 	# The pond, large, and nothing else - the same cut the tile sets got. This
 	# carried a subtitle, a description, and rows for Water Atmosphere, Living
 	# Koi Species and Floating Aquatic Flora above the price.
-	_add_palette_preview_card(detail["theme_data"], DETAIL_TILE_SCALE)
+	if detail.has("image"):
+		_add_image_preview_card(String(detail["image"]))
+	else:
+		_add_palette_preview_card(detail["theme_data"], DETAIL_TILE_SCALE)
 	_add_separator()
 
 	var cur_bg := MonetizationManager.get_active_background_theme()
@@ -1109,10 +1143,11 @@ func show_background_detail_modal(theme_id: String) -> void:
 				else:
 					show_treasury_modal()
 		, true)
-		_add_toggle_row("Buy outright",
-			MonetizationManager.get_formatted_price("bg_" + theme_id), func():
-				MonetizationManager.buy_product("bg_" + theme_id, func(): show_background_detail_modal(theme_id))
-		)
+		if not MonetizationManager.is_pearls_only("bg_" + theme_id):
+			_add_toggle_row("Buy outright",
+				MonetizationManager.get_formatted_price("bg_" + theme_id), func():
+					MonetizationManager.buy_product("bg_" + theme_id, func(): show_background_detail_modal(theme_id))
+			)
 
 	_add_separator()
 	_add_button("Back", func():
@@ -1358,7 +1393,17 @@ func _set_card_backing(frosted: bool) -> void:
 	sb.anti_aliasing = true
 	card_panel.add_theme_stylebox_override("panel", sb)
 
+const BACKDROP_ALPHA: float = 0.82
+## The main menu over a painted background lets the painting show; the menu's
+## rows are opaque and carry their own contrast.
+const BACKDROP_ALPHA_PAINTED: float = 0.30
+
+func _painted_background_active() -> bool:
+	var bg: String = MonetizationManager.get_active_background_theme()
+	return BG_THEME_DETAILS.has(bg) and BG_THEME_DETAILS[bg].has("image")
+
 func _clear_content() -> void:
+	backdrop.color.a = BACKDROP_ALPHA
 	# Default to frosted; show_main_menu() opts out for the Rack.
 	_set_card_backing(true)
 	for c in card_container.get_children():
@@ -1389,7 +1434,9 @@ const ACCENT_COLS: Dictionary = {
 	"theme_indigo": GLYPH_INK,
 	"theme_obsidian_ink": GLYPH_INK, "theme_cherry_blossom": GLYPH_STONE,
 	"auto": GLYPH_JADE, "emerald_pond": GLYPH_JADE, "moonlit_river": GLYPH_INK,
-	"autumn_stream": GLYPH_GOLD, "misty_spring": GLYPH_STONE, "sunset_haven": GLYPH_GOLD
+	"autumn_stream": GLYPH_GOLD, "misty_spring": GLYPH_STONE, "sunset_haven": GLYPH_GOLD,
+	"bamboo_grove": GLYPH_JADE, "mountain_temple": GLYPH_INK, "lotus_lake": GLYPH_INK,
+	"sakura_bridge": GLYPH_STONE
 }
 
 func _accent_for(key: String) -> Color:
@@ -1797,6 +1844,25 @@ const RiverFeltShader = preload("res://assets/shaders/river_felt.gdshader")
 ## screen, and a background is chosen by how it sits behind a board, not by how
 ## it looks as a stripe.
 const BG_PREVIEW := Vector2(300, 533)
+
+func _add_image_preview_card(path: String) -> void:
+	var center_box := CenterContainer.new()
+	center_box.custom_minimum_size = Vector2(0, BG_PREVIEW.y)
+	var frame := PanelContainer.new()
+	frame.add_theme_stylebox_override("panel",
+		UITheme.create_panel_box(Color(0, 0, 0, 0), UITheme.GOLD_MUTED, 1, 14, 0.0))
+	frame.custom_minimum_size = BG_PREVIEW
+	frame.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	var pic := TextureRect.new()
+	pic.texture = load(path) as Texture2D
+	pic.custom_minimum_size = BG_PREVIEW
+	pic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	pic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	pic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	frame.add_child(pic)
+	center_box.add_child(frame)
+	card_container.add_child(center_box)
+
 
 func _add_palette_preview_card(theme_data: Dictionary, _scale: float = 1.0) -> void:
 	var center_box := CenterContainer.new()
