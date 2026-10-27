@@ -454,6 +454,12 @@ func _start_calm_mode(level: int) -> void:
 	if level == 1 and not SaveManager.prog.get("tutorial_completed", false) and not _onboarding_active:
 		_start_onboarding()
 		return
+	# Past the last stage there is no board to deal: the journey is over.
+	if level > StagePlan.TOTAL_LEVELS:
+		board.visible = false
+		hud.visible = false
+		modal.show_campaign_complete()
+		return
 	board.visible = true
 	hud.visible = true
 	GameManager.start_calm(level)

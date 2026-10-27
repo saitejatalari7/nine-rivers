@@ -1,6 +1,6 @@
 # Play Store listing copy - Nine Rivers
 
-Package: `com.ninerivers.mahjong` - written for version 1.0.14 (code 14)
+Package: `com.ninerivers.mahjong` - written for version 1.0.15 (code 15)
 
 Character counts below were measured on the exact text in this file. Re-measure if you edit it.
 Play counts characters, not bytes, and counts spaces.
@@ -30,30 +30,30 @@ and C spends the whole budget on generic words. B keeps the name first and says 
 **Recommended:**
 
 ```
-Calm mahjong solitaire: 500 stages, Koi Rescue levels and a fresh daily puzzle.
+Calm mahjong solitaire: 1000 stages, Koi Rescue levels and a fresh daily puzzle.
 ```
 
-**79 characters.**
+**80 characters.**
 
 ### Alternates
 
 ```
-Calm mahjong solitaire. 500 stages, a daily puzzle and a world leaderboard.
+Calm mahjong solitaire. 1000 stages, a daily puzzle and a world leaderboard.
 ```
 
-**75 characters.**
+**76 characters.**
 
 ```
-Relaxing mahjong solitaire with 500 stages, koi to rescue and a daily puzzle.
+Relaxing mahjong solitaire: 1000 stages, koi to rescue and a daily puzzle.
 ```
 
-**77 characters.**
+**74 characters.**
 
 ---
 
 ## 3. Full description (4000 characters maximum)
 
-**2,548 characters** including line breaks, against a 4,000 limit.
+**2,787 characters** including line breaks, against a 4,000 limit.
 
 Paragraphs are deliberately left on single long lines. Paste as-is; do not re-wrap, or the
 line breaks will show up in the listing.
@@ -61,8 +61,8 @@ line breaks will show up in the listing.
 ```
 Nine Rivers is mahjong solitaire without the hurry. You match pairs of free tiles until the board is clear. There is no clock in the main game, no lives to run out, and nothing asking you to come back in four hours.
 
-500 STAGES
-500 stages across ten chapters, with more than 150 board shapes: animals, flowers, the zodiac, islands and patterns. Every board can actually be finished: boards are built backwards from a solved state, so you will never be handed one that cannot be cleared. Stages pay one to three stars depending on how cleanly you clear them, and stars earn Spirit Pearls.
+1000 STAGES
+1000 stages across twenty chapters, with nearly 200 board shapes: animals, flowers, the zodiac, islands and patterns. Past stage 500 the boards grow deep: narrow towers and pillars up to seven layers high, where the challenge is choosing which tower to dig. Every board can actually be finished: boards are built backwards from a solved state, so you will never be handed one that cannot be cleared. Stages pay one to three stars depending on how cleanly you clear them, and stars earn Spirit Pearls.
 
 KOI RESCUE
 Every fifth stage from stage 10, three pairs of coral koi tiles are hidden in the board. Free all three and the stage is won at once, with three stars and bonus pearls. The last koi sleeps until half the board is cleared, so you will have to dig for it.
@@ -86,7 +86,7 @@ ADS
 A full-screen ad between stages now and then: never in the middle of a board and never in your first three stages. Short videos are always your choice, for Spirit Pearls or an extra shuffle. A one-time purchase removes the full-screen ads.
 
 PURCHASES
-Optional and cosmetic. Extra tile sets and backgrounds, a Remove Ads upgrade, and Spirit Pearl packs if you would rather buy a tile set than earn one. Every tile set and background can also be unlocked with Spirit Pearls earned from playing, and the Deep Indigo set cannot be bought at all: it is earned at stage 50.
+Optional and cosmetic. Extra tile sets and backgrounds, including four ink-and-watercolour paintings of pandas, temples, lotus lakes and cherry blossom, a Remove Ads upgrade, and Spirit Pearl packs if you would rather buy a tile set than earn one. Every tile set and background can also be unlocked with Spirit Pearls earned from playing, and the Deep Indigo set cannot be bought at all: it is earned at stage 50.
 ```
 
 ---

@@ -7,6 +7,10 @@ var _fails: int = 0
 
 
 func _ready() -> void:
+	# Other tests share the save and may have switched music off; beds only
+	# play with it on.
+	if not SettingsManager.music_enabled:
+		SettingsManager.toggle_setting("music")
 	await get_tree().process_frame
 	var main = (load("res://scenes/main.tscn") as PackedScene).instantiate()
 	add_child(main)

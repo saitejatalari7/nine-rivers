@@ -26,6 +26,10 @@ func _ready() -> void:
 		# shapes that no sampled level happened to use.
 		var all_names: Array = load("res://scripts/core/layout_data.gd").LAYOUTS.keys()
 		all_names.sort()
+		# And every orientation of the deep 501+ shapes.
+		all_names.append_array(load("res://scripts/core/layout_data_deep.gd").VARIANTS)
+		if OS.get_environment("FIT_DEEP_ONLY") != "":
+			all_names = Array(load("res://scripts/core/layout_data_deep.gd").VARIANTS)
 		main._start_calm_mode(31)
 		await get_tree().create_timer(0.5).timeout
 		for layout in all_names:

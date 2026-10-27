@@ -16,8 +16,13 @@ extends RefCounted
 
 const BoardGenerator = preload("res://scripts/core/board_generator.gd")
 const LayoutData = preload("res://scripts/core/layout_data.gd")
+const DeepLayouts = preload("res://scripts/core/layout_data_deep.gd")
 
-const TOTAL_LEVELS: int = 500
+const TOTAL_LEVELS: int = 1000
+## Levels 1-500 shipped first and must deal exactly what they always dealt:
+## their plan is computed as if the campaign still ended here. 501 onward is
+## the deep half - narrow towers five to seven layers high.
+const CLASSIC_LEVELS: int = 500
 const LEVELS_PER_CHAPTER: int = 50
 const CHAPTERS: int = TOTAL_LEVELS / LEVELS_PER_CHAPTER
 
@@ -186,9 +191,9 @@ static func tier_for_level(level: int) -> int:
 	var lv: int = clampi(level, 1, TOTAL_LEVELS)
 	if lv <= TEACH_LEVELS:
 		return 1
-	if lv % MILESTONE_EVERY == 0:
+	if lv % MILESTONE_EVERY == 0 or lv > CLASSIC_LEVELS:
 		return TIERS
-	var ramp: float = 1.0 + 4.0 * float(lv - 1) / float(TOTAL_LEVELS - 1)
+	var ramp: float = 1.0 + 4.0 * float(lv - 1) / float(CLASSIC_LEVELS - 1)
 	# Length 10 so a 100-level window samples it evenly; a 7-long wave left a
 	# sampling wobble in the per-100 averages that looked like a curve defect.
 	const WAVE: Array[int] = [0, 1, -1, 1, 0, -1, 2, 0, -1, 1]
@@ -231,6 +236,8 @@ static func is_koi_level(level: int) -> bool:
 
 
 static func layout_for_level(level: int) -> String:
+	if level > CLASSIC_LEVELS:
+		return deep_layout_for_level(level)
 	var tier: int = tier_for_level(level)
 	var pool: Array = layouts_in_tier(tier)
 	if pool.is_empty():
@@ -238,6 +245,59 @@ static func layout_for_level(level: int) -> String:
 	var nth: int = 0
 	for lv in range(1, clampi(level, 1, TOTAL_LEVELS)):
 		if tier_for_level(lv) == tier:
+			nth += 1
+	return pool[nth % pool.size()]
+
+
+## How deep a level past 500 goes: 5 layers at 501 rising to 7 by 1000, on a
+## short wave so it is not a staircase. Landmarks are always the deepest.
+static func depth_for_level(level: int) -> int:
+	var lv: int = clampi(level, CLASSIC_LEVELS + 1, TOTAL_LEVELS)
+	if lv % MILESTONE_EVERY == 0:
+		return 7
+	var ramp: float = 5.0 + 2.0 * float(lv - CLASSIC_LEVELS - 1) / float(TOTAL_LEVELS - CLASSIC_LEVELS - 1)
+	const WAVE: Array[int] = [0, 1, 0, -1, 0, 1, -1, 0, 1, 0]
+	return clampi(int(round(ramp)) + WAVE[(lv - 1) % WAVE.size()], 5, 7)
+
+
+static var _deep_pools: Dictionary = {}
+
+## Each shape's variants (as drawn, then its flips) spread evenly through the
+## depth's pool, and the shapes staggered against each other, so a shape comes
+## round again as late as possible and in a new orientation when it does.
+static func deep_pool(depth: int) -> Array:
+	if _deep_pools.is_empty():
+		for d in [5, 6, 7]:
+			var groups: Array = []
+			for name in DeepLayouts.LAYOUTS.keys():
+				if int(DeepLayouts.LAYOUTS[name]["depth"]) != d:
+					continue
+				var vs: Array = []
+				for v in DeepLayouts.VARIANTS:
+					if String(v).get_slice("@", 0) == name:
+						vs.append(v)
+				# Two at most: four orientations of one shape in a pool of twenty
+				# brought it back every few levels.
+				groups.append(vs.slice(0, 2))
+			var keyed: Array = []
+			for j in groups.size():
+				var vs: Array = groups[j]
+				for i in vs.size():
+					keyed.append([(float(i) + (float(j) + 0.5) / float(groups.size())) / float(vs.size()), vs[i]])
+			keyed.sort_custom(func(x, y): return x[0] < y[0])
+			_deep_pools[d] = keyed.map(func(e): return e[1])
+	return _deep_pools.get(depth, [])
+
+
+static func deep_layout_for_level(level: int) -> String:
+	var lv: int = clampi(level, CLASSIC_LEVELS + 1, TOTAL_LEVELS)
+	var depth: int = depth_for_level(lv)
+	var pool: Array = deep_pool(depth)
+	if pool.is_empty():
+		return "twin_pagodas"
+	var nth: int = 0
+	for prior in range(CLASSIC_LEVELS + 1, lv):
+		if depth_for_level(prior) == depth:
 			nth += 1
 	return pool[nth % pool.size()]
 

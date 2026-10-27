@@ -3,6 +3,7 @@ extends RefCounted
 
 const RiverTile = preload("res://scripts/core/river_tile.gd")
 const LayoutData = preload("res://scripts/core/layout_data.gd")
+const DeepLayouts = preload("res://scripts/core/layout_data_deep.gd")
 
 static var last_deal_order: Array = []
 
@@ -33,7 +34,29 @@ const LADDER: Array[String] = [
 static func get_layout_positions(name: String) -> Array[Dictionary]:
 	if LayoutData.LAYOUTS.has(name):
 		return positions_from_ascii(LayoutData.LAYOUTS[name])
+	var base: String = name.get_slice("@", 0)
+	if DeepLayouts.LAYOUTS.has(base):
+		var pos: Array[Dictionary] = positions_from_ascii(DeepLayouts.LAYOUTS[base])
+		var flip: String = name.get_slice("@", 1) if name.contains("@") else ""
+		return _flipped(pos, flip.contains("m"), flip.contains("v"))
 	return legacy_layout_positions(name)
+
+## A deep shape dealt mirrored and/or upside down (layout_data_deep VARIANTS).
+static func _flipped(pos: Array[Dictionary], mirror_x: bool, mirror_y: bool) -> Array[Dictionary]:
+	if not mirror_x and not mirror_y:
+		return pos
+	var max_x: int = 0
+	var max_y: int = 0
+	for p in pos:
+		max_x = maxi(max_x, int(p["x"]))
+		max_y = maxi(max_y, int(p["y"]))
+	for p in pos:
+		if mirror_x:
+			p["x"] = max_x - int(p["x"])
+		if mirror_y:
+			p["y"] = max_y - int(p["y"])
+	return pos
+
 
 static func positions_from_ascii(entry: Dictionary) -> Array[Dictionary]:
 	var pos: Array[Dictionary] = []

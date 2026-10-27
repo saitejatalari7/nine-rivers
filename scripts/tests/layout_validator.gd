@@ -45,9 +45,12 @@ var _top_z: int = 0
 
 func _ready() -> void:
 	var layouts: Array = BoardGenerator.LADDER.duplicate()
-	for extra in LayoutData.LAYOUTS.keys():
+	for extra in LayoutData.LAYOUTS.keys() + BoardGenerator.DeepLayouts.LAYOUTS.keys():
 		if not layouts.has(extra):
 			layouts.append(extra)
+	var only: String = OS.get_environment("LAYOUTS_ONLY")
+	if not only.is_empty():
+		layouts = Array(only.split(","))
 
 	if not _cross_check():
 		print("  FAIL  move rules disagree with BoardController - no verdict trusted")

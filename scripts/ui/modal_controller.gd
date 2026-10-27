@@ -388,17 +388,23 @@ func show_main_menu() -> void:
 		# player who has never cleared a stage was being invited to carry on with
 		# a game they had not started.
 		var started: bool = not SaveManager.prog.get("stars", {}).is_empty() or cur_lvl > 1
-		_add_tile_row(UITheme.RED_CINNABAR,
-			"Continue" if started else "Play",
-			("Stage %d of %d" % [cur_lvl, StagePlan.TOTAL_LEVELS]) if started
-				else "Start at stage 1", "", func():
-				hide_modal()
-				start_calm_requested.emit(cur_lvl)
-		, true)
+		if cur_lvl > StagePlan.TOTAL_LEVELS:
+			_add_tile_row(GLYPH_GOLD, "Journey Complete",
+				"All %d stages cleared" % StagePlan.TOTAL_LEVELS, "", func():
+					show_campaign_complete()
+			, true)
+		else:
+			_add_tile_row(UITheme.RED_CINNABAR,
+				"Continue" if started else "Play",
+				("Stage %d of %d" % [cur_lvl, StagePlan.TOTAL_LEVELS]) if started
+					else "Start at stage 1", "", func():
+					hide_modal()
+					start_calm_requested.emit(cur_lvl)
+			, true)
 
 	_add_tile_row(Color("#1f7a52"), "Levels",
 		"%d chapters" % StagePlan.CHAPTERS,
-		"%d/%d" % [cur_lvl, StagePlan.TOTAL_LEVELS], func(): show_level_select())
+		"%d/%d" % [mini(cur_lvl, StagePlan.TOTAL_LEVELS), StagePlan.TOTAL_LEVELS], func(): show_level_select())
 
 	# Both timed modes run out for the day. The row says how many are left and
 	# goes quiet when there are none, rather than letting a player start a run
@@ -449,7 +455,7 @@ func show_level_select() -> void:
 	_current_screen = "level_select"
 	_clear_content()
 
-	var max_unlocked: int = int(SaveManager.prog.get("level", 1))
+	var max_unlocked: int = mini(int(SaveManager.prog.get("level", 1)), StagePlan.TOTAL_LEVELS)
 	var stars_data: Dictionary = SaveManager.prog.get("stars", {})
 	var total_stars: int = 0
 	for s_val in stars_data.values():
@@ -951,6 +957,28 @@ func show_update_ready() -> void:
 	show_modal()
 
 
+## After the last stage. Every stage stays open to replay for more stars, and
+## the Daily Puzzle and Timed Mode go on.
+func show_campaign_complete() -> void:
+	_current_screen = "campaign_complete"
+	_clear_content()
+	_add_header("Journey Complete", "All %d stages cleared" % StagePlan.TOTAL_LEVELS)
+	_add_hairline()
+	var stars: int = 0
+	for s in SaveManager.prog.get("stars", {}).values():
+		stars += int(s)
+	_add_description("You have followed all nine rivers to the sea. Thank you for playing.")
+	_add_sheet_row("Stars", "%d / %d ★" % [stars, StagePlan.total_stars()], UITheme.GOLD_CORE)
+	_add_separator()
+	_add_tile_row(GLYPH_JADE, "Replay a Stage", "Chase the stars you missed", "", func():
+		show_level_select()
+	, true)
+	_add_toggle_row("Main Menu", "›", func():
+		show_main_menu()
+	, UITheme.IVORY_MUTED)
+	show_modal()
+
+
 ## The first Koi Rescue level explains itself once; later ones only toast.
 func show_koi_intro() -> void:
 	_current_screen = "koi_intro"
@@ -1362,7 +1390,7 @@ func handle_back_pressed() -> void:
 			resume_game_requested.emit()
 		"koi_intro":
 			hide_modal()
-		"update_ready":
+		"update_ready", "campaign_complete":
 			show_main_menu()
 		"level_clear", "daily_clear", "game_over", "run_won", "theme_unlocked", "deadlock":
 			# No hide_modal(): _return_home() puts the main menu up in its place,
