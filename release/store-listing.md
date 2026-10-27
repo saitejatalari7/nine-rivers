@@ -53,7 +53,7 @@ Relaxing mahjong solitaire: 1000 stages, koi to rescue and a daily puzzle.
 
 ## 3. Full description (4000 characters maximum)
 
-**2,787 characters** including line breaks, against a 4,000 limit.
+**2,933 characters** including line breaks, against a 4,000 limit.
 
 Paragraphs are deliberately left on single long lines. Paste as-is; do not re-wrap, or the
 line breaks will show up in the listing.
@@ -62,7 +62,12 @@ line breaks will show up in the listing.
 Nine Rivers is mahjong solitaire without the hurry. You match pairs of free tiles until the board is clear. There is no clock in the main game, no lives to run out, and nothing asking you to come back in four hours.
 
 1000 STAGES
-1000 stages across twenty chapters, with nearly 200 board shapes: animals, flowers, the zodiac, islands and patterns. Past stage 500 the boards grow deep: narrow towers and pillars up to seven layers high, where the challenge is choosing which tower to dig. Every board can actually be finished: boards are built backwards from a solved state, so you will never be handed one that cannot be cleared. Stages pay one to three stars depending on how cleanly you clear them, and stars earn Spirit Pearls.
+1000 stages in two campaigns, with nearly 200 board shapes. The classic campaign has 500 stages across ten chapters: animals, flowers, the zodiac, islands and patterns.
+
+DEEP RIVERS
+Clear stage 25 and a second campaign opens: 500 more stages of narrow towers and pillars stacked up to seven layers deep, where the challenge is choosing which tower to dig. Play the two side by side and switch any time.
+
+Every board can actually be finished: boards are built backwards from a solved state, so you will never be handed one that cannot be cleared. Stages pay one to three stars depending on how cleanly you clear them, and stars earn Spirit Pearls.
 
 KOI RESCUE
 Every fifth stage from stage 10, three pairs of coral koi tiles are hidden in the board. Free all three and the stage is won at once, with three stars and bonus pearls. The last koi sleeps until half the board is cleared, so you will have to dig for it.

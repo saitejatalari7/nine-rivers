@@ -339,6 +339,13 @@ func hide_modal() -> void:
 		_sync_background_load())
 
 func show_main_menu() -> void:
+	# Players already past the unlock stage when Deep Rivers arrived hear about
+	# it once, here, rather than never.
+	if SaveManager.deep_unlocked() and not bool(SaveManager.prog.get("deep_intro_seen", false)):
+		SaveManager.prog["deep_intro_seen"] = true
+		SaveManager.request_save()
+		show_deep_unlocked(-1)
+		return
 	if UpdateManager.ready_to_install and not UpdateManager.restart_offered:
 		UpdateManager.restart_offered = true
 		show_update_ready()
@@ -379,7 +386,7 @@ func show_main_menu() -> void:
 			if not bool((t as Dictionary).get("gone", false)):
 				s_left += 1
 		_add_tile_row(UITheme.RED_CINNABAR, "Resume",
-			"Stage %d · %d tiles left" % [s_lvl, s_left], "", func():
+			"%s · %d tiles left" % [StagePlan.stage_name(s_lvl), s_left], "", func():
 				hide_modal()
 				resume_session_requested.emit()
 		, true)
@@ -388,23 +395,32 @@ func show_main_menu() -> void:
 		# player who has never cleared a stage was being invited to carry on with
 		# a game they had not started.
 		var started: bool = not SaveManager.prog.get("stars", {}).is_empty() or cur_lvl > 1
-		if cur_lvl > StagePlan.TOTAL_LEVELS:
-			_add_tile_row(GLYPH_GOLD, "Journey Complete",
-				"All %d stages cleared" % StagePlan.TOTAL_LEVELS, "", func():
-					show_campaign_complete()
+		if cur_lvl > StagePlan.CLASSIC_LEVELS:
+			_add_tile_row(GLYPH_GOLD, "Classic Complete",
+				"All %d stages cleared" % StagePlan.CLASSIC_LEVELS, "", func():
+					show_campaign_complete(false)
 			, true)
 		else:
 			_add_tile_row(UITheme.RED_CINNABAR,
 				"Continue" if started else "Play",
-				("Stage %d of %d" % [cur_lvl, StagePlan.TOTAL_LEVELS]) if started
+				("Stage %d of %d" % [cur_lvl, StagePlan.CLASSIC_LEVELS]) if started
 					else "Start at stage 1", "", func():
 					hide_modal()
 					start_calm_requested.emit(cur_lvl)
 			, true)
 
 	_add_tile_row(Color("#1f7a52"), "Levels",
-		"%d chapters" % StagePlan.CHAPTERS,
-		"%d/%d" % [mini(cur_lvl, StagePlan.TOTAL_LEVELS), StagePlan.TOTAL_LEVELS], func(): show_level_select())
+		"%d chapters" % StagePlan.CLASSIC_CHAPTERS,
+		"%d/%d" % [mini(cur_lvl, StagePlan.CLASSIC_LEVELS), StagePlan.CLASSIC_LEVELS], func(): show_level_select())
+
+	var deep_count: int = StagePlan.TOTAL_LEVELS - StagePlan.CLASSIC_LEVELS
+	if SaveManager.deep_unlocked():
+		var deep_at: int = mini(SaveManager.deep_level() - StagePlan.CLASSIC_LEVELS, deep_count)
+		_add_tile_row(GLYPH_INK, "Deep Rivers", "Towers up to 7 layers",
+			"D%d/%d" % [deep_at, deep_count], func(): show_level_select(true))
+	else:
+		_add_tile_row(GLYPH_INK, "Deep Rivers",
+			"Unlocks at stage %d" % StagePlan.DEEP_UNLOCK_STAGE, "Locked", func(): pass)
 
 	# Both timed modes run out for the day. The row says how many are left and
 	# goes quiet when there are none, rather than letting a player start a run
@@ -451,20 +467,35 @@ func show_main_menu() -> void:
 
 	show_modal()
 
-func show_level_select() -> void:
+func show_level_select(deep: bool = false) -> void:
 	_current_screen = "level_select"
 	_clear_content()
 
-	var max_unlocked: int = mini(int(SaveManager.prog.get("level", 1)), StagePlan.TOTAL_LEVELS)
+	var first: int = StagePlan.track_first(deep)
+	var last: int = StagePlan.track_last(deep)
+	var pointer: int = SaveManager.deep_level() if deep else int(SaveManager.prog.get("level", 1))
+	var max_unlocked: int = mini(pointer, last)
 	var stars_data: Dictionary = SaveManager.prog.get("stars", {})
-	var total_stars: int = 0
-	for s_val in stars_data.values():
-		total_stars += int(s_val)
+	var total_stars: int = StagePlan.track_stars(stars_data, deep)
+	var offset: int = first - 1
 
-	_add_header("Levels", "%d chapters" % StagePlan.CHAPTERS)
-	_add_purse_line("%d / %d ★  ·  Stage %d unlocked" % [
-		total_stars, StagePlan.total_stars(), max_unlocked])
+	if deep:
+		_add_header("Deep Rivers", "Towers up to seven layers deep")
+	else:
+		_add_header("Levels", "%d chapters" % StagePlan.CLASSIC_CHAPTERS)
+	_add_purse_line("%d / %d ★  ·  %s unlocked" % [
+		total_stars, (last - first + 1) * 3, StagePlan.stage_name(max_unlocked)])
 	_add_hairline()
+	if deep:
+		if pointer > last:
+			_add_tile_row(GLYPH_GOLD, "Deep Rivers Complete", "Replay any stage below", "", func():
+				show_campaign_complete(true)
+			, true)
+		else:
+			_add_tile_row(UITheme.RED_CINNABAR, "Continue", StagePlan.stage_name(pointer), "", func():
+				hide_modal()
+				start_calm_requested.emit(pointer)
+			, true)
 
 	# No inner ScrollContainer: the card scrolls, and nesting two is ambiguous
 	# on touch.
@@ -474,9 +505,9 @@ func show_level_select() -> void:
 
 	# Only chapters the player has reached, plus the next one, so 20 chapters
 	# do not become 1000 rows of mostly-blank grid.
-	var shown_last: int = mini(StagePlan.chapter_of(max_unlocked) + 1, StagePlan.CHAPTERS - 1)
+	var shown_last: int = mini(StagePlan.chapter_of(max_unlocked) + 1, StagePlan.chapter_of(last))
 	var chapters: Array[Dictionary] = []
-	for c in range(shown_last + 1):
+	for c in range(StagePlan.chapter_of(first), shown_last + 1):
 		var r: Vector2i = StagePlan.chapter_range(c)
 		chapters.append({
 			"name": StagePlan.chapter_title(c),
@@ -553,7 +584,7 @@ func show_level_select() -> void:
 				var star_str := ""
 				for s in range(3):
 					star_str += "★" if s < s_count else "☆"
-				btn.text = "%d\n%s" % [lvl, star_str]
+				btn.text = "%d\n%s" % [lvl - offset, star_str]
 				# A cleared stage is a face-up tile, small enough to fit the
 				# map grid; the same material as the rest of the interface.
 				_style_stage_token(btn, lvl == max_unlocked)
@@ -565,7 +596,7 @@ func show_level_select() -> void:
 			else:
 				# No padlock glyph: a stage you have not reached is simply a
 				# tile still lying face-down, not inked in yet.
-				btn.text = "%d\n·  ·  ·" % lvl
+				btn.text = "%d\n·  ·  ·" % (lvl - offset)
 				btn.disabled = true
 				_style_stage_token_locked(btn)
 			grid.add_child(btn)
@@ -616,7 +647,7 @@ func theme_display_name(theme_id: String) -> String:
 func show_level_clear(level: int, score: int, stars: int, sampled: String = "") -> void:
 	_current_screen = "level_clear"
 	_clear_content()
-	_add_header("Board Cleared", "Stage %d" % level)
+	_add_header("Board Cleared", StagePlan.stage_name(level))
 
 	var star_lbl := Label.new()
 	var star_str := ""
@@ -705,7 +736,7 @@ func show_daily_clear(score: int, best_flow: int, streak: int, blessing: int = 0
 func show_deadlock(level: int, tiles_left: int) -> void:
 	_current_screen = "deadlock"
 	_clear_content()
-	_add_header("Deadlock", "Stage %d · no moves remain" % level)
+	_add_header("Deadlock", "%s · no moves remain" % StagePlan.stage_name(level))
 	_add_hairline()
 
 	_add_description("No tiles can be matched, and rearranging them will not help. This board cannot be finished.")
@@ -957,26 +988,75 @@ func show_update_ready() -> void:
 	show_modal()
 
 
-## After the last stage. Every stage stays open to replay for more stars, and
-## the Daily Puzzle and Timed Mode go on.
-func show_campaign_complete() -> void:
+## After the last stage of a campaign. Every stage stays open to replay for
+## more stars, and the Daily Puzzle and Timed Mode go on.
+func show_campaign_complete(deep: bool) -> void:
 	_current_screen = "campaign_complete"
 	_clear_content()
-	_add_header("Journey Complete", "All %d stages cleared" % StagePlan.TOTAL_LEVELS)
+	var classic_done: bool = int(SaveManager.prog.get("level", 1)) > StagePlan.CLASSIC_LEVELS
+	var deep_done: bool = SaveManager.deep_level() > StagePlan.TOTAL_LEVELS
+	var count: int = StagePlan.track_last(deep) - StagePlan.track_first(deep) + 1
+	if classic_done and deep_done:
+		_add_header("Journey Complete", "Both campaigns cleared")
+	elif deep:
+		_add_header("Deep Rivers Complete", "All %d tower stages cleared" % count)
+	else:
+		_add_header("Classic Complete", "All %d stages cleared" % count)
 	_add_hairline()
-	var stars: int = 0
-	for s in SaveManager.prog.get("stars", {}).values():
-		stars += int(s)
-	_add_description("You have followed all nine rivers to the sea. Thank you for playing.")
-	_add_sheet_row("Stars", "%d / %d ★" % [stars, StagePlan.total_stars()], UITheme.GOLD_CORE)
+	var stars: int = StagePlan.track_stars(SaveManager.prog.get("stars", {}), deep)
+	if classic_done and deep_done:
+		_add_description("You have followed all nine rivers to the sea. Thank you for playing.")
+	_add_sheet_row("Stars", "%d / %d ★" % [stars, count * 3], UITheme.GOLD_CORE)
 	_add_separator()
-	_add_tile_row(GLYPH_JADE, "Replay a Stage", "Chase the stars you missed", "", func():
-		show_level_select()
-	, true)
+	if not deep and not deep_done:
+		_add_tile_row(GLYPH_INK, "Play Deep Rivers", StagePlan.stage_name(SaveManager.deep_level()), "", func():
+			hide_modal()
+			start_calm_requested.emit(SaveManager.deep_level())
+		, true)
+	elif deep and not classic_done:
+		_add_tile_row(GLYPH_JADE, "Back to Classic", StagePlan.stage_name(int(SaveManager.prog.get("level", 1))), "", func():
+			hide_modal()
+			start_calm_requested.emit(int(SaveManager.prog.get("level", 1)))
+		, true)
+	_add_tile_row(GLYPH_GOLD, "Replay a Stage", "Chase the stars you missed", "", func():
+		show_level_select(deep)
+	)
 	_add_toggle_row("Main Menu", "›", func():
 		show_main_menu()
 	, UITheme.IVORY_MUTED)
 	show_modal()
+
+
+## Clearing stage 25 opens the second campaign. next_classic is the stage the
+## player was about to go on to, or -1 when shown from the menu.
+func show_deep_unlocked(next_classic: int) -> void:
+	_current_screen = "deep_unlocked"
+	_deep_next_classic = next_classic
+	_clear_content()
+	_add_header("Deep Rivers Unlocked", "A new campaign of 500 stages")
+	_add_hairline()
+	_add_description("Narrow towers and pillars stacked up to seven layers deep. Choose which tower to dig - the pairs you need are buried in different ones.")
+	_add_description("Your classic stages stay where you left them. Switch between the two any time from the menu.")
+	_add_separator()
+	_add_tile_row(GLYPH_INK, "Try Deep Rivers", StagePlan.stage_name(SaveManager.deep_level()), "", func():
+		hide_modal()
+		start_calm_requested.emit(SaveManager.deep_level())
+	, true)
+	_add_toggle_row("Later" if next_classic < 0 else "Continue Stage %d" % next_classic, "›", func():
+		_leave_deep_unlocked()
+	, UITheme.IVORY_MUTED)
+	show_modal()
+	AudioManager.play_win()
+
+
+var _deep_next_classic: int = -1
+
+func _leave_deep_unlocked() -> void:
+	if _deep_next_classic > 0:
+		hide_modal()
+		start_calm_requested.emit(_deep_next_classic)
+	else:
+		show_main_menu()
 
 
 ## The first Koi Rescue level explains itself once; later ones only toast.
@@ -1392,6 +1472,8 @@ func handle_back_pressed() -> void:
 			hide_modal()
 		"update_ready", "campaign_complete":
 			show_main_menu()
+		"deep_unlocked":
+			_leave_deep_unlocked()
 		"level_clear", "daily_clear", "game_over", "run_won", "theme_unlocked", "deadlock":
 			# No hide_modal(): _return_home() puts the main menu up in its place,
 			# and hiding first would race the fade against it.

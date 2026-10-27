@@ -203,7 +203,7 @@ func _process(delta: float) -> void:
 func setup_hud(mode: GameManager.GameMode, level_no: int) -> void:
 	match mode:
 		GameManager.GameMode.CALM:
-			lbl_level.text = "L" + str(level_no)
+			lbl_level.text = ("D%d" % (level_no - StagePlan.CLASSIC_LEVELS)) if StagePlan.is_deep(level_no) else "L" + str(level_no)
 			timer_container.visible = false
 		GameManager.GameMode.RUN:
 			lbl_level.text = "%d/3" % level_no

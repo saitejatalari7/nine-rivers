@@ -23,6 +23,10 @@ const TOTAL_LEVELS: int = 1000
 ## their plan is computed as if the campaign still ended here. 501 onward is
 ## the deep half - narrow towers five to seven layers high.
 const CLASSIC_LEVELS: int = 500
+const CLASSIC_CHAPTERS: int = CLASSIC_LEVELS / 50
+## The deep half is its own campaign, Deep Rivers, played alongside the
+## classic one and opened by clearing this classic stage.
+const DEEP_UNLOCK_STAGE: int = 25
 const LEVELS_PER_CHAPTER: int = 50
 const CHAPTERS: int = TOTAL_LEVELS / LEVELS_PER_CHAPTER
 
@@ -79,13 +83,46 @@ static func chapter_range(chapter: int) -> Vector2i:
 
 static func chapter_title(chapter: int) -> String:
 	var c: int = clampi(chapter, 0, CHAPTERS - 1)
+	if c >= CLASSIC_CHAPTERS:
+		return "Deep %s: %s" % [ROMAN[c - CLASSIC_CHAPTERS], CHAPTER_NAMES[c]["name"]]
 	return "Chapter %s: %s" % [ROMAN[c], CHAPTER_NAMES[c]["name"]]
 
 
 static func chapter_subtitle(chapter: int) -> String:
 	var c: int = clampi(chapter, 0, CHAPTERS - 1)
 	var r: Vector2i = chapter_range(c)
+	if c >= CLASSIC_CHAPTERS:
+		return "Stages D%d - D%d" % [r.x - CLASSIC_LEVELS, r.y - CLASSIC_LEVELS]
 	return "Stages %d - %d" % [r.x, r.y]
+
+
+static func is_deep(level: int) -> bool:
+	return level > CLASSIC_LEVELS
+
+
+static func track_first(deep: bool) -> int:
+	return CLASSIC_LEVELS + 1 if deep else 1
+
+
+static func track_last(deep: bool) -> int:
+	return TOTAL_LEVELS if deep else CLASSIC_LEVELS
+
+
+## "Stage 12" or "Deep Stage 12": a deep stage is numbered within its own
+## campaign, not as stage 512.
+static func stage_name(level: int) -> String:
+	if is_deep(level):
+		return "Deep Stage %d" % (level - CLASSIC_LEVELS)
+	return "Stage %d" % level
+
+
+static func track_stars(stars: Dictionary, deep: bool) -> int:
+	var total: int = 0
+	for k in stars.keys():
+		var lvl: int = int(k)
+		if lvl >= track_first(deep) and lvl <= track_last(deep):
+			total += int(stars[k])
+	return total
 
 
 ## How many tiles are free at deal time, as a share of the board. Tile count
@@ -327,8 +364,12 @@ static func is_milestone(level: int) -> bool:
 const GATE_FRACTION: float = 0.6
 
 
+## Each campaign gates on its own stars: Deep Rivers' first chapter is open as
+## soon as the campaign is, whatever the classic stars.
 static func stars_required(chapter: int) -> int:
 	var c: int = clampi(chapter, 0, CHAPTERS - 1)
+	if c >= CLASSIC_CHAPTERS:
+		c -= CLASSIC_CHAPTERS
 	if c <= 0:
 		return 0
 	return int(floor(float(c * LEVELS_PER_CHAPTER * 3) * GATE_FRACTION))

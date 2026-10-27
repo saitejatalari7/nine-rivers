@@ -458,7 +458,7 @@ func _start_calm_mode(level: int) -> void:
 	if level > StagePlan.TOTAL_LEVELS:
 		board.visible = false
 		hud.visible = false
-		modal.show_campaign_complete()
+		modal.show_campaign_complete(true)
 		return
 	board.visible = true
 	hud.visible = true
@@ -629,7 +629,7 @@ func _next_stage() -> void:
 		return
 
 	if GameManager.current_mode == GameManager.GameMode.CALM:
-		_start_calm_mode(GameManager.current_level + 1)
+		_continue_after(GameManager.current_level)
 	else:
 		# _on_board_cleared() hid the HUD to clear the way for the reward screen;
 		# without this the next stage deals with no menu button, timer or props.
@@ -775,7 +775,11 @@ func _on_board_cleared() -> void:
 		# A milestone set is offered before the usual clear screen, so it reads as
 		# the event it is rather than a row on a results sheet. Taking it or
 		# leaving it both carry on to the next stage.
-		var granted: Array[String] = MonetizationManager.grant_milestone_themes(GameManager.current_level)
+		# Milestone sets are earned along the classic campaign only; a Deep Rivers
+		# stage is numbered 501+ and would otherwise hand out stage 50's set.
+		var granted: Array[String] = []
+		if not StagePlan.is_deep(GameManager.current_level):
+			granted = MonetizationManager.grant_milestone_themes(GameManager.current_level)
 		var offer_sample: bool = GameManager.current_level == SAMPLE_STAGE 			and not sampled_theme.is_empty() 			and not MonetizationManager.is_theme_unlocked(sampled_theme)
 		if not granted.is_empty() or offer_sample:
 			_pending_clear = {"level": GameManager.current_level, "score": GameManager.score,
@@ -1002,6 +1006,24 @@ func _on_update_ready() -> void:
 		modal.show_main_menu()
 
 
+## After a campaign stage: the next one - unless this clear opened Deep Rivers,
+## or was the last stage of its campaign.
+func _continue_after(level: int) -> void:
+	if level == StagePlan.DEEP_UNLOCK_STAGE and not bool(SaveManager.prog.get("deep_intro_seen", false)):
+		SaveManager.prog["deep_intro_seen"] = true
+		SaveManager.request_save()
+		board.visible = false
+		hud.visible = false
+		modal.show_deep_unlocked(level + 1)
+		return
+	if level == StagePlan.CLASSIC_LEVELS or level >= StagePlan.TOTAL_LEVELS:
+		board.visible = false
+		hud.visible = false
+		modal.show_campaign_complete(StagePlan.is_deep(level))
+		return
+	_start_calm_mode(level + 1)
+
+
 func _on_deadlock_accepted() -> void:
 	SaveManager.clear_session()
 	# One star, not three. They did not clear it, and a board that hands out a
@@ -1014,7 +1036,7 @@ func _on_deadlock_accepted() -> void:
 	modal.hide_modal()
 	hud.visible = true
 	if GameManager.current_mode == GameManager.GameMode.CALM:
-		_start_calm_mode(GameManager.current_level + 1)
+		_continue_after(GameManager.current_level)
 	else:
 		_next_stage()
 

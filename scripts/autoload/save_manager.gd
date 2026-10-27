@@ -463,6 +463,8 @@ func _sanitize_prog(raw: Variant) -> Dictionary:
 	if d.has("last_daily_date"): out["last_daily_date"] = _vstr(d["last_daily_date"], "")
 	if d.has("tutorial_completed"): out["tutorial_completed"] = _vbool(d["tutorial_completed"], false)
 	if d.has("koi_intro_seen"): out["koi_intro_seen"] = _vbool(d["koi_intro_seen"], false)
+	if d.has("deep_intro_seen"): out["deep_intro_seen"] = _vbool(d["deep_intro_seen"], false)
+	if d.has("deep_level"): out["deep_level"] = _vint(d["deep_level"], 501, 501, MAX_LEVEL + 1)
 	if d.has("update_asked_code"): out["update_asked_code"] = _vint(d["update_asked_code"], 0, 0)
 	if d.has("update_asked_at"): out["update_asked_at"] = _vint(d["update_asked_at"], 0, 0)
 	if d.has("review_asked_count"): out["review_asked_count"] = _vint(d["review_asked_count"], 0, 0, 99)
@@ -701,8 +703,20 @@ func _migrate_jade_to_pearls() -> void:
 ## about 25 three-starred levels for a theme - earned, not instant.
 const PEARLS_PER_STAR: int = 20
 
+func deep_unlocked() -> bool:
+	return int(prog.get("level", 1)) > StagePlan.DEEP_UNLOCK_STAGE
+
+
+## The next Deep Rivers stage to play.
+func deep_level() -> int:
+	return int(prog.get("deep_level", StagePlan.CLASSIC_LEVELS + 1))
+
+
 func record_level_clear(lvl: int, score: int, stars_earned: int) -> void:
-	prog["level"] = max(int(prog.get("level", 1)), lvl + 1)
+	if StagePlan.is_deep(lvl):
+		prog["deep_level"] = max(int(prog.get("deep_level", StagePlan.CLASSIC_LEVELS + 1)), lvl + 1)
+	else:
+		prog["level"] = max(int(prog.get("level", 1)), lvl + 1)
 	prog["best_score"] = max(int(prog.get("best_score", 0)), score)
 	if not prog.has("stars"):
 		prog["stars"] = {}
